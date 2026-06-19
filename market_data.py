@@ -192,7 +192,32 @@ def get_index_data() -> dict:
     except Exception as e:
         _logger.warning(f"[지수] KIS API 실패: {e}")
 
-    # 2순위: FDR — KS11(KOSPI), KQ11(KOSDAQ)
+    # 2순위: yfinance 실시간 (장중 15분 지연)
+    try:
+        import yfinance as yf
+        result = {}
+        for name, sym in [("KOSPI", "^KS11"), ("KOSDAQ", "^KQ11")]:
+            t = yf.Ticker(sym)
+            fi = t.fast_info
+            cur  = fi.last_price
+            prev = fi.previous_close
+            if not cur or not prev:
+                continue
+            chg     = cur - prev
+            chg_pct = chg / prev * 100
+            result[name] = {
+                "current":        round(cur, 2),
+                "change":         round(chg, 2),
+                "change_pct":     round(chg_pct, 2),
+                "volume_billion": 0,
+            }
+            _logger.info(f"[지수] yfinance {name} = {cur} ({chg_pct:+.2f}%)")
+        if len(result) == 2:
+            return result
+    except Exception as e:
+        _logger.warning(f"[지수] yfinance 실패: {e}")
+
+    # 3순위: FDR — KS11(KOSPI), KQ11(KOSDAQ)
     if FDR_OK:
         try:
             from datetime import timezone, timedelta
@@ -207,7 +232,6 @@ def get_index_data() -> dict:
                 prev = float(df["Close"].iloc[-2])
                 chg  = cur - prev
                 chg_pct = chg / prev * 100
-                # FDR Change 컬럼이 있으면 더 정확
                 if "Change" in df.columns:
                     chg_pct = float(df["Change"].iloc[-1]) * 100
                     chg = round(cur - cur / (1 + float(df["Change"].iloc[-1])), 2)
@@ -265,7 +289,7 @@ def _dummy_index():
 # ─────────────────────────────────────────────────────────
 # 미국 지수 (S&P500, 나스닥, 다우)
 # ─────────────────────────────────────────────────────────
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=60)
 def get_us_indices() -> dict:
     # FDR로 미국 지수 (전일 종가 기준, 장중엔 당일 데이터)
     if FDR_OK:
@@ -344,12 +368,37 @@ def get_ohlcv(code: str, days: int = 120) -> pd.DataFrame:
     return pd.DataFrame()
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=60)
 def get_current_price(code: str) -> dict:
     """
-    현재가 정보 반환
+    현재가 정보 반환 (장중 실시간 - yfinance 15분 지연)
     Returns: {current_price, change, change_pct, high, low, volume}
     """
+    # 1순위: yfinance 실시간 (장중 15분 지연)
+    try:
+        import yfinance as yf
+        t = yf.Ticker(f"{code}.KS")
+        fi = t.fast_info
+        cur = fi.last_price
+        prev = fi.previous_close
+        if cur and prev and cur > 0:
+            chg = cur - prev
+            chg_pct = chg / prev * 100
+            high = getattr(fi, "day_high", None) or 0
+            low  = getattr(fi, "day_low",  None) or 0
+            vol  = getattr(fi, "last_volume", None) or 0
+            return {
+                "current_price": int(cur),
+                "change":        int(chg),
+                "change_pct":    round(chg_pct, 2),
+                "high":          int(high),
+                "low":           int(low),
+                "volume":        int(vol),
+            }
+    except Exception as e:
+        _logger.warning(f"[현재가] yfinance 실패({code}): {e}")
+
+    # 2순위: pykrx / FDR (종가 기반)
     df = get_ohlcv(code, days=5)
     if df is None or df.empty:
         return {}
@@ -361,11 +410,11 @@ def get_current_price(code: str) -> dict:
         chg_pct = chg / int(prev["close"]) * 100 if prev["close"] else 0
         return {
             "current_price": cur,
-            "change": chg,
-            "change_pct": round(chg_pct, 2),
-            "high": int(last["high"]),
-            "low": int(last["low"]),
-            "volume": int(last["volume"]),
+            "change":        chg,
+            "change_pct":    round(chg_pct, 2),
+            "high":          int(last["high"]),
+            "low":           int(last["low"]),
+            "volume":        int(last["volume"]),
         }
     except:
         return {}
