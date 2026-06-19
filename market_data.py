@@ -382,79 +382,24 @@ _INVESTOR_NEEDED  = ["외국인합계", "기관합계", "개인"]
 
 @st.cache_data(ttl=600)
 def get_investor_trading(code: str, days: int = 25) -> pd.DataFrame:
-    """
-    종목별 투자자 순매수량 (일별)
-    Returns DataFrame: index=날짜, columns=[외국인, 기관, 개인]
-    양수=순매수, 음수=순매도 (단위: 주)
-    실패 시 빈 DataFrame 반환 + 로그/화면 디버그 출력
-    """
-    _logger.info("[수급] 조회 시작 | code=%s days=%d", code, days)
-
+    """종목별 투자자 순매수량 (일별). 실패 시 빈 DataFrame 반환."""
     if not PYKRX_OK:
-        _logger.error("[수급] pykrx 미설치 — import 실패")
         return pd.DataFrame()
-
-    end   = _today()
-    start = _ndays_ago(days + 15)
-    _logger.info("[수급] 조회 기간: %s ~ %s", start, end)
-    _logger.info("[수급] 데이터 소스: pykrx get_market_trading_volume_by_date")
-    _logger.info("[수급] URL: https://data.krx.co.kr (KRX 공식)")
-
     try:
-        df = krx.get_market_trading_volume_by_date(
-            start, end, code, on="순매수"
-        )
-    except Exception as exc:
-        err_msg = traceback.format_exc()
-        _logger.error("[수급] API 호출 실패 | code=%s | %s", code, exc)
-        _logger.debug("[수급] 상세 traceback:\n%s", err_msg)
-        with st.expander(f"🔴 수급 데이터 조회 실패 — {code}", expanded=False):
-            st.markdown(f"""
-**데이터 소스:** pykrx `get_market_trading_volume_by_date`
-**조회 URL:** `https://data.krx.co.kr`
-**조회 기간:** `{start}` ~ `{end}`
-**실패 원인:** `{type(exc).__name__}: {exc}`
-""")
-            st.code(err_msg, language="text")
+        end   = _today()
+        start = _ndays_ago(days + 15)
+        df = krx.get_market_trading_volume_by_date(start, end, code, on="순매수")
+        if df is None or df.empty:
+            return pd.DataFrame()
+        available = [c for c in _INVESTOR_NEEDED if c in df.columns]
+        if not available:
+            return pd.DataFrame()
+        result = df[available].rename(columns=_INVESTOR_COL_MAP)
+        result.index = pd.to_datetime(result.index)
+        return result.tail(days)
+    except Exception as e:
+        _logger.warning("[수급] 조회 실패 | code=%s | %s", code, e)
         return pd.DataFrame()
-
-    # ── 빈 응답 처리 ──
-    if df is None or df.empty:
-        _logger.warning("[수급] 응답 비어있음 | code=%s start=%s end=%s", code, start, end)
-        with st.expander(f"⚠️ 수급 데이터 없음 — {code}", expanded=False):
-            st.markdown(f"""
-**데이터 소스:** pykrx `get_market_trading_volume_by_date`
-**조회 기간:** `{start}` ~ `{end}`
-**결과:** 빈 DataFrame (해당 기간 데이터 없음)
-""")
-        return pd.DataFrame()
-
-    # ── 컬럼 확인 ──
-    _logger.info("[수급] 응답 컬럼: %s | shape: %s", list(df.columns), df.shape)
-    missing = [c for c in _INVESTOR_NEEDED if c not in df.columns]
-    if missing:
-        _logger.warning("[수급] 필요 컬럼 누락: %s | 실제 컬럼: %s", missing, list(df.columns))
-        with st.expander(f"⚠️ 수급 컬럼 불일치 — {code}", expanded=False):
-            st.markdown(f"""
-**필요한 컬럼:** `{_INVESTOR_NEEDED}`
-**실제 반환 컬럼:** `{list(df.columns)}`
-**누락 컬럼:** `{missing}`
-""")
-            st.dataframe(df.tail(3))
-
-    # ── 존재하는 컬럼만 선택 ──
-    available = [c for c in _INVESTOR_NEEDED if c in df.columns]
-    if not available:
-        _logger.error("[수급] 사용 가능한 컬럼 없음 | code=%s", code)
-        return pd.DataFrame()
-
-    result = df[available].rename(columns=_INVESTOR_COL_MAP)
-    result.index = pd.to_datetime(result.index)
-    result = result.tail(days)
-
-    _logger.info("[수급] 조회 성공 | code=%s | rows=%d | cols=%s",
-                 code, len(result), list(result.columns))
-    return result
 
 
 @st.cache_data(ttl=600)
