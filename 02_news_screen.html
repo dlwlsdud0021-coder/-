@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>뉴스 화면</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+body { background: #F5F5F7; max-width: 380px; margin: 0 auto; padding-bottom: 80px; color: #1A1A2E; }
+.header { background: #fff; padding: 14px 20px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 0.5px solid #E5E5EA; }
+.header-title { font-size: 16px; font-weight: 600; }
+.header-sub { font-size: 11px; color: #8E8E93; margin-top: 2px; }
+.header-icons { display: flex; gap: 12px; color: #8E8E93; font-size: 20px; }
+.filter-row { display: flex; padding: 10px 16px; gap: 6px; overflow-x: auto; scrollbar-width: none; background: #fff; border-bottom: 0.5px solid #E5E5EA; }
+.filter-row::-webkit-scrollbar { display: none; }
+.filter-btn { padding: 5px 14px; border-radius: 16px; font-size: 11px; font-weight: 500; white-space: nowrap; border: none; cursor: pointer; }
+.filter-btn.active { background: #5B5BD6; color: #fff; }
+.filter-btn.inactive { background: #F0F0F5; color: #6B6B8A; }
+.section { margin: 12px 16px 0; }
+.sec-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.news-card { background: #fff; border-radius: 16px; padding: 14px 16px; border: 0.5px solid #E5E5EA; margin-bottom: 8px; }
+.news-card.important { border-left: 3px solid #5B5BD6; border-radius: 0 16px 16px 16px; }
+.news-card.negative { border-left: 3px solid #185FA5; border-radius: 0 16px 16px 16px; }
+.news-card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.badge { font-size: 10px; padding: 3px 8px; border-radius: 6px; font-weight: 500; }
+.badge-pos { background: #EAF3DE; color: #27500A; }
+.badge-neg { background: #FCEBEB; color: #791F1F; }
+.badge-mix { background: #FAEEDA; color: #633806; }
+.news-source { font-size: 10px; color: #8E8E93; margin-left: auto; }
+.news-title { font-size: 13px; font-weight: 600; line-height: 1.5; margin-bottom: 6px; }
+.news-summary { font-size: 11px; color: #6B6B8A; line-height: 1.6; margin-bottom: 10px; }
+.news-divider { height: 0.5px; background: #F0F0F5; margin-bottom: 10px; }
+.ai-section { background: #F8F8FA; border-radius: 10px; padding: 10px 12px; }
+.ai-label { font-size: 10px; font-weight: 600; color: #5B5BD6; margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
+.ai-sector { font-size: 11px; color: #3C3489; font-weight: 500; margin-bottom: 4px; display: flex; align-items: center; gap: 5px; }
+.ai-text { font-size: 11px; color: #6B6B8A; line-height: 1.6; }
+.ai-strategy { margin-top: 6px; padding-top: 6px; border-top: 0.5px solid #E5E5EA; }
+.ai-strategy-label { font-size: 10px; font-weight: 600; color: #1A1A2E; margin-bottom: 3px; display: flex; align-items: center; gap: 4px; }
+.ai-strategy-text { font-size: 11px; color: #6B6B8A; line-height: 1.6; }
+.news-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+.news-time { font-size: 10px; color: #C7C7CC; }
+.related-stocks { display: flex; gap: 5px; }
+.stock-chip { font-size: 10px; background: #EEEDFE; color: #3C3489; padding: 2px 8px; border-radius: 5px; font-weight: 500; }
+.more-btn { display: flex; align-items: center; justify-content: center; gap: 6px; background: #fff; border-radius: 12px; padding: 12px; border: 0.5px solid #E5E5EA; margin: 0 16px 8px; font-size: 12px; color: #5B5BD6; font-weight: 500; cursor: pointer; }
+.bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 380px; background: #fff; border-top: 0.5px solid #E5E5EA; display: flex; padding: 10px 0 16px; z-index: 10; }
+.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; color: #C7C7CC; font-size: 10px; cursor: pointer; }
+.nav-item.active { color: #5B5BD6; }
+.nav-item i { font-size: 22px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <div class="header-title">오늘의 시장 뉴스</div>
+    <div class="header-sub">2026.06.15 02:17 기준 · AI 분석 포함</div>
+  </div>
+  <div class="header-icons"><i class="ti ti-refresh"></i><i class="ti ti-bell"></i></div>
+</div>
+<div class="filter-row">
+  <button class="filter-btn active">전체</button>
+  <button class="filter-btn inactive">반도체</button>
+  <button class="filter-btn inactive">바이오</button>
+  <button class="filter-btn inactive">2차전지</button>
+  <button class="filter-btn inactive">금융</button>
+  <button class="filter-btn inactive">글로벌</button>
+</div>
+<div class="section">
+  <div class="sec-title"><i class="ti ti-news" style="font-size:15px; color:#5B5BD6;"></i>주요 뉴스 & AI 분석</div>
+  <div class="news-card important">
+    <div class="news-card-top"><span class="badge badge-mix">혼조</span><span class="news-source">뉴시스 · 06/15</span></div>
+    <div class="news-title">미래에셋 스페이스X '0주' 배정에 개미들 "뒤통수 맞았다"</div>
+    <div class="news-summary">일본은 22억 달러 확보, 한국은 전량 삭감. 미래에셋증권이 공동 인수단으로 참여했으나 국내 판매 물량 전혀 확보 못해 투자자 공분.</div>
+    <div class="news-divider"></div>
+    <div class="ai-section">
+      <div class="ai-label"><i class="ti ti-sparkles" style="font-size:12px;"></i>AI 분석</div>
+      <div class="ai-sector"><i class="ti ti-building-bank" style="font-size:12px;"></i>금융·증권 업종 관련</div>
+      <div class="ai-text">긍정·부정 신호가 섞여 있어요. 미래에셋 배정 실패는 국내 증권주에 단기 부정적 요인이에요.</div>
+      <div class="ai-strategy">
+        <div class="ai-strategy-label"><i class="ti ti-bulb" style="font-size:12px; color:#F0A500;"></i>대응 전략</div>
+        <div class="ai-strategy-text">장 초반 관련 종목 주가 반응을 먼저 보고, 상승하면 추세 진입, 하락하면 관망.</div>
+      </div>
+    </div>
+    <div class="news-footer">
+      <span class="news-time">2시간 전</span>
+      <div class="related-stocks"><span class="stock-chip">미래에셋</span><span class="stock-chip">한국항공우주</span></div>
+    </div>
+  </div>
+  <div class="news-card">
+    <div class="news-card-top"><span class="badge badge-pos">긍정</span><span class="news-source">연합뉴스 · 06/15</span></div>
+    <div class="news-title">美 반도체 수출 규제 완화 검토 · 삼성·SK에 직접 수혜 기대</div>
+    <div class="news-summary">반도체 수출 규제 일부 완화 논의 재개. 삼성전자, SK하이닉스 수혜 기대감 확대.</div>
+    <div class="news-divider"></div>
+    <div class="ai-section">
+      <div class="ai-label"><i class="ti ti-sparkles" style="font-size:12px;"></i>AI 분석</div>
+      <div class="ai-sector"><i class="ti ti-cpu" style="font-size:12px;"></i>반도체 업종 관련</div>
+      <div class="ai-text">강한 긍정 신호. 외국인 매수세와 맞물려 추가 상승 모멘텀 가능.</div>
+      <div class="ai-strategy">
+        <div class="ai-strategy-label"><i class="ti ti-bulb" style="font-size:12px; color:#F0A500;"></i>대응 전략</div>
+        <div class="ai-strategy-text">보유 중이라면 홀딩. 신규 진입은 눌림목 대기 전략 추천.</div>
+      </div>
+    </div>
+    <div class="news-footer">
+      <span class="news-time">4시간 전</span>
+      <div class="related-stocks"><span class="stock-chip">삼성전자</span><span class="stock-chip">SK하이닉스</span></div>
+    </div>
+  </div>
+  <div class="news-card negative">
+    <div class="news-card-top"><span class="badge badge-neg">부정</span><span class="news-source">한국경제 · 06/15</span></div>
+    <div class="news-title">2차전지 수출 3개월 연속 감소 · 중국 저가 배터리 공세 지속</div>
+    <div class="news-summary">중국 업체들의 저가 공세로 국내 2차전지 수출 3개월 연속 감소. 실적 우려 지속.</div>
+    <div class="news-divider"></div>
+    <div class="ai-section">
+      <div class="ai-label"><i class="ti ti-sparkles" style="font-size:12px;"></i>AI 분석</div>
+      <div class="ai-sector"><i class="ti ti-battery-charging" style="font-size:12px;"></i>2차전지 업종 관련</div>
+      <div class="ai-text">단기 부정 신호. 다만 주가에 일부 반영된 악재일 수 있어 추가 하락 폭 제한적.</div>
+      <div class="ai-strategy">
+        <div class="ai-strategy-label"><i class="ti ti-bulb" style="font-size:12px; color:#F0A500;"></i>대응 전략</div>
+        <div class="ai-strategy-text">2차전지 보유 중이라면 손절선(-3%) 유지. 신규 매수는 추가 하락 확인 후 분할 진입.</div>
+      </div>
+    </div>
+    <div class="news-footer">
+      <span class="news-time">5시간 전</span>
+      <div class="related-stocks"><span class="stock-chip">삼성SDI</span><span class="stock-chip">에코프로</span></div>
+    </div>
+  </div>
+</div>
+<div class="more-btn"><i class="ti ti-dots" style="font-size:16px;"></i>뉴스 더 보기</div>
+<div class="bottom-nav">
+  <div class="nav-item"><i class="ti ti-home"></i><span>홈</span></div>
+  <div class="nav-item active"><i class="ti ti-news"></i><span>뉴스</span></div>
+  <div class="nav-item"><i class="ti ti-briefcase"></i><span>보유</span></div>
+  <div class="nav-item"><i class="ti ti-star"></i><span>관심</span></div>
+  <div class="nav-item"><i class="ti ti-chart-bar"></i><span>매집</span></div>
+</div>
+</body>
+</html>

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>보유종목 화면</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+body { background: #F5F5F7; max-width: 380px; margin: 0 auto; padding-bottom: 80px; color: #1A1A2E; }
+.header { background: #fff; padding: 14px 20px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 0.5px solid #E5E5EA; }
+.header-title { font-size: 16px; font-weight: 600; }
+.header-sub { font-size: 11px; color: #8E8E93; margin-top: 2px; }
+.header-icons { display: flex; gap: 12px; color: #8E8E93; font-size: 20px; }
+.total-strip { background: #fff; padding: 14px 20px; border-bottom: 0.5px solid #E5E5EA; display: flex; justify-content: space-between; align-items: center; }
+.total-label { font-size: 11px; color: #8E8E93; margin-bottom: 3px; }
+.total-amount { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+.total-pnl-label { font-size: 10px; color: #8E8E93; margin-bottom: 3px; text-align: right; }
+.total-pnl { font-size: 16px; font-weight: 700; }
+.up { color: #E24B4A; }
+.down { color: #185FA5; }
+.tabs { display: flex; padding: 10px 16px; gap: 6px; }
+.tab { padding: 5px 14px; border-radius: 16px; font-size: 11px; font-weight: 500; border: none; cursor: pointer; }
+.tab.active { background: #5B5BD6; color: #fff; }
+.tab.inactive { background: #fff; color: #6B6B8A; border: 0.5px solid #E5E5EA; }
+.section { margin: 0 16px 8px; }
+.sec-label { font-size: 11px; font-weight: 600; color: #8E8E93; margin-bottom: 6px; padding-left: 2px; }
+.card { background: #fff; border-radius: 16px; padding: 14px 16px; border: 0.5px solid #E5E5EA; margin-bottom: 8px; cursor: pointer; }
+.card-top { display: flex; align-items: center; gap: 10px; }
+.stock-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.icon-purple { background: #EEEDFE; color: #3C3489; }
+.icon-blue { background: #E6F1FB; color: #0C447C; }
+.icon-red { background: #FCEBEB; color: #791F1F; }
+.icon-amber { background: #FAEEDA; color: #633806; }
+.stock-name { font-size: 13px; font-weight: 600; }
+.stock-sub { font-size: 10px; color: #8E8E93; margin-top: 1px; }
+.stock-right { text-align: right; margin-left: auto; }
+.stock-price { font-size: 13px; font-weight: 600; }
+.stock-change { font-size: 11px; font-weight: 500; margin-top: 2px; }
+.mini-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 10px; }
+.mini-item { background: #F8F8FA; border-radius: 8px; padding: 7px 10px; }
+.mini-label { font-size: 9px; color: #8E8E93; margin-bottom: 2px; }
+.mini-val { font-size: 12px; font-weight: 600; }
+.pnl-bar-wrap { height: 4px; background: #F0F0F5; border-radius: 2px; margin-top: 10px; overflow: hidden; }
+.pnl-bar { height: 4px; border-radius: 2px; }
+.support-mini { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.sup-chip { font-size: 10px; color: #6B6B8A; background: #F0F0F5; padding: 2px 8px; border-radius: 5px; }
+.card-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 0.5px solid #F0F0F5; }
+.badge { font-size: 10px; padding: 3px 8px; border-radius: 6px; font-weight: 500; }
+.badge-ok { background: #EEEDFE; color: #3C3489; }
+.badge-sell { background: #FCEBEB; color: #791F1F; }
+.badge-warn { background: #FAEEDA; color: #633806; }
+.badge-buy { background: #EAF3DE; color: #27500A; }
+.badge-neutral { background: #F0F0F5; color: #6B6B8A; }
+.signal-badges { display: flex; gap: 5px; flex-wrap: wrap; }
+.bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 380px; background: #fff; border-top: 0.5px solid #E5E5EA; display: flex; padding: 10px 0 16px; z-index: 10; }
+.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; color: #C7C7CC; font-size: 10px; }
+.nav-item.active { color: #5B5BD6; }
+.nav-item i { font-size: 22px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div><div class="header-title">보유종목 관리</div><div class="header-sub">2026.06.15 16:00 기준</div></div>
+  <div class="header-icons"><i class="ti ti-plus"></i><i class="ti ti-refresh"></i></div>
+</div>
+<div class="total-strip">
+  <div><div class="total-label">총 평가금액</div><div class="total-amount">24,471,020원</div></div>
+  <div><div class="total-pnl-label">총 평가손익</div><div class="total-pnl down">-6,867,082원 (-21.9%)</div></div>
+</div>
+<div class="tabs">
+  <button class="tab active">전체</button>
+  <button class="tab inactive">수익</button>
+  <button class="tab inactive">손실</button>
+  <button class="tab inactive">매도신호</button>
+</div>
+<div class="section">
+  <div class="sec-label">수익 중인 종목</div>
+  <div class="card">
+    <div class="card-top">
+      <div class="stock-icon icon-purple">SK</div>
+      <div><div class="stock-name">SK하이닉스</div><div class="stock-sub">평단 579,000원 · 3주</div></div>
+      <div class="stock-right"><div class="stock-price">2,150,000원</div><div class="stock-change up">▲ +271.3%</div></div>
+    </div>
+    <div class="mini-grid">
+      <div class="mini-item"><div class="mini-label">평가손익</div><div class="mini-val up">+471만</div></div>
+      <div class="mini-item"><div class="mini-label">RSI</div><div class="mini-val" style="color:#BA7517;">74</div></div>
+      <div class="mini-item"><div class="mini-label">이격도</div><div class="mini-val" style="color:#BA7517;">112%</div></div>
+    </div>
+    <div class="pnl-bar-wrap"><div class="pnl-bar" style="width:85%; background:#E24B4A;"></div></div>
+    <div class="support-mini">
+      <div class="sup-chip">20일선 <span class="down">-8.2%</span></div>
+      <div class="sup-chip">60일선 <span class="down">-14.1%</span></div>
+      <div class="sup-chip">볼하단 <span class="down">-18.3%</span></div>
+    </div>
+    <div class="card-bottom">
+      <div class="signal-badges"><span class="badge badge-warn">RSI 과열</span><span class="badge badge-sell">분할매도 고려</span></div>
+      <i class="ti ti-chevron-right" style="color:#C7C7CC; font-size:18px;"></i>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-top">
+      <div class="stock-icon icon-blue">삼성</div>
+      <div><div class="stock-name">삼성전자</div><div class="stock-sub">평단 298,000원 · 20주</div></div>
+      <div class="stock-right"><div class="stock-price">322,500원</div><div class="stock-change up">▲ +8.22%</div></div>
+    </div>
+    <div class="mini-grid">
+      <div class="mini-item"><div class="mini-label">평가손익</div><div class="mini-val up">+49만</div></div>
+      <div class="mini-item"><div class="mini-label">RSI</div><div class="mini-val" style="color:#3C3489;">58</div></div>
+      <div class="mini-item"><div class="mini-label">이격도</div><div class="mini-val" style="color:#3C3489;">103%</div></div>
+    </div>
+    <div class="pnl-bar-wrap"><div class="pnl-bar" style="width:30%; background:#E24B4A;"></div></div>
+    <div class="card-bottom">
+      <div class="signal-badges"><span class="badge badge-ok">특이사항 없음</span><span class="badge badge-ok">정배열 유지</span></div>
+      <i class="ti ti-chevron-right" style="color:#C7C7CC; font-size:18px;"></i>
+    </div>
+  </div>
+</div>
+<div class="section">
+  <div class="sec-label">손실 중인 종목</div>
+  <div class="card">
+    <div class="card-top">
+      <div class="stock-icon icon-red">심텍</div>
+      <div><div class="stock-name">심텍</div><div class="stock-sub">평단 168,000원 · 15주</div></div>
+      <div class="stock-right"><div class="stock-price">130,900원</div><div class="stock-change down">▼ -22.08%</div></div>
+    </div>
+    <div class="mini-grid">
+      <div class="mini-item"><div class="mini-label">평가손익</div><div class="mini-val down">-556만</div></div>
+      <div class="mini-item"><div class="mini-label">RSI</div><div class="mini-val" style="color:#3C3489;">38</div></div>
+      <div class="mini-item"><div class="mini-label">이격도</div><div class="mini-val" style="color:#3B6D11;">96%</div></div>
+    </div>
+    <div class="pnl-bar-wrap"><div class="pnl-bar" style="width:60%; background:#185FA5;"></div></div>
+    <div class="card-bottom">
+      <div class="signal-badges"><span class="badge badge-neutral">RSI 정상</span><span class="badge badge-buy">지지선 근처</span></div>
+      <i class="ti ti-chevron-right" style="color:#C7C7CC; font-size:18px;"></i>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-top">
+      <div class="stock-icon icon-amber">S-Oil</div>
+      <div><div class="stock-name">S-Oil</div><div class="stock-sub">평단 128,000원 · 10주</div></div>
+      <div class="stock-right"><div class="stock-price">111,300원</div><div class="stock-change down">▼ -13.05%</div></div>
+    </div>
+    <div class="mini-grid">
+      <div class="mini-item"><div class="mini-label">평가손익</div><div class="mini-val down">-167만</div></div>
+      <div class="mini-item"><div class="mini-label">RSI</div><div class="mini-val" style="color:#3C3489;">42</div></div>
+      <div class="mini-item"><div class="mini-label">이격도</div><div class="mini-val" style="color:#3C3489;">98%</div></div>
+    </div>
+    <div class="pnl-bar-wrap"><div class="pnl-bar" style="width:40%; background:#185FA5;"></div></div>
+    <div class="card-bottom">
+      <div class="signal-badges"><span class="badge badge-neutral">20일선 이탈</span><span class="badge badge-sell">손절 검토 (-3%)</span></div>
+      <i class="ti ti-chevron-right" style="color:#C7C7CC; font-size:18px;"></i>
+    </div>
+  </div>
+</div>
+<div class="bottom-nav">
+  <div class="nav-item"><i class="ti ti-home"></i><span>홈</span></div>
+  <div class="nav-item"><i class="ti ti-news"></i><span>뉴스</span></div>
+  <div class="nav-item active"><i class="ti ti-briefcase"></i><span>보유</span></div>
+  <div class="nav-item"><i class="ti ti-star"></i><span>관심</span></div>
+  <div class="nav-item"><i class="ti ti-chart-bar"></i><span>매집</span></div>
+</div>
+</body>
+</html>

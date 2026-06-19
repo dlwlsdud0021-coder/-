@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>보유종목 상세</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+body { background: #F5F5F7; max-width: 380px; margin: 0 auto; padding-bottom: 80px; color: #1A1A2E; }
+.header { background: #fff; padding: 14px 20px 12px; display: flex; align-items: center; gap: 12px; border-bottom: 0.5px solid #E5E5EA; }
+.back { color: #5B5BD6; font-size: 22px; cursor: pointer; }
+.header-info { flex: 1; }
+.header-name { font-size: 16px; font-weight: 600; }
+.header-code { font-size: 11px; color: #8E8E93; margin-top: 1px; }
+.header-badge { background: #FCEBEB; color: #791F1F; font-size: 10px; padding: 3px 8px; border-radius: 6px; font-weight: 500; }
+.price-section { background: #fff; padding: 16px 20px; border-bottom: 0.5px solid #E5E5EA; }
+.current-price { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+.price-change { display: flex; gap: 8px; margin-top: 4px; }
+.down { color: #185FA5; }
+.up { color: #E24B4A; }
+.change-val { font-size: 14px; font-weight: 600; }
+.price-meta { display: flex; gap: 16px; margin-top: 10px; }
+.pm-item { font-size: 11px; color: #8E8E93; }
+.pm-item span { color: #1A1A2E; font-weight: 500; }
+.my-pos { background: #fff; margin: 12px 16px 0; border-radius: 16px; padding: 14px 16px; border: 0.5px solid #E5E5EA; }
+.pos-title { font-size: 11px; font-weight: 600; color: #8E8E93; margin-bottom: 10px; display: flex; align-items: center; gap: 5px; }
+.pos-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.pos-item { background: #F8F8FA; border-radius: 10px; padding: 10px 12px; }
+.pos-label { font-size: 10px; color: #8E8E93; margin-bottom: 3px; }
+.pos-val { font-size: 14px; font-weight: 700; }
+.pos-val.loss { color: #185FA5; }
+.pos-val.neutral { color: #6B6B8A; }
+.pnl-bar-wrap { height: 5px; background: #F0F0F5; border-radius: 3px; margin-top: 10px; overflow: hidden; }
+.pnl-bar { height: 5px; border-radius: 3px; }
+.period-row { display: flex; gap: 6px; padding: 10px 16px; background: #fff; margin-top: 8px; border-top: 0.5px solid #E5E5EA; border-bottom: 0.5px solid #E5E5EA; }
+.period-btn { padding: 4px 12px; border-radius: 16px; font-size: 11px; font-weight: 500; border: none; cursor: pointer; }
+.period-btn.active { background: #5B5BD6; color: #fff; }
+.period-btn.inactive { background: #F0F0F5; color: #6B6B8A; }
+.chart-area { background: #fff; padding: 14px 16px; margin-bottom: 8px; }
+.chart-title { font-size: 12px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 5px; }
+.chart-box { background: #F8F8FA; border-radius: 12px; height: 130px; display: flex; align-items: flex-end; padding: 10px 8px 8px; gap: 2px; position: relative; overflow: hidden; }
+.candle { display: flex; flex-direction: column; align-items: center; flex: 1; }
+.wick { width: 1.5px; background: #C7C7CC; }
+.body-up { width: 7px; border-radius: 2px; background: #E24B4A; }
+.body-down { width: 7px; border-radius: 2px; background: #185FA5; }
+.avg-line { position: absolute; left: 8px; right: 8px; height: 1.5px; background: #F0A500; opacity: 0.8; }
+.chart-xlabels { display: flex; justify-content: space-between; margin-top: 5px; }
+.chart-xlabel { font-size: 9px; color: #C7C7CC; }
+.ma-legend { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+.ma-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #6B6B8A; }
+.ma-line { width: 14px; height: 2px; border-radius: 1px; }
+.section { margin: 0 16px 8px; }
+.sec-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.card { background: #fff; border-radius: 16px; padding: 14px 16px; border: 0.5px solid #E5E5EA; margin-bottom: 8px; }
+.ind-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 0.5px solid #F0F0F5; }
+.ind-row:last-child { border-bottom: none; }
+.ind-label { font-size: 12px; color: #6B6B8A; }
+.ind-right { display: flex; align-items: center; gap: 8px; }
+.ind-val { font-size: 12px; font-weight: 600; }
+.ind-status { font-size: 10px; padding: 2px 7px; border-radius: 5px; font-weight: 500; }
+.status-ok { background: #EEEDFE; color: #3C3489; }
+.status-good { background: #EAF3DE; color: #27500A; }
+.status-danger { background: #FCEBEB; color: #791F1F; }
+.rsi-bar-wrap { width: 60px; height: 4px; background: #F0F0F5; border-radius: 2px; overflow: hidden; }
+.rsi-bar-fill { height: 4px; border-radius: 2px; }
+.sup-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 0.5px solid #F0F0F5; }
+.sup-row:last-child { border-bottom: none; }
+.sup-label { font-size: 12px; color: #6B6B8A; }
+.sup-right { display: flex; align-items: center; gap: 8px; }
+.sup-price { font-size: 12px; font-weight: 600; }
+.sup-dist { font-size: 11px; font-weight: 500; }
+.sup-note { font-size: 10px; padding: 2px 7px; border-radius: 5px; }
+.note-near { background: #EAF3DE; color: #27500A; }
+.note-far { background: #F0F0F5; color: #6B6B8A; }
+.supply-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 0.5px solid #F0F0F5; }
+.supply-row:last-child { border-bottom: none; }
+.supply-who { font-size: 12px; color: #6B6B8A; min-width: 48px; }
+.supply-bar-bg { flex: 1; height: 5px; background: #F0F0F5; border-radius: 3px; overflow: hidden; }
+.supply-bar-fill { height: 5px; border-radius: 3px; }
+.bar-buy { background: #E24B4A; }
+.bar-sell { background: #185FA5; }
+.supply-val { font-size: 11px; font-weight: 600; min-width: 64px; text-align: right; }
+.days-row { display: flex; gap: 3px; padding: 0 0 6px 56px; flex-wrap: wrap; }
+.day-chip { font-size: 10px; padding: 2px 6px; border-radius: 5px; }
+.chip-buy { background: #FCEBEB; color: #A32D2D; }
+.chip-sell { background: #E6F1FB; color: #0C447C; }
+.warn-box { background: #FCEBEB; border-radius: 14px; padding: 14px 16px; margin: 0 16px 8px; }
+.warn-title { font-size: 13px; font-weight: 600; color: #791F1F; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+.warn-text { font-size: 11px; color: #A32D2D; line-height: 1.6; }
+.advice-box { background: #EEEDFE; border-radius: 14px; padding: 14px 16px; margin: 0 16px 8px; }
+.advice-title { font-size: 13px; font-weight: 600; color: #3C3489; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+.advice-text { font-size: 11px; color: #534AB7; line-height: 1.6; }
+.action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 16px 8px; }
+.action-btn { border-radius: 12px; padding: 12px; text-align: center; border: 0.5px solid #E5E5EA; cursor: pointer; }
+.action-btn-primary { background: #5B5BD6; border-color: #5B5BD6; }
+.action-label { font-size: 11px; font-weight: 600; color: #1A1A2E; }
+.action-label-white { font-size: 11px; font-weight: 600; color: #fff; }
+.action-sub { font-size: 10px; color: #8E8E93; margin-top: 2px; }
+.action-sub-white { font-size: 10px; color: rgba(255,255,255,0.8); margin-top: 2px; }
+.bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 380px; background: #fff; border-top: 0.5px solid #E5E5EA; display: flex; padding: 10px 0 16px; z-index: 10; }
+.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; color: #C7C7CC; font-size: 10px; }
+.nav-item.active { color: #5B5BD6; }
+.nav-item i { font-size: 22px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <i class="ti ti-arrow-left back"></i>
+  <div class="header-info"><div class="header-name">심텍</div><div class="header-code">222800 · 코스닥 · 반도체 부품</div></div>
+  <span class="header-badge">손실 -22.08%</span>
+</div>
+<div class="price-section">
+  <div class="current-price">130,900원</div>
+  <div class="price-change"><span class="change-val down">▼ -29,100원</span><span class="change-val down">(-22.08%)</span></div>
+  <div class="price-meta">
+    <div class="pm-item">고가 <span>133,500원</span></div>
+    <div class="pm-item">저가 <span>128,200원</span></div>
+    <div class="pm-item">거래량 <span>284K</span></div>
+  </div>
+</div>
+<div class="my-pos">
+  <div class="pos-title"><i class="ti ti-briefcase" style="font-size:12px; color:#5B5BD6;"></i>내 보유 현황</div>
+  <div class="pos-grid">
+    <div class="pos-item"><div class="pos-label">평단가</div><div class="pos-val neutral">168,000원</div></div>
+    <div class="pos-item"><div class="pos-label">보유 수량</div><div class="pos-val neutral">15주</div></div>
+    <div class="pos-item"><div class="pos-label">평가손익</div><div class="pos-val loss">-556만원</div></div>
+  </div>
+  <div class="pnl-bar-wrap"><div class="pnl-bar" style="width:60%; background:#185FA5;"></div></div>
+</div>
+<div class="period-row">
+  <button class="period-btn inactive">1주</button>
+  <button class="period-btn active">1개월</button>
+  <button class="period-btn inactive">3개월</button>
+  <button class="period-btn inactive">6개월</button>
+  <button class="period-btn inactive">1년</button>
+</div>
+<div class="chart-area">
+  <div class="chart-title"><i class="ti ti-chart-candle" style="font-size:14px; color:#5B5BD6;"></i>가격 차트 (평단가 주황선 표시)</div>
+  <div class="chart-box">
+    <div class="avg-line" style="bottom: 68px;"></div>
+    <div class="candle"><div class="wick" style="height:8px;"></div><div class="body-up" style="height:22px;"></div></div>
+    <div class="candle"><div class="wick" style="height:6px;"></div><div class="body-down" style="height:18px;"></div></div>
+    <div class="candle"><div class="wick" style="height:10px;"></div><div class="body-down" style="height:24px;"></div></div>
+    <div class="candle"><div class="wick" style="height:7px;"></div><div class="body-down" style="height:20px;"></div></div>
+    <div class="candle"><div class="wick" style="height:9px;"></div><div class="body-up" style="height:16px;"></div></div>
+    <div class="candle"><div class="wick" style="height:8px;"></div><div class="body-down" style="height:28px;"></div></div>
+    <div class="candle"><div class="wick" style="height:12px;"></div><div class="body-down" style="height:32px;"></div></div>
+    <div class="candle"><div class="wick" style="height:6px;"></div><div class="body-up" style="height:20px;"></div></div>
+    <div class="candle"><div class="wick" style="height:9px;"></div><div class="body-down" style="height:26px;"></div></div>
+    <div class="candle"><div class="wick" style="height:7px;"></div><div class="body-down" style="height:30px;"></div></div>
+    <div class="candle"><div class="wick" style="height:11px;"></div><div class="body-up" style="height:18px;"></div></div>
+    <div class="candle"><div class="wick" style="height:8px;"></div><div class="body-down" style="height:34px;"></div></div>
+    <div class="candle"><div class="wick" style="height:10px;"></div><div class="body-down" style="height:38px;"></div></div>
+    <div class="candle"><div class="wick" style="height:6px;"></div><div class="body-up" style="height:28px;"></div></div>
+    <div class="candle"><div class="wick" style="height:9px;"></div><div class="body-down" style="height:36px;"></div></div>
+  </div>
+  <div class="chart-xlabels"><span class="chart-xlabel">5/15</span><span class="chart-xlabel">5/22</span><span class="chart-xlabel">5/29</span><span class="chart-xlabel">6/05</span><span class="chart-xlabel">6/15</span></div>
+  <div class="ma-legend">
+    <div class="ma-item"><div class="ma-line" style="background:#F0A500;"></div>평단가 168,000</div>
+    <div class="ma-item"><div class="ma-line" style="background:#5B5BD6;"></div>20일선</div>
+    <div class="ma-item"><div class="ma-line" style="background:#3B6D11;"></div>60일선</div>
+  </div>
+</div>
+<div class="section">
+  <div class="sec-title"><i class="ti ti-activity" style="font-size:15px; color:#5B5BD6;"></i>기술적 지표</div>
+  <div class="card">
+    <div class="ind-row"><span class="ind-label">RSI (14일)</span><div class="ind-right"><div class="rsi-bar-wrap"><div class="rsi-bar-fill" style="width:38%; background:#3B6D11;"></div></div><span class="ind-val">38</span><span class="ind-status status-good">과매도 근접</span></div></div>
+    <div class="ind-row"><span class="ind-label">이격도 (20일)</span><div class="ind-right"><span class="ind-val">96%</span><span class="ind-status status-good">평균선 근처</span></div></div>
+    <div class="ind-row"><span class="ind-label">볼린저밴드</span><div class="ind-right"><span class="ind-val">하단 근처</span><span class="ind-status status-good">지지 시도</span></div></div>
+    <div class="ind-row"><span class="ind-label">20일선</span><div class="ind-right"><span class="ind-val">129,300원</span><span class="ind-status status-ok">위 +1.2%</span></div></div>
+    <div class="ind-row"><span class="ind-label">60일선</span><div class="ind-right"><span class="ind-val">142,800원</span><span class="ind-status status-danger">아래 -8.3%</span></div></div>
+  </div>
+</div>
+<div class="section">
+  <div class="sec-title"><i class="ti ti-barrier-block" style="font-size:15px; color:#5B5BD6;"></i>바닥 지지선</div>
+  <div class="card">
+    <div class="sup-row"><span class="sup-label">20일선</span><div class="sup-right"><span class="sup-price">129,300원</span><span class="sup-dist up">+1.2%</span><span class="sup-note note-near">현재 위</span></div></div>
+    <div class="sup-row"><span class="sup-label">볼린저 하단</span><div class="sup-right"><span class="sup-price">126,400원</span><span class="sup-dist down">-3.4%</span><span class="sup-note note-near">근접</span></div></div>
+    <div class="sup-row"><span class="sup-label">최근 저점 (60일)</span><div class="sup-right"><span class="sup-price">123,500원</span><span class="sup-dist down">-5.8%</span><span class="sup-note note-far">주요 지지</span></div></div>
+    <div class="sup-row"><span class="sup-label">60일선</span><div class="sup-right"><span class="sup-price">142,800원</span><span class="sup-dist down">-8.3%</span><span class="sup-note note-far">저항선</span></div></div>
+  </div>
+</div>
+<div class="section">
+  <div class="sec-title"><i class="ti ti-users" style="font-size:15px; color:#5B5BD6;"></i>외국인·기관 수급 (5일)</div>
+  <div class="card">
+    <div class="supply-row"><span class="supply-who">외국인</span><div class="supply-bar-bg"><div class="supply-bar-fill bar-buy" style="width:35%;"></div></div><span class="supply-val up">+42,000주</span></div>
+    <div class="days-row"><span class="day-chip chip-buy">+12K</span><span class="day-chip chip-buy">+8K</span><span class="day-chip chip-buy">+9K</span><span class="day-chip chip-sell">-3K</span><span class="day-chip chip-buy">+16K</span></div>
+    <div class="supply-row"><span class="supply-who">기관</span><div class="supply-bar-bg"><div class="supply-bar-fill bar-sell" style="width:25%;"></div></div><span class="supply-val down">-18,000주</span></div>
+    <div class="days-row"><span class="day-chip chip-sell">-6K</span><span class="day-chip chip-sell">-4K</span><span class="day-chip chip-sell">-3K</span><span class="day-chip chip-sell">-2K</span><span class="day-chip chip-sell">-3K</span></div>
+  </div>
+</div>
+<div class="warn-box">
+  <div class="warn-title"><i class="ti ti-alert-triangle" style="font-size:15px;"></i>손절 기준 확인</div>
+  <div class="warn-text">평단 168,000원 기준 현재 -22.08% 손실 중이에요. 기관이 5일 연속 순매도 중으로 추세 회복까지 시간이 필요해요. 손절 기준(-3% 추가 하락 = 126,973원)을 명확히 설정해두는 게 좋아요.</div>
+</div>
+<div class="advice-box">
+  <div class="advice-title"><i class="ti ti-bulb" style="font-size:15px;"></i>시스템 판단</div>
+  <div class="advice-text">RSI 38로 과매도 근접, 볼린저 하단 지지 시도 중이에요. 외국인은 소량 매수 중이나 기관은 5일 연속 매도 중으로 수급 신호는 혼조예요. 20일선(129,300원) 위에서 유지된다면 단기 반등 가능성이 있어요.</div>
+</div>
+<div class="action-grid">
+  <div class="action-btn"><div class="action-label" style="color:#A32D2D;">손절가 설정</div><div class="action-sub">126,973원 (-3%)</div></div>
+  <div class="action-btn action-btn-primary"><div class="action-label-white">관심종목 추가</div><div class="action-sub-white">모니터링 계속</div></div>
+</div>
+<div class="bottom-nav">
+  <div class="nav-item"><i class="ti ti-home"></i><span>홈</span></div>
+  <div class="nav-item"><i class="ti ti-news"></i><span>뉴스</span></div>
+  <div class="nav-item active"><i class="ti ti-briefcase"></i><span>보유</span></div>
+  <div class="nav-item"><i class="ti ti-star"></i><span>관심</span></div>
+  <div class="nav-item"><i class="ti ti-chart-bar"></i><span>매집</span></div>
+</div>
+</body>
+</html>
