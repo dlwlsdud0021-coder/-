@@ -175,17 +175,40 @@ def get_all_tickers() -> dict:
 # ─────────────────────────────────────────────────────────
 # 국내 지수 (KOSPI / KOSDAQ) — yfinance 기반
 # ─────────────────────────────────────────────────────────
-@st.cache_data(ttl=180)  # 3분 캐시 (장중 실시간 반영)
+@st.cache_data(ttl=180)
 def get_index_data() -> dict:
-    """
-    Returns:
-        {
-          "KOSPI": {current, change, change_pct, volume_billion},
-          "KOSDAQ": {...},
-        }
-    yfinance ^KS11(KOSPI) / ^KQ11(KOSDAQ) 사용.
-    """
-    # 1차: pykrx
+    # FDR 우선 — KS11(KOSPI), KQ11(KOSDAQ)
+    if FDR_OK:
+        try:
+            from datetime import timezone, timedelta
+            kst = timezone(timedelta(hours=9))
+            start = (datetime.now(kst) - timedelta(days=10)).strftime("%Y-%m-%d")
+            result = {}
+            for name, sym in [("KOSPI", "KS11"), ("KOSDAQ", "KQ11")]:
+                df = fdr.DataReader(sym, start)
+                if df is None or df.empty or len(df) < 2:
+                    continue
+                cur  = float(df["Close"].iloc[-1])
+                prev = float(df["Close"].iloc[-2])
+                chg  = cur - prev
+                chg_pct = chg / prev * 100
+                # FDR Change 컬럼이 있으면 더 정확
+                if "Change" in df.columns:
+                    chg_pct = float(df["Change"].iloc[-1]) * 100
+                    chg = round(cur - cur / (1 + float(df["Change"].iloc[-1])), 2)
+                result[name] = {
+                    "current":        round(cur, 2),
+                    "change":         round(chg, 2),
+                    "change_pct":     round(chg_pct, 2),
+                    "volume_billion": 0,
+                }
+                _logger.info(f"[지수] {name} = {cur} ({chg_pct:+.2f}%)")
+            if len(result) == 2:
+                return result
+        except Exception as e:
+            _logger.warning(f"[지수] FDR 실패: {e}")
+
+    # 폴백: pykrx
     if PYKRX_OK:
         try:
             result = {}
@@ -193,60 +216,28 @@ def get_index_data() -> dict:
             start = _ndays_ago(10)
             for name, idx_code in [("KOSPI", "1001"), ("KOSDAQ", "2001")]:
                 df = krx.get_index_ohlcv_by_date(start, end, idx_code)
-                if df is None or df.empty:
+                if df is None or df.empty or len(df) < 2:
                     continue
-                cur = float(df["종가"].iloc[-1])
-                # 등락률 컬럼 직접 사용 (전일 대비 정확)
+                cur  = float(df["종가"].iloc[-1])
                 if "등락률" in df.columns:
                     chg_pct = float(df["등락률"].iloc[-1])
                     chg = round(cur - cur / (1 + chg_pct / 100), 2)
-                elif len(df) >= 2:
+                else:
                     prev = float(df["종가"].iloc[-2])
                     chg = cur - prev
                     chg_pct = chg / prev * 100
-                else:
-                    chg, chg_pct = 0, 0
-                vol  = float(df["거래량"].iloc[-1]) if "거래량" in df.columns else 0
                 result[name] = {
                     "current":        round(cur, 2),
                     "change":         round(chg, 2),
                     "change_pct":     round(chg_pct, 2),
-                    "volume_billion": round(vol / 1e8, 1),
+                    "volume_billion": 0,
                 }
             if len(result) == 2:
                 return result
         except Exception as e:
-            _logger.warning(f"[지수] pykrx 실패, yfinance로 전환: {e}")
+            _logger.warning(f"[지수] pykrx 실패: {e}")
 
-    # 2차: yfinance 폴백
-    try:
-        import yfinance as yf
-        result = {}
-        for name, ticker in [("KOSPI", "^KS11"), ("KOSDAQ", "^KQ11")]:
-            df = yf.download(ticker, period="5d", interval="1d",
-                             progress=False, auto_adjust=True)
-            if df is None or df.empty:
-                result[name] = _dummy_index()[name]
-                continue
-            if isinstance(df.columns, pd.MultiIndex):
-                df.columns = [c[0] for c in df.columns]
-            if len(df) < 2:
-                result[name] = _dummy_index()[name]
-                continue
-            cur  = float(df["Close"].iloc[-1])
-            prev = float(df["Close"].iloc[-2])
-            chg  = cur - prev
-            chg_pct = chg / prev * 100
-            result[name] = {
-                "current":        round(cur, 2),
-                "change":         round(chg, 2),
-                "change_pct":     round(chg_pct, 2),
-                "volume_billion": 0,
-            }
-        return result
-    except Exception as e:
-        _logger.warning(f"[지수] yfinance 실패: {e}")
-        return _dummy_index()
+    return _dummy_index()
 
 
 def _dummy_index():
@@ -259,41 +250,41 @@ def _dummy_index():
 # ─────────────────────────────────────────────────────────
 # 미국 지수 (S&P500, 나스닥, 다우)
 # ─────────────────────────────────────────────────────────
-@st.cache_data(ttl=600)  # 10분 캐시
+@st.cache_data(ttl=600)
 def get_us_indices() -> dict:
+    # FDR로 미국 지수 (전일 종가 기준, 장중엔 당일 데이터)
+    if FDR_OK:
+        try:
+            from datetime import timezone, timedelta
+            start = (datetime.now(timezone(timedelta(hours=9))) - timedelta(days=10)).strftime("%Y-%m-%d")
+            result = {}
+            for name, sym in [("S&P500", "US500"), ("나스닥", "IXIC"), ("다우", "DJI")]:
+                df = fdr.DataReader(sym, start)
+                if df is None or df.empty or len(df) < 2:
+                    result[name] = {"current": 0, "change_pct": 0}
+                    continue
+                cur  = float(df["Close"].iloc[-1])
+                prev = float(df["Close"].iloc[-2])
+                pct  = (cur - prev) / prev * 100
+                if "Change" in df.columns:
+                    pct = float(df["Change"].iloc[-1]) * 100
+                result[name] = {"current": round(cur, 2), "change_pct": round(pct, 2)}
+            return result
+        except Exception as e:
+            _logger.warning(f"[미국지수] FDR 실패: {e}")
+
+    # 폴백: yfinance
     try:
         import yfinance as yf
-        from datetime import datetime, timezone, timedelta
-
-        # 한국 시간 기준 23:30 이후면 미국 장 열림 → 실시간, 이전이면 전일 종가
-        kst = timezone(timedelta(hours=9))
-        now_kst = datetime.now(kst)
-        us_market_open = now_kst.replace(hour=23, minute=30, second=0, microsecond=0)
-        is_us_open = now_kst >= us_market_open
-
         result = {}
-        symbols = {"S&P500": "^GSPC", "나스닥": "^IXIC", "다우": "^DJI"}
-        for name, sym in symbols.items():
-            t = yf.Ticker(sym)
-            if is_us_open:
-                # 장중: 1분봉으로 현재가
-                hist_intra = t.history(period="1d", interval="1m")
-                hist_daily = t.history(period="5d", interval="1d")
-                if hist_intra.empty or len(hist_daily) < 2:
-                    result[name] = {"current": 0, "change_pct": 0}
-                    continue
-                cur = float(hist_intra["Close"].iloc[-1])
-                prev = float(hist_daily["Close"].iloc[-2])
-            else:
-                # 장마감: 최근 2일 일봉 (전일 종가 기준)
-                hist = t.history(period="5d", interval="1d")
-                if len(hist) < 2:
-                    result[name] = {"current": 0, "change_pct": 0}
-                    continue
-                cur = float(hist["Close"].iloc[-1])
-                prev = float(hist["Close"].iloc[-2])
-            pct = (cur - prev) / prev * 100
-            result[name] = {"current": round(cur, 2), "change_pct": round(pct, 2)}
+        for name, sym in [("S&P500", "^GSPC"), ("나스닥", "^IXIC"), ("다우", "^DJI")]:
+            hist = yf.Ticker(sym).history(period="5d", interval="1d")
+            if len(hist) < 2:
+                result[name] = {"current": 0, "change_pct": 0}
+                continue
+            cur  = float(hist["Close"].iloc[-1])
+            prev = float(hist["Close"].iloc[-2])
+            result[name] = {"current": round(cur, 2), "change_pct": round((cur - prev) / prev * 100, 2)}
         return result
     except:
         return {"S&P500": {"current": 0, "change_pct": 0},
