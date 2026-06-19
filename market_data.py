@@ -90,10 +90,20 @@ def _last_trading_date() -> str:
 # ─────────────────────────────────────────────────────────
 try:
     import pkg_resources
+    # 필요한 속성이 없으면 더미로 채우기
+    if not hasattr(pkg_resources, 'resource_filename'):
+        pkg_resources.resource_filename = lambda *a, **k: ""
+    if not hasattr(pkg_resources, 'get_distribution'):
+        pkg_resources.get_distribution = lambda name: None
 except ImportError:
     import types, sys
     pkg = types.ModuleType("pkg_resources")
     pkg.get_distribution = lambda name: None
+    pkg.resource_filename = lambda *a, **k: ""
+    pkg.resource_string = lambda *a, **k: b""
+    pkg.resource_stream = lambda *a, **k: None
+    pkg.working_set = []
+    pkg.require = lambda *a, **k: None
     sys.modules["pkg_resources"] = pkg
 
 try:
