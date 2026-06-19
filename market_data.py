@@ -190,16 +190,35 @@ def _dummy_index():
 def get_us_indices() -> dict:
     try:
         import yfinance as yf
+        from datetime import datetime, timezone, timedelta
+
+        # 한국 시간 기준 23:30 이후면 미국 장 열림 → 실시간, 이전이면 전일 종가
+        kst = timezone(timedelta(hours=9))
+        now_kst = datetime.now(kst)
+        us_market_open = now_kst.replace(hour=23, minute=30, second=0, microsecond=0)
+        is_us_open = now_kst >= us_market_open
+
         result = {}
         symbols = {"S&P500": "^GSPC", "나스닥": "^IXIC", "다우": "^DJI"}
         for name, sym in symbols.items():
             t = yf.Ticker(sym)
-            hist = t.history(period="2d")
-            if hist.empty:
-                result[name] = {"current": 0, "change_pct": 0}
-                continue
-            cur = float(hist["Close"].iloc[-1])
-            prev = float(hist["Close"].iloc[-2]) if len(hist) >= 2 else cur
+            if is_us_open:
+                # 장중: 1분봉으로 현재가
+                hist_intra = t.history(period="1d", interval="1m")
+                hist_daily = t.history(period="5d", interval="1d")
+                if hist_intra.empty or len(hist_daily) < 2:
+                    result[name] = {"current": 0, "change_pct": 0}
+                    continue
+                cur = float(hist_intra["Close"].iloc[-1])
+                prev = float(hist_daily["Close"].iloc[-2])
+            else:
+                # 장마감: 최근 2일 일봉 (전일 종가 기준)
+                hist = t.history(period="5d", interval="1d")
+                if len(hist) < 2:
+                    result[name] = {"current": 0, "change_pct": 0}
+                    continue
+                cur = float(hist["Close"].iloc[-1])
+                prev = float(hist["Close"].iloc[-2])
             pct = (cur - prev) / prev * 100
             result[name] = {"current": round(cur, 2), "change_pct": round(pct, 2)}
         return result
