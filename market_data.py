@@ -141,29 +141,21 @@ def get_index_data() -> dict:
     yfinance ^KS11(KOSPI) / ^KQ11(KOSDAQ) 사용.
     """
     try:
-        import yfinance as yf
+        if not PYKRX_OK:
+            raise ImportError("pykrx 없음")
         result = {}
-        for name, ticker in [("KOSPI", "^KS11"), ("KOSDAQ", "^KQ11")]:
-            # 오늘 장중 실시간: 1분봉으로 현재가 파악
-            df_intra = yf.download(ticker, period="1d", interval="1m",
-                                   progress=False, auto_adjust=True)
-            # 전일 종가: 5일 일봉에서 가져오기
-            df_daily = yf.download(ticker, period="5d", interval="1d",
-                                   progress=False, auto_adjust=True)
-            if isinstance(df_intra.columns, pd.MultiIndex):
-                df_intra.columns = [c[0] for c in df_intra.columns]
-            if isinstance(df_daily.columns, pd.MultiIndex):
-                df_daily.columns = [c[0] for c in df_daily.columns]
-
-            if df_intra is None or df_intra.empty or df_daily is None or len(df_daily) < 2:
+        end = _today()
+        start = _ndays_ago(10)
+        for name, idx_code in [("KOSPI", "1001"), ("KOSDAQ", "2001")]:
+            df = krx.get_index_ohlcv_by_date(start, end, idx_code)
+            if df is None or df.empty or len(df) < 2:
                 result[name] = _dummy_index()[name]
                 continue
-
-            cur  = float(df_intra["Close"].iloc[-1])
-            prev = float(df_daily["Close"].iloc[-2])  # 전일 종가
+            cur  = float(df["종가"].iloc[-1])
+            prev = float(df["종가"].iloc[-2])
             chg  = cur - prev
             chg_pct = chg / prev * 100
-            vol  = float(df_intra["Volume"].sum()) if "Volume" in df_intra.columns else 0
+            vol  = float(df["거래량"].iloc[-1]) if "거래량" in df.columns else 0
             result[name] = {
                 "current":        round(cur, 2),
                 "change":         round(chg, 2),
@@ -172,7 +164,7 @@ def get_index_data() -> dict:
             }
         return result
     except Exception as e:
-        _logger.warning(f"[지수] yfinance 실패: {e}")
+        _logger.warning(f"[지수] pykrx 실패: {e}")
         return _dummy_index()
 
 
