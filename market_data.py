@@ -193,12 +193,19 @@ def get_index_data() -> dict:
             start = _ndays_ago(10)
             for name, idx_code in [("KOSPI", "1001"), ("KOSDAQ", "2001")]:
                 df = krx.get_index_ohlcv_by_date(start, end, idx_code)
-                if df is None or df.empty or len(df) < 2:
+                if df is None or df.empty:
                     continue
-                cur  = float(df["종가"].iloc[-1])
-                prev = float(df["종가"].iloc[-2])
-                chg  = cur - prev
-                chg_pct = chg / prev * 100
+                cur = float(df["종가"].iloc[-1])
+                # 등락률 컬럼 직접 사용 (전일 대비 정확)
+                if "등락률" in df.columns:
+                    chg_pct = float(df["등락률"].iloc[-1])
+                    chg = round(cur - cur / (1 + chg_pct / 100), 2)
+                elif len(df) >= 2:
+                    prev = float(df["종가"].iloc[-2])
+                    chg = cur - prev
+                    chg_pct = chg / prev * 100
+                else:
+                    chg, chg_pct = 0, 0
                 vol  = float(df["거래량"].iloc[-1]) if "거래량" in df.columns else 0
                 result[name] = {
                     "current":        round(cur, 2),
