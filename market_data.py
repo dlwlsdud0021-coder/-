@@ -86,8 +86,16 @@ def _last_trading_date() -> str:
 
 
 # ─────────────────────────────────────────────────────────
-# pykrx 안전 임포트
+# pykrx 안전 임포트 (pkg_resources 없으면 직접 패치)
 # ─────────────────────────────────────────────────────────
+try:
+    import pkg_resources
+except ImportError:
+    import types, sys
+    pkg = types.ModuleType("pkg_resources")
+    pkg.get_distribution = lambda name: None
+    sys.modules["pkg_resources"] = pkg
+
 try:
     from pykrx import stock as krx
     PYKRX_OK = True
