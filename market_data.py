@@ -140,31 +140,60 @@ def get_index_data() -> dict:
         }
     yfinance ^KS11(KOSPI) / ^KQ11(KOSDAQ) 사용.
     """
+    # 1차: pykrx
+    if PYKRX_OK:
+        try:
+            result = {}
+            end = _today()
+            start = _ndays_ago(10)
+            for name, idx_code in [("KOSPI", "1001"), ("KOSDAQ", "2001")]:
+                df = krx.get_index_ohlcv_by_date(start, end, idx_code)
+                if df is None or df.empty or len(df) < 2:
+                    continue
+                cur  = float(df["종가"].iloc[-1])
+                prev = float(df["종가"].iloc[-2])
+                chg  = cur - prev
+                chg_pct = chg / prev * 100
+                vol  = float(df["거래량"].iloc[-1]) if "거래량" in df.columns else 0
+                result[name] = {
+                    "current":        round(cur, 2),
+                    "change":         round(chg, 2),
+                    "change_pct":     round(chg_pct, 2),
+                    "volume_billion": round(vol / 1e8, 1),
+                }
+            if len(result) == 2:
+                return result
+        except Exception as e:
+            _logger.warning(f"[지수] pykrx 실패, yfinance로 전환: {e}")
+
+    # 2차: yfinance 폴백
     try:
-        if not PYKRX_OK:
-            raise ImportError("pykrx 없음")
+        import yfinance as yf
         result = {}
-        end = _today()
-        start = _ndays_ago(10)
-        for name, idx_code in [("KOSPI", "1001"), ("KOSDAQ", "2001")]:
-            df = krx.get_index_ohlcv_by_date(start, end, idx_code)
-            if df is None or df.empty or len(df) < 2:
+        for name, ticker in [("KOSPI", "^KS11"), ("KOSDAQ", "^KQ11")]:
+            df = yf.download(ticker, period="5d", interval="1d",
+                             progress=False, auto_adjust=True)
+            if df is None or df.empty:
                 result[name] = _dummy_index()[name]
                 continue
-            cur  = float(df["종가"].iloc[-1])
-            prev = float(df["종가"].iloc[-2])
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = [c[0] for c in df.columns]
+            if len(df) < 2:
+                result[name] = _dummy_index()[name]
+                continue
+            cur  = float(df["Close"].iloc[-1])
+            prev = float(df["Close"].iloc[-2])
             chg  = cur - prev
             chg_pct = chg / prev * 100
-            vol  = float(df["거래량"].iloc[-1]) if "거래량" in df.columns else 0
             result[name] = {
                 "current":        round(cur, 2),
                 "change":         round(chg, 2),
                 "change_pct":     round(chg_pct, 2),
-                "volume_billion": round(vol / 1e8, 1),
+                "volume_billion": 0,
             }
         return result
     except Exception as e:
-        _logger.warning(f"[지수] pykrx 실패: {e}")
+        _logger.warning(f"[지수] yfinance 실패: {e}")
         return _dummy_index()
 
 
