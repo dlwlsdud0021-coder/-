@@ -361,7 +361,6 @@ def get_investor_trading(code: str, days: int = 25) -> pd.DataFrame:
 
     if not PYKRX_OK:
         _logger.error("[수급] pykrx 미설치 — import 실패")
-        st.warning("⚠️ pykrx가 설치되지 않았습니다. `pip install pykrx`")
         return pd.DataFrame()
 
     end   = _today()
