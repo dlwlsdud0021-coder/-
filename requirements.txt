@@ -6,6 +6,8 @@ pykrx
 finance-datareader>=0.9.50
 deprecated
 multipledispatch
+beautifulsoup4
+lxml
 yfinance>=0.2.36
 feedparser>=6.0.10
 google-generativeai>=0.7.0
