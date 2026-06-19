@@ -536,7 +536,7 @@ def _now():
 def _market_hero(idx):
     kp = idx.get("KOSPI", {})
     kd = idx.get("KOSDAQ", {})
-    pct = kp.get("change_pct", 0)
+    pct = (kp.get("change_pct", 0) + kd.get("change_pct", 0)) / 2
     if pct >= 3:   status = "강한 상승장";  badge_txt = "🚀 강한 상승장"; tip = "<strong>보유 종목 홀딩.</strong> 신규는 소량 분할 매수로."
     elif pct >= 1: status = "상승장";       badge_txt = "📈 상승장";      tip = "추세 유지 중. <strong>지지선 확인 후 진입.</strong>"
     elif pct >= -1:status = "보합장";       badge_txt = "➡️ 보합";        tip = "방향성 불명확. <strong>관망 후 신호 확인.</strong>"
