@@ -423,11 +423,11 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"],
   line-height: 1 !important;
 }
 /* 탭별 아이콘 (Tabler icons 유니코드) */
-[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(1) p::before { content: '\ea76'; } /* home */
-[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(2) p::before { content: '\f0e9'; } /* news */
-[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(3) p::before { content: '\ea3b'; } /* briefcase */
-[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(4) p::before { content: '\ebeb'; } /* star */
-[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(5) p::before { content: '\ed12'; } /* chart-bar */
+[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(1) p::before { content: '\\ea76'; } /* home */
+[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(2) p::before { content: '\\f0e9'; } /* news */
+[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(3) p::before { content: '\\ea3b'; } /* briefcase */
+[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(4) p::before { content: '\\ebeb'; } /* star */
+[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(5) p::before { content: '\\ed12'; } /* chart-bar */
 /* 활성 탭 색상 */
 [aria-selected="true"][data-baseweb="tab"] {
   color: #5B5BD6 !important;
