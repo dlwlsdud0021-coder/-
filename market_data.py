@@ -144,22 +144,26 @@ def get_index_data() -> dict:
         import yfinance as yf
         result = {}
         for name, ticker in [("KOSPI", "^KS11"), ("KOSDAQ", "^KQ11")]:
-            df = yf.download(ticker, period="5d", interval="1d",
-                             progress=False, auto_adjust=True)
-            if df is None or df.empty:
+            # 오늘 장중 실시간: 1분봉으로 현재가 파악
+            df_intra = yf.download(ticker, period="1d", interval="1m",
+                                   progress=False, auto_adjust=True)
+            # 전일 종가: 5일 일봉에서 가져오기
+            df_daily = yf.download(ticker, period="5d", interval="1d",
+                                   progress=False, auto_adjust=True)
+            if isinstance(df_intra.columns, pd.MultiIndex):
+                df_intra.columns = [c[0] for c in df_intra.columns]
+            if isinstance(df_daily.columns, pd.MultiIndex):
+                df_daily.columns = [c[0] for c in df_daily.columns]
+
+            if df_intra is None or df_intra.empty or df_daily is None or len(df_daily) < 2:
                 result[name] = _dummy_index()[name]
                 continue
-            # MultiIndex 평탄화
-            if isinstance(df.columns, pd.MultiIndex):
-                df.columns = [c[0] for c in df.columns]
-            if len(df) < 2:
-                result[name] = _dummy_index()[name]
-                continue
-            cur  = float(df["Close"].iloc[-1])
-            prev = float(df["Close"].iloc[-2])
+
+            cur  = float(df_intra["Close"].iloc[-1])
+            prev = float(df_daily["Close"].iloc[-2])  # 전일 종가
             chg  = cur - prev
             chg_pct = chg / prev * 100
-            vol  = float(df["Volume"].iloc[-1]) if "Volume" in df.columns else 0
+            vol  = float(df_intra["Volume"].sum()) if "Volume" in df_intra.columns else 0
             result[name] = {
                 "current":        round(cur, 2),
                 "change":         round(chg, 2),
