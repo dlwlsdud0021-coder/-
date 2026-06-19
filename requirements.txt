@@ -3,6 +3,9 @@ requests>=2.31.0
 pandas>=2.0.0
 numpy>=1.24.0
 pykrx
+finance-datareader>=0.9.50
+deprecated
+multipledispatch
 yfinance>=0.2.36
 feedparser>=6.0.10
 google-generativeai>=0.7.0

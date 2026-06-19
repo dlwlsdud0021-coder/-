@@ -91,8 +91,21 @@ def _last_trading_date() -> str:
 try:
     from pykrx import stock as krx
     PYKRX_OK = True
-except ImportError:
+    _logger.info("[pykrx] import 성공")
+except Exception as e:
     PYKRX_OK = False
+    _logger.error("[pykrx] import 실패: %s", e)
+
+# ─────────────────────────────────────────────────────────
+# FinanceDataReader 안전 임포트 (pykrx 폴백)
+# ─────────────────────────────────────────────────────────
+try:
+    import FinanceDataReader as fdr
+    FDR_OK = True
+    _logger.info("[FDR] import 성공")
+except Exception as e:
+    FDR_OK = False
+    _logger.warning("[FDR] import 실패: %s", e)
 
 
 # ─────────────────────────────────────────────────────────
@@ -101,30 +114,44 @@ except ImportError:
 @st.cache_data(ttl=86400)
 def get_stock_name(code: str) -> str:
     """종목코드 → 종목명"""
-    if not PYKRX_OK:
-        return code
-    try:
-        name = krx.get_market_ticker_name(code)
-        return name if name else code
-    except:
-        return code
+    if PYKRX_OK:
+        try:
+            name = krx.get_market_ticker_name(code)
+            return name if name else code
+        except:
+            pass
+    if FDR_OK:
+        try:
+            listing = fdr.StockListing("KRX")
+            row = listing[listing["Code"] == code]
+            if not row.empty:
+                return row.iloc[0]["Name"]
+        except:
+            pass
+    return code
 
 
 @st.cache_data(ttl=86400)
 def get_all_tickers() -> dict:
     """코스피+코스닥 전 종목 {code: name}"""
-    if not PYKRX_OK:
-        return {}
-    try:
-        tdate = _last_trading_date()
-        kospi = krx.get_market_ticker_list(tdate, market="KOSPI")
-        kosdaq = krx.get_market_ticker_list(tdate, market="KOSDAQ")
-        result = {}
-        for c in kospi + kosdaq:
-            result[c] = krx.get_market_ticker_name(c)
-        return result
-    except:
-        return {}
+    if PYKRX_OK:
+        try:
+            tdate = _last_trading_date()
+            kospi = krx.get_market_ticker_list(tdate, market="KOSPI")
+            kosdaq = krx.get_market_ticker_list(tdate, market="KOSDAQ")
+            result = {}
+            for c in kospi + kosdaq:
+                result[c] = krx.get_market_ticker_name(c)
+            return result
+        except:
+            pass
+    if FDR_OK:
+        try:
+            listing = fdr.StockListing("KRX")
+            return dict(zip(listing["Code"].astype(str), listing["Name"]))
+        except:
+            pass
+    return {}
 
 
 # ─────────────────────────────────────────────────────────
@@ -255,23 +282,35 @@ def get_us_indices() -> dict:
 @st.cache_data(ttl=300)
 def get_ohlcv(code: str, days: int = 120) -> pd.DataFrame:
     """
-    Returns DataFrame with columns: 날짜, 시가, 고가, 저가, 종가, 거래량
+    Returns DataFrame with columns: open, high, low, close, volume
     최신 날짜가 마지막 행
     """
-    if not PYKRX_OK:
-        return pd.DataFrame()
-    try:
-        end = _today()
-        start = _ndays_ago(days + 30)
-        df = krx.get_market_ohlcv(start, end, code)
-        if df is None or df.empty:
-            return pd.DataFrame()
-        df = df.rename(columns={"시가": "open", "고가": "high", "저가": "low",
-                                 "종가": "close", "거래량": "volume"})
-        df.index = pd.to_datetime(df.index)
-        return df.tail(days)
-    except:
-        return pd.DataFrame()
+    # 1차: pykrx
+    if PYKRX_OK:
+        try:
+            end = _today()
+            start = _ndays_ago(days + 30)
+            df = krx.get_market_ohlcv(start, end, code)
+            if df is not None and not df.empty:
+                df = df.rename(columns={"시가": "open", "고가": "high", "저가": "low",
+                                        "종가": "close", "거래량": "volume"})
+                df.index = pd.to_datetime(df.index)
+                return df.tail(days)
+        except:
+            pass
+    # 2차: FinanceDataReader
+    if FDR_OK:
+        try:
+            start = (datetime.today() - timedelta(days=days + 30)).strftime("%Y-%m-%d")
+            df = fdr.DataReader(code, start)
+            if df is not None and not df.empty:
+                df = df.rename(columns={"Open": "open", "High": "high", "Low": "low",
+                                        "Close": "close", "Volume": "volume"})
+                df.index = pd.to_datetime(df.index)
+                return df[["open", "high", "low", "close", "volume"]].tail(days)
+        except:
+            pass
+    return pd.DataFrame()
 
 
 @st.cache_data(ttl=300)
@@ -280,16 +319,10 @@ def get_current_price(code: str) -> dict:
     현재가 정보 반환
     Returns: {current_price, change, change_pct, high, low, volume}
     """
-    if not PYKRX_OK:
+    df = get_ohlcv(code, days=5)
+    if df is None or df.empty:
         return {}
     try:
-        end = _today()
-        start = _ndays_ago(5)
-        df = krx.get_market_ohlcv(start, end, code)
-        if df is None or df.empty:
-            return {}
-        df = df.rename(columns={"시가": "open", "고가": "high", "저가": "low",
-                                 "종가": "close", "거래량": "volume"})
         last = df.iloc[-1]
         prev = df.iloc[-2] if len(df) >= 2 else last
         cur = int(last["close"])
