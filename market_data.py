@@ -175,9 +175,24 @@ def get_all_tickers() -> dict:
 # ─────────────────────────────────────────────────────────
 # 국내 지수 (KOSPI / KOSDAQ) — yfinance 기반
 # ─────────────────────────────────────────────────────────
-@st.cache_data(ttl=180)
+@st.cache_data(ttl=60)
 def get_index_data() -> dict:
-    # FDR 우선 — KS11(KOSPI), KQ11(KOSDAQ)
+    # 1순위: KIS API (가장 정확한 실시간 데이터)
+    try:
+        from kis_api import get_index_price
+        kospi = get_index_price("0001")
+        kosdaq = get_index_price("1001")
+        if kospi and kosdaq:
+            return {
+                "KOSPI":  {"current": kospi["current"], "change": kospi["change"],
+                           "change_pct": kospi["change_pct"], "volume_billion": 0},
+                "KOSDAQ": {"current": kosdaq["current"], "change": kosdaq["change"],
+                           "change_pct": kosdaq["change_pct"], "volume_billion": 0},
+            }
+    except Exception as e:
+        _logger.warning(f"[지수] KIS API 실패: {e}")
+
+    # 2순위: FDR — KS11(KOSPI), KQ11(KOSDAQ)
     if FDR_OK:
         try:
             from datetime import timezone, timedelta
