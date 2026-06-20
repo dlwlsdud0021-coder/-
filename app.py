@@ -383,47 +383,9 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"],
 }
 .nav-item.active { color: #5B5BD6; }
 .nav-item i { font-size: 22px; }
-/* ── 상단 탭 네비 스타일 ── */
-[data-testid="stTabsTabList"] {
-  background: #fff !important;
-  border-bottom: 0.5px solid #E5E5EA !important;
-  gap: 0 !important;
-  padding: 0 !important;
-}
-[data-baseweb="tab-highlight"] { background: #5B5BD6 !important; height: 2px !important; }
-[data-baseweb="tab-border"] { display: none !important; }
-[data-baseweb="tab"] {
-  flex: 1 !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 2px !important;
-  padding: 10px 0 8px !important;
-  color: #C7C7CC !important;
-  background: transparent !important;
-  border: none !important;
-}
-[data-baseweb="tab"] p {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  gap: 3px !important;
-  font-size: 11px !important;
-  margin: 0 !important;
-}
-[data-baseweb="tab"] p::before {
-  font-family: 'tabler-icons' !important;
-  font-size: 20px !important;
-  line-height: 1 !important;
-  display: block !important;
-}
-[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(1) p::before { content: '\ea76'; }
-[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(2) p::before { content: '\f0e9'; }
-[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(3) p::before { content: '\ea3b'; }
-[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(4) p::before { content: '\ebeb'; }
-[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(5) p::before { content: '\ed12'; }
+/* 탭 active 색상만 */
+[data-baseweb="tab-highlight"] { background: #5B5BD6 !important; }
 [aria-selected="true"][data-baseweb="tab"] { color: #5B5BD6 !important; }
-[aria-selected="true"][data-baseweb="tab"] p::before { color: #5B5BD6 !important; }
 </style>
 """, unsafe_allow_html=True)
 
