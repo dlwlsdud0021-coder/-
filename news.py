@@ -34,7 +34,7 @@ def _get_gemini():
             import google.generativeai as genai
             genai.configure(api_key=_GEMINI_KEY)
             _gemini_model = genai.GenerativeModel(
-                "gemini-1.5-flash",
+                "gemini-1.5-flash-latest",
                 generation_config={"temperature": 0.4, "max_output_tokens": 1500},
             )
         except Exception:
@@ -52,9 +52,21 @@ def _call_gemini(prompt: str, cache_key: str) -> str:
         return ""
     try:
         resp = model.generate_content(prompt)
+        # safety block 시 resp.candidates가 비거나 finish_reason이 SAFETY
+        if not resp.candidates:
+            print(f"[Gemini] No candidates - possibly blocked by safety filter")
+            return ""
+        if resp.candidates[0].finish_reason and str(resp.candidates[0].finish_reason) == "SAFETY":
+            print(f"[Gemini] Blocked by safety filter")
+            return ""
         result = resp.text.strip()
         _gemini_cache[cache_key] = result
         return result
+    except ValueError as e:
+        import traceback
+        print(f"[Gemini ValueError - safety block?] {e}")
+        traceback.print_exc()
+        return ""
     except Exception as e:
         import traceback
         print(f"[Gemini ERROR] {e}")
