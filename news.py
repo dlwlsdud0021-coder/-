@@ -43,36 +43,40 @@ def _get_gemini():
 
 _gemini_cache: dict[str, str] = {}
 
-def _call_gemini(prompt: str, cache_key: str) -> str:
-    """Gemini 호출. 캐시 히트 시 재사용. 실패 시 빈 문자열."""
+def _call_gemini(prompt: str, cache_key: str, retry: int = 1) -> str:
+    """Gemini 호출. 캐시 히트 시 재사용. rate limit 시 1회 재시도. 실패 시 빈 문자열."""
     if cache_key in _gemini_cache:
         return _gemini_cache[cache_key]
     model = _get_gemini()
     if not model:
         return ""
-    try:
-        resp = model.generate_content(prompt)
-        # safety block 시 resp.candidates가 비거나 finish_reason이 SAFETY
-        if not resp.candidates:
-            print(f"[Gemini] No candidates - possibly blocked by safety filter")
+    for attempt in range(retry + 1):
+        try:
+            resp = model.generate_content(prompt)
+            if not resp.candidates:
+                print(f"[Gemini] No candidates - possibly blocked by safety filter")
+                return ""
+            if resp.candidates[0].finish_reason and str(resp.candidates[0].finish_reason) == "SAFETY":
+                print(f"[Gemini] Blocked by safety filter")
+                return ""
+            result = resp.text.strip()
+            _gemini_cache[cache_key] = result
+            return result
+        except Exception as e:
+            err_str = str(e)
+            # rate limit (429) → 재시도
+            if "429" in err_str or "quota" in err_str.lower() or "rate" in err_str.lower():
+                if attempt < retry:
+                    import time
+                    print(f"[Gemini] Rate limit, 32초 대기 후 재시도...")
+                    time.sleep(32)
+                    continue
+                print(f"[Gemini] Rate limit 재시도 실패: {err_str[:120]}")
+            else:
+                import traceback
+                print(f"[Gemini ERROR] {e}")
+                traceback.print_exc()
             return ""
-        if resp.candidates[0].finish_reason and str(resp.candidates[0].finish_reason) == "SAFETY":
-            print(f"[Gemini] Blocked by safety filter")
-            return ""
-        result = resp.text.strip()
-        _gemini_cache[cache_key] = result
-        return result
-    except ValueError as e:
-        import traceback
-        print(f"[Gemini ValueError - safety block?] {e}")
-        traceback.print_exc()
-        return ""
-    except Exception as e:
-        import traceback
-        print(f"[Gemini ERROR] {e}")
-        traceback.print_exc()
-        _gemini_cache[cache_key + "_err"] = str(e)
-        return ""
 
 # ─────────────────────────────────────────────────────────
 # feedparser 안전 임포트
@@ -827,16 +831,18 @@ def generate_ai_summary(title, summary, sentiment, category):
         "금융": "금융·증권", "글로벌": "글로벌 시장", "전체": "국내 증시",
     }.get(category, category)
 
-    article_body = summary[:300] if summary else ""
+    article_body = summary[:400] if summary else ""
     body_part = f"본문: {article_body}\n" if article_body else ""
     prompt = (
-        "한국 주식 초보 투자자를 위한 뉴스 분석. 아래 3개 섹션을 [태그] 형식으로 작성하세요.\n"
+        "한국 주식 초보 투자자를 위한 뉴스 분석. 아래 5개 섹션을 [태그] 형식으로 작성하세요.\n"
         "기사 제목: " + title + "\n"
         + body_part +
         "분야: " + category_label + " / 감성: " + sentiment_kor + "\n\n"
-        "[핵심요약] 기사 사실 기반, 3문장 이내. 숫자/날짜 포함. 완전한 문장으로 끝낼 것.\n"
-        "[영향종목] ▲수혜: 종목명 — 이유 / ▼피해: 종목명 — 이유 (ETF 대체 가능)\n"
-        "[투자전략] 1.호재/악재 판단 2.보유자/미보유자 행동(손절가-X%) 3.주의사항 (각 1줄)\n"
+        "[핵심요약] 기사 핵심 사실을 3~4문장으로. 숫자/날짜 포함. 완전한 문장.\n"
+        "[영향종목] ▲수혜 종목명 — 이유(1줄) / ▼피해 종목명 — 이유(1줄). ETF 대체 가능.\n"
+        "[투자전략] 호재/악재 판단 + 보유자/미보유자 각 행동지침(손절가-X%, 목표가+X%) + 주의사항\n"
+        "[시장분위기] 지금 이 섹터 분위기 2~3문장. 강세/약세 근거와 투자자 심리.\n"
+        "[매매방법] ▶단기(1~2주): 보유자/미보유자 행동 손절-X% 목표+X% ▶중기(1~3개월): 추세 조건과 비중\n"
     )
     raw = _call_gemini(prompt, cache_key)
     if raw:
@@ -934,35 +940,18 @@ def generate_ai_summary(title, summary, sentiment, category):
 
 def generate_strategy(sentiment, category, title="", summary=""):
     chip = {"positive": "chip-buy", "negative": "chip-sell", "mixed": "chip-warn"}.get(sentiment, "chip-neu")
-    cache_key = hashlib.md5(("strategy3:" + title[:80] + ":" + sentiment + ":" + category).encode()).hexdigest()
-    article_body = summary[:300] if summary else ""
-    sentiment_kor = {"positive": "긍정", "negative": "부정", "mixed": "혼재", "neutral": "중립"}.get(sentiment, "중립")
-    category_label = {
-        "반도체": "반도체·AI", "바이오": "바이오제약", "2차전지": "2차전지배터리",
-        "금융": "금융증권", "글로벌": "글로벌시장", "전체": "국내증시",
-    }.get(category, category)
 
-    body_part2 = f"본문: {article_body}\n" if article_body else ""
-    prompt = (
-        "한국 주식 초보 투자자를 위한 투자 전략. 아래 4개 섹션을 [태그] 형식으로 작성하세요.\n"
-        "기사: " + title + "\n"
-        + body_part2 +
-        "감성: " + sentiment_kor + " / 섹터: " + category_label + "\n\n"
-        "[시장분위기] 지금 이 섹터 분위기를 2문장으로. 강세/약세 근거 포함.\n"
-        "[매매방법] ▶단기(1~2주): 보유자/미보유자 행동, 손절가-X%, 목표가+X% / ▶중기(1~3개월): 추세 조건과 비중.\n"
-        "[돈지키는법] 포트폴리오 비중 한도, 손절 기준 -X%, 최악 시나리오 (2문장)\n"
-        "[체크포인트] 주가 방향 결정할 핵심 이벤트 3가지와 매수/매도 신호 조건\n"
-    )
-    raw = _call_gemini(prompt, cache_key)
+    # generate_ai_summary와 동일한 캐시 키 사용 → Gemini 추가 호출 없음
+    shared_key = hashlib.md5(("summary5:" + title[:80]).encode()).hexdigest()
+    raw = _gemini_cache.get(shared_key, "")
+
     if raw:
         def _ext(tag, text):
             m = re.search(r"\[" + tag + r"\]\s*([\s\S]*?)(?=\[|$)", text)
             return m.group(1).strip() if m else ""
         mood   = _ext("시장분위기", raw)
         trade  = _ext("매매방법", raw)
-        risk   = _ext("돈지키는법", raw)
-        check  = _ext("체크포인트", raw)
-        if mood and trade and risk and check:
+        if mood and trade:
             short_trade = _extract_term(trade, "단기")
             mid_trade   = _extract_term(trade, "중기")
             trade_html  = (
@@ -971,13 +960,9 @@ def generate_strategy(sentiment, category, title="", summary=""):
             ) if short_trade and short_trade != trade else trade.replace("\n","<br>")
             html = (
                 "<b>🌡️ 지금 시장 분위기는?</b><br>" + mood.replace("\n","<br>") + "<br><br>"
-                "<b>💰 어떻게 사고팔까요?</b><br>" + trade_html + "<br><br>"
-                "<b>🛡️ 내 돈 지키는 법</b><br>" + risk.replace("\n","<br>") + "<br><br>"
-                "<b>📌 앞으로 체크할 것들</b><br>" + check.replace("\n","<br>")
+                "<b>💰 어떻게 사고팔까요?</b><br>" + trade_html
             )
             return html, chip
-        if len(raw) > 80:
-            return "<b>📍 AI 투자 전략</b><br>" + raw.replace("\n","<br>"), chip
 
     # ─── Rule-based 폴백 (Gemini 실패시) ─────────────────────────────
     MOOD = {
