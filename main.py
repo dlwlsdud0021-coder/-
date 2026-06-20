@@ -23,7 +23,7 @@ from market_data import (get_index_data, get_us_indices, search_stock_by_name,
 from news import (fetch_market_news, fetch_stock_news, enrich_top10_summaries,
     rank_by_importance, generate_ai_summary, generate_strategy,
     classify_sentiment, classify_category, extract_related_stocks)
-from home_analysis import analyze_us_impact, generate_forecast, calc_ma_status, market_phase, is_market_open
+from home_analysis import analyze_us_impact, generate_forecast, calc_ma_status, _extra_metrics, market_phase, is_market_open
 from analysis import analyze_stock, watchlist_timing
 from database import get_recent_predictions, get_prediction_accuracy
 
@@ -230,18 +230,23 @@ def index_detail(name: str):
         hist_df = get_index_ohlcv_history(index_code, days=120)
         ma = calc_ma_status(hist_df)
 
-        # 외국인/기관 수급 (KOSPI만)
+        # extra_metrics (RSI, 이격도, 5일 수익률, 거래량비)
+        ex = _extra_metrics(hist_df, ma)
+
+        # 외국인/기관 수급 (KOSPI만, 억원 단위 정규화)
         investor_data = []
         if name.upper() == "KOSPI":
             try:
                 inv_df = get_kospi_investor(days=10)
                 if inv_df is not None and not inv_df.empty:
                     for dt, row in inv_df.tail(5).iterrows():
+                        f_raw = int(row.get("외국인", 0))
+                        i_raw = int(row.get("기관", 0))
+                        scale = 1e8 if abs(f_raw) >= 1e6 else 100
                         investor_data.append({
                             "date": str(dt)[:10],
-                            "foreign": int(row.get("외국인", 0)),
-                            "inst": int(row.get("기관", 0)),
-                            "individual": int(row.get("개인", 0)) if "개인" in row else 0,
+                            "foreign": round(f_raw / scale, 1),
+                            "inst":    round(i_raw / scale, 1),
                         })
             except Exception:
                 pass
@@ -268,6 +273,7 @@ def index_detail(name: str):
             "name": name.upper(),
             "info": info,
             "ma": ma,
+            "ex": ex,
             "investor": investor_data,
             "sectors": sectors,
             "analysis": analysis_out,

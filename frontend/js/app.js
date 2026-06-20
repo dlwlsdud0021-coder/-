@@ -703,122 +703,253 @@ async function openIndexDetail(name) {
 function renderIndexDetail(d, el) {
   const name = d.name || 'KOSPI';
   const info = d.info || {};
-  const ma = d.ma || {};
+  const ma   = d.ma   || {};
+  const ex   = d.ex   || {};
   const investor = d.investor || [];
-  const sectors = d.sectors || [];
+  const sectors  = d.sectors  || [];
   const analysis = d.analysis || [];
 
-  const cur = info.current || 0;
-  const chg = info.change || 0;
+  const cur    = info.current || 0;
+  const chg    = info.change  || 0;
   const chgPct = info.change_pct || 0;
-  const isUp = chgPct >= 0;
+  const isUp   = chgPct >= 0;
+  const clr    = isUp ? '#E24B4A' : '#185FA5';
+  const volB   = info.volume_billion || 0;
 
-  // 이동평균선 카드
-  const ma20 = ma.ma20 ? ma.ma20.toFixed(2) : '-';
-  const ma60 = ma.ma60 ? ma.ma60.toFixed(2) : '-';
-  const dist20 = ma.ma20_dist_pct !== undefined ? (ma.ma20_dist_pct > 0 ? '+' : '') + ma.ma20_dist_pct.toFixed(2) + '%' : '-';
-  const dist60 = ma.ma60_dist_pct !== undefined ? (ma.ma60_dist_pct > 0 ? '+' : '') + ma.ma60_dist_pct.toFixed(2) + '%' : '-';
-  const trend = ma.trend || '-';
-  const trendColor = trend.includes('상승') ? '#E24B4A' : trend.includes('하락') ? '#185FA5' : '#8E8E9A';
-  const gcBadge = ma.golden_cross
-    ? `<span class="badge badge-buy">정배열 ✓</span>`
-    : `<span class="badge badge-sell">역배열</span>`;
-  const a20Badge = ma.above_ma20
-    ? `<span class="badge badge-ok">20일선 위</span>`
-    : `<span class="badge badge-sell">20일선 아래</span>`;
-  const a60Badge = ma.above_ma60
-    ? `<span class="badge badge-ok">60일선 위</span>`
-    : `<span class="badge badge-sell">60일선 아래</span>`;
+  // ── MA 값 ──
+  const ma20v  = ma.ma20 || 0;
+  const ma60v  = ma.ma60 || 0;
+  const d20    = ma.ma20_dist_pct || 0;
+  const d60    = ma.ma60_dist_pct || 0;
+  const gc     = ma.golden_cross;
+  const a20    = ma.above_ma20;
+  const a60    = ma.above_ma60;
+  const trend  = ma.trend || '';
 
-  // 외국인/기관 수급 (최근 5일)
+  // 정배열 라벨
+  const gcLabel = (a20 && a60 && gc) ? '완전 정배열' : gc ? '정배열' : '역배열';
+  const gcSub   = gc ? '상승 모멘텀 강함' : '하락 압력 주의';
+  const gcColor = gc ? '#3C3489' : '#791F1F';
+
+  function maCard(label, val, dist, above) {
+    if (!val) return `<div class="ma-card"><div class="ma-card-label">${label}</div><div class="ma-card-val" style="color:#C7C7CC;">집계중</div></div>`;
+    const c = above ? '#E24B4A' : '#185FA5';
+    const a = above ? '▲' : '▼';
+    return `<div class="ma-card">
+      <div class="ma-card-label">${label}</div>
+      <div class="ma-card-val">${val.toLocaleString('ko-KR', {maximumFractionDigits:0})}</div>
+      <div class="ma-card-sub" style="color:${c};">현재가 ${a} ${dist > 0 ? '+' : ''}${dist.toFixed(1)}%</div>
+    </div>`;
+  }
+
+  // ── Extra metrics ──
+  const rsi  = ex.rsi || null;
+  const disp = ex.disparity_20 || 0;   // 이격도 (100=평균선)
+  const r5   = ex.ret_5d || 0;          // 5일 수익률
+  const vr   = ex.vol_ratio || 0;
+
+  // RSI 상태
+  const rsiW   = rsi ? Math.min(rsi, 100) : 50;
+  const rsiStr = rsi ? rsi.toFixed(0) : '—';
+  const rsiColor = rsi >= 70 ? '#BA7517' : rsi <= 30 ? '#3B6D11' : '#5B5BD6';
+  const rsiLbl = rsi >= 70 ? '과열 주의' : rsi <= 30 ? '침체 구간' : '정상';
+  const rsiCls = rsi >= 70 || rsi <= 30 ? 'status-warn' : 'status-ok';
+
+  // 이격도 상태
+  const dispStr = disp ? disp.toFixed(1) + '%' : '—';
+  const dispLbl = disp >= 110 ? '강한 과열' : disp >= 108 ? '과열 주의' : disp > 0 && disp <= 97 ? '침체 구간' : '정상';
+  const dispCls = disp >= 110 ? 'status-danger' : disp >= 108 || (disp > 0 && disp <= 97) ? 'status-warn' : 'status-ok';
+
+  // 5일 수익률 상태
+  const r5Str  = r5 ? (r5 > 0 ? '+' : '') + r5.toFixed(2) + '%' : '—';
+  const r5Lbl  = r5 >= 10 ? '급등 피로' : r5 >= 5 ? '강한 상승' : r5 <= -10 ? '급락 과매도' : '정상';
+  const r5Cls  = Math.abs(r5) >= 10 ? 'status-danger' : Math.abs(r5) >= 5 ? 'status-warn' : 'status-ok';
+  const r5Color = r5 >= 0 ? '#E24B4A' : '#185FA5';
+
+  // 거래량비
+  const vrStr = vr ? vr.toFixed(1) + '배' : (volB ? volB.toFixed(1) + '조' : '—');
+  const vrLbl = vr >= 1.5 ? '매우 활발' : vr >= 1.2 ? '활발' : vr > 0 && vr <= 0.6 ? '관망' : '보통';
+  const vrCls = vr >= 1.2 ? 'status-ok' : vr > 0 && vr <= 0.6 ? 'status-warn' : 'status-ok';
+
+  // ── 지표 해석 카드 (보라색) ──
+  let rsiInterp = '', dispInterp = '', r5Interp = '';
+  if (rsi) {
+    if (rsi >= 70)      rsiInterp = `RSI ${rsi.toFixed(0)}으로 <b>과열 구간</b>이에요. 시장이 너무 달아올라 있어요. 지금 새로 사는 건 고점 매수 위험이 있으니 조정을 기다리세요.`;
+    else if (rsi <= 30) rsiInterp = `RSI ${rsi.toFixed(0)}으로 <b>침체 구간</b>이에요. 시장이 많이 지쳐있는 상태예요. 분할 매수를 검토할 수 있지만 추가 하락 가능성도 있어요.`;
+    else if (rsi >= 60) rsiInterp = `RSI ${rsi.toFixed(0)}으로 <b>정상이지만 약간 달아오르는 중</b>이에요. 추세는 좋으나 70에 가까워지면 속도를 조절하세요.`;
+    else                rsiInterp = `RSI ${rsi.toFixed(0)}으로 <b>정상 범위</b>예요. 과열도 침체도 아닌 건강한 시장 상태예요.`;
+  }
+  if (disp) {
+    const ma20_ref = cur / (disp / 100);
+    const gap_p = (cur - ma20_ref).toFixed(0);
+    if (disp >= 110)      dispInterp = `이격도 ${disp.toFixed(1)}%로 20일 평균선보다 <b>${(disp-100).toFixed(1)}% 위</b>에 있어요. 용수철이 많이 당겨진 상태로 조정이 오면 ${ma20_ref.toFixed(0)} 근처까지 내려올 수 있어요. 신규 진입은 신중하게 하세요.`;
+    else if (disp >= 108) dispInterp = `이격도 ${disp.toFixed(1)}%로 <b>과열 주의</b> 구간이에요. 20일선에서 ${gap_p}p 올라와 있어요. 눌림목을 기다려서 진입하는 게 유리해요.`;
+    else if (disp <= 97)  dispInterp = `이격도 ${disp.toFixed(1)}%로 20일선 아래에 있어요. <b>평균보다 싸게 살 수 있는 구간</b>이에요. 추세 반전 신호가 나오면 분할 매수를 고려해보세요.`;
+    else                  dispInterp = `이격도 ${disp.toFixed(1)}%로 20일 평균선 <b>근처의 정상 범위</b>예요. 안정적인 흐름이에요.`;
+  }
+  if (r5) {
+    if (r5 >= 10)      r5Interp = `최근 5일 <b>${r5Str} 급등</b>했어요. 단기 피로가 누적된 상태예요. 지금 추격 매수는 고점 매수가 될 가능성이 높아요. 조정을 기다려보세요.`;
+    else if (r5 <= -10) r5Interp = `최근 5일 <b>${r5Str} 급락</b>했어요. 과매도 구간이에요. 하락 원인이 일시적이라면 분할 매수를 검토해볼 수 있어요.`;
+    else if (r5 >= 5)   r5Interp = `최근 5일 <b>${r5Str} 상승</b>한 건 좋은 흐름이에요. 다만 속도가 빠른 편이니, 눌림목에서 나눠서 진입하는 전략이 안전해요.`;
+    else if (r5 <= -5)  r5Interp = `최근 5일 <b>${r5Str} 하락</b>했어요. 단기 조정이 나오는 중이에요. 추세가 꺾인 건지 일시적 조정인지 확인이 필요해요.`;
+    else                r5Interp = `최근 5일 <b>${r5Str}</b>으로 정상 등락 범위예요. 큰 이슈 없이 안정적인 흐름이에요.`;
+  }
+
+  // ── 외국인/기관 수급 ──
   let investorHtml = '';
   if (investor.length) {
-    const rows = investor.slice().reverse().map(r => {
-      const fCls = r.foreign > 0 ? 'up' : 'down';
-      const iCls = r.inst > 0 ? 'up' : 'down';
-      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:0.5px solid #F0F0F5;font-size:13px;">
-        <span style="color:#8E8E9A;min-width:70px;">${r.date.slice(5)}</span>
-        <span class="${fCls}" style="min-width:80px;text-align:right;">외국인 ${r.foreign > 0 ? '+' : ''}${(r.foreign/1e8).toFixed(0)}억</span>
-        <span class="${iCls}" style="min-width:80px;text-align:right;">기관 ${r.inst > 0 ? '+' : ''}${(r.inst/1e8).toFixed(0)}억</span>
+    const invRows = investor.slice().reverse().map(r => {
+      const fCls = r.foreign >= 0 ? 'up' : 'down';
+      const iCls = r.inst >= 0 ? 'up' : 'down';
+      const maxAbs = Math.max(...investor.map(x => Math.max(Math.abs(x.foreign), Math.abs(x.inst))), 1);
+      const bw = Math.min(Math.abs(r.foreign) / maxAbs * 70 + 10, 80);
+      const bc = r.foreign >= 0 ? 'rgba(226,75,74,0.35)' : 'rgba(24,95,165,0.3)';
+      return `<div class="day-row">
+        <span class="day-date">${r.date.slice(5)}</span>
+        <div class="net-bar-bg"><div class="net-bar" style="width:${bw}%;background:${bc};"></div></div>
+        <span class="${fCls}" style="text-align:right;font-weight:600;">${r.foreign>=0?'+':''}${fmtEok(r.foreign)}</span>
+        <span class="${iCls}" style="text-align:right;font-weight:600;">${r.inst>=0?'+':''}${fmtEok(r.inst)}</span>
       </div>`;
     }).join('');
+    const totF = investor.reduce((s,r) => s + r.foreign, 0);
+    const totI = investor.reduce((s,r) => s + r.inst, 0);
     investorHtml = `
       <div class="section">
-        <div class="sec-title"><i class="ti ti-users" style="font-size:15px;color:#5B5BD6;"></i>외국인·기관 수급 (최근 5일)</div>
-        <div class="card">${rows}</div>
+        <div class="sec-title"><i class="ti ti-users" style="font-size:15px;color:#5B5BD6;"></i>외국인·기관 수급 (5일)</div>
+        <div class="card">
+          <div style="display:flex;gap:8px;margin-bottom:12px;">
+            <div style="flex:1;background:#F8F8FA;border-radius:10px;padding:10px 12px;text-align:center;">
+              <div style="font-size:10px;color:#8E8E9A;margin-bottom:3px;">외국인 합계</div>
+              <div class="${totF>=0?'up':'down'}" style="font-size:16px;font-weight:700;">${totF>=0?'+':''}${fmtEok(totF)}</div>
+            </div>
+            <div style="flex:1;background:#F8F8FA;border-radius:10px;padding:10px 12px;text-align:center;">
+              <div style="font-size:10px;color:#8E8E9A;margin-bottom:3px;">기관 합계</div>
+              <div class="${totI>=0?'up':'down'}" style="font-size:16px;font-weight:700;">${totI>=0?'+':''}${fmtEok(totI)}</div>
+            </div>
+          </div>
+          <div class="day-header"><span>날짜</span><span>추세</span><span style="text-align:right;">외국인</span><span style="text-align:right;">기관</span></div>
+          ${invRows}
+        </div>
       </div>`;
   }
 
-  // 섹터 퍼포먼스
+  // ── 섹터 ──
   let sectorHtml = '';
   if (sectors.length) {
-    const bars = sectors.map(s => {
+    const maxPct = Math.max(...sectors.map(s => Math.abs(s.pct)), 1);
+    const rows = sectors.map(s => {
       const cls = s.pct >= 0 ? 'up' : 'down';
-      const barW = Math.min(Math.abs(s.pct) * 10, 100);
-      const barColor = s.pct >= 0 ? '#E24B4A' : '#185FA5';
-      return `<div style="margin-bottom:10px;">
-        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px;">
-          <span style="font-weight:500;">${s.name}</span>
-          <span class="${cls}">${s.pct >= 0 ? '+' : ''}${s.pct}%</span>
-        </div>
-        <div style="height:5px;background:#F0F0F5;border-radius:3px;">
-          <div style="height:5px;width:${barW}%;background:${barColor};border-radius:3px;"></div>
-        </div>
+      const bw  = Math.min(Math.abs(s.pct) / maxPct * 80, 80);
+      const bc  = s.pct >= 0 ? '#E24B4A' : '#185FA5';
+      return `<div class="sector-row">
+        <span class="sector-name">${s.name}</span>
+        <div class="sector-bar-wrap"><div class="sector-bar" style="width:${bw}%;background:${bc};"></div></div>
+        <span class="sector-pct ${cls}">${s.pct >= 0 ? '▲ +' : '▼ '}${s.pct}%</span>
       </div>`;
     }).join('');
     sectorHtml = `
       <div class="section">
-        <div class="sec-title"><i class="ti ti-chart-bar" style="font-size:15px;color:#5B5BD6;"></i>섹터별 등락률</div>
-        <div class="card">${bars}</div>
+        <div class="sec-title"><i class="ti ti-building-store" style="font-size:15px;color:#5B5BD6;"></i>섹터별 등락률</div>
+        <div class="card">${rows}</div>
       </div>`;
   }
 
-  // AI 시장 분석
+  // ── AI 분석 ──
   let aiHtml = '';
   if (analysis.length) {
-    const dotColors = ['dot-blue', 'dot-green', 'dot-orange'];
-    const items = analysis.map((a, i) => `
-      <div class="analysis-item">
-        <div class="analysis-label"><div class="dot ${dotColors[i] || 'dot-blue'}"></div>${a.label || '분석'}</div>
-        <div class="analysis-text">${a.text || ''}</div>
+    const items = analysis.map(a => `
+      <div style="padding:10px 0;border-bottom:0.5px solid #F0F0F5;">
+        <div style="font-size:11px;font-weight:600;color:#3C3489;margin-bottom:5px;">${a.label||''}</div>
+        <div style="font-size:13px;color:#3C3C43;line-height:1.7;">${a.text||''}</div>
       </div>`).join('');
     aiHtml = `
-      <div class="section">
-        <div class="sec-title"><i class="ti ti-search" style="font-size:15px;color:#5B5BD6;"></i>AI 시장 분석</div>
-        <div class="card">${items}</div>
+      <div class="advice-box" style="margin-top:4px;">
+        <div class="advice-title"><i class="ti ti-brain" style="font-size:15px;"></i>AI 시장 분석</div>
+        <div>${items}</div>
       </div>`;
   }
 
   el.innerHTML = `
-    <div class="detail-hero">
-      <div class="detail-name">${name}</div>
-      <div class="detail-price" style="${isUp ? '' : 'color:#fff;'}">${cur.toLocaleString('ko-KR', {minimumFractionDigits:2, maximumFractionDigits:2})}</div>
-      <div style="font-size:15px;margin-top:4px;opacity:0.9;">${isUp ? '▲' : '▼'} ${Math.abs(chg).toFixed(2)} (${isUp ? '+' : ''}${chgPct.toFixed(2)}%)</div>
-    </div>
-    <div class="section" style="margin-top:12px;">
-      <div class="sec-title"><i class="ti ti-trending-up" style="font-size:15px;color:#5B5BD6;"></i>이동평균선 분석</div>
-      <div class="card">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-          ${gcBadge} ${a20Badge} ${a60Badge}
+    <!-- 히어로 -->
+    <div class="detail-hero" style="background:linear-gradient(135deg,${isUp?'#C0392B,#E24B4A':'#0D4C8A,#185FA5'});">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <div style="font-size:11px;opacity:0.75;margin-bottom:4px;">${name === 'KOSPI' ? '코스피 종합지수' : '코스닥 종합지수'}</div>
+          <div class="detail-name">${name}</div>
         </div>
-        <div style="font-size:15px;font-weight:700;color:${trendColor};margin-bottom:12px;">현재 추세: ${trend}</div>
-        <div class="mini-grid" style="grid-template-columns:1fr 1fr;">
-          <div class="mini-item">
-            <div class="mini-label">20일 이동평균</div>
-            <div class="mini-val">${ma20}</div>
-            <div style="font-size:11px;color:#8E8E9A;margin-top:2px;">이격도 ${dist20}</div>
-          </div>
-          <div class="mini-item">
-            <div class="mini-label">60일 이동평균</div>
-            <div class="mini-val">${ma60}</div>
-            <div style="font-size:11px;color:#8E8E9A;margin-top:2px;">이격도 ${dist60}</div>
-          </div>
+        <span class="badge" style="background:rgba(255,255,255,0.2);color:#fff;font-size:11px;">${trend}</span>
+      </div>
+      <div class="detail-price" style="font-size:32px;">${cur.toLocaleString('ko-KR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+      <div style="font-size:14px;margin-top:4px;opacity:0.9;">${isUp?'▲':'▼'} ${Math.abs(chg).toFixed(2)} (${isUp?'+':''}${chgPct.toFixed(2)}%)</div>
+      ${volB ? `<div style="font-size:11px;opacity:0.65;margin-top:6px;">거래대금 ${volB.toFixed(1)}조</div>` : ''}
+    </div>
+
+    <!-- 이동평균선 현황 -->
+    <div class="section" style="margin-top:12px;">
+      <div class="sec-title"><i class="ti ti-activity" style="font-size:15px;color:#5B5BD6;"></i>이동평균선 현황</div>
+      <div class="ma-grid">
+        ${maCard('20일선 (단기)', ma20v, d20, a20)}
+        ${maCard('60일선 (중기)', ma60v, d60, a60)}
+        <div class="ma-card" style="grid-column:span 2;">
+          <div class="ma-card-label">정배열 상태</div>
+          <div class="ma-card-val" style="color:${gcColor};">${gcLabel}</div>
+          <div class="ma-card-sub" style="color:${gcColor};">${gcSub}</div>
         </div>
       </div>
     </div>
+
+    <!-- 주요 기술 지표 -->
+    <div class="section">
+      <div class="sec-title"><i class="ti ti-chart-bar" style="font-size:15px;color:#5B5BD6;"></i>주요 기술 지표</div>
+      <div class="card">
+        ${rsi ? `<div class="ind-row">
+          <span class="ind-label">RSI (14일)</span>
+          <div class="ind-right">
+            <div class="rsi-bar-wrap"><div class="rsi-bar-fill" style="width:${rsiW}%;background:${rsiColor};"></div></div>
+            <span class="ind-val">${rsiStr}</span>
+            <span class="ind-status ${rsiCls}">${rsiLbl}</span>
+          </div>
+        </div>` : ''}
+        ${disp ? `<div class="ind-row">
+          <span class="ind-label">이격도 (20일선)</span>
+          <div class="ind-right"><span class="ind-val">${dispStr}</span><span class="ind-status ${dispCls}">${dispLbl}</span></div>
+        </div>` : ''}
+        ${r5 ? `<div class="ind-row">
+          <span class="ind-label">5일 누적 등락률</span>
+          <div class="ind-right"><span class="ind-val" style="color:${r5Color};">${r5Str}</span><span class="ind-status ${r5Cls}">${r5Lbl}</span></div>
+        </div>` : ''}
+        <div class="ind-row">
+          <span class="ind-label">거래량 (20일 평균비)</span>
+          <div class="ind-right"><span class="ind-val">${vrStr}</span><span class="ind-status ${vrCls}">${vrLbl}</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 지표 해석 카드 -->
+    ${rsiInterp || dispInterp || r5Interp ? `<div style="background:#EEEDFE;border-radius:16px;padding:16px 18px;margin:0 16px 12px;">
+      <div style="font-size:12px;font-weight:700;color:#3C3489;margin-bottom:12px;display:flex;align-items:center;gap:6px;">
+        <i class="ti ti-microscope" style="font-size:14px;"></i> 지금 이 숫자가 의미하는 것
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        ${rsiInterp ? `<div style="background:rgba(255,255,255,0.6);border-radius:10px;padding:10px 12px;">
+          <div style="font-size:10px;font-weight:700;color:#534AB7;margin-bottom:4px;">📊 RSI (상대강도지수)</div>
+          <div style="font-size:12px;color:#3C3489;line-height:1.7;">${rsiInterp}</div>
+        </div>` : ''}
+        ${dispInterp ? `<div style="background:rgba(255,255,255,0.6);border-radius:10px;padding:10px 12px;">
+          <div style="font-size:10px;font-weight:700;color:#534AB7;margin-bottom:4px;">📏 이격도 (괴리율)</div>
+          <div style="font-size:12px;color:#3C3489;line-height:1.7;">${dispInterp}</div>
+        </div>` : ''}
+        ${r5Interp ? `<div style="background:rgba(255,255,255,0.6);border-radius:10px;padding:10px 12px;">
+          <div style="font-size:10px;font-weight:700;color:#534AB7;margin-bottom:4px;">📈 5일 누적 등락률</div>
+          <div style="font-size:12px;color:#3C3489;line-height:1.7;">${r5Interp}</div>
+        </div>` : ''}
+      </div>
+    </div>` : ''}
+
     ${investorHtml}
     ${sectorHtml}
-    ${aiHtml}`;
+    ${aiHtml}
+    <div style="height:24px;"></div>`;
 }
 
 // ─────────────────────────────────────────────────────────
