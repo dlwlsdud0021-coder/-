@@ -612,23 +612,53 @@ def get_top_stocks(n: int = 200) -> list:
     if FDR_OK:
         try:
             listing = fdr.StockListing("KRX")
-            if listing is None or listing.empty:
-                return []
-            # 시가총액 컬럼 찾기
-            cap_col = next((c for c in listing.columns if "cap" in c.lower() or "시가총액" in c), None)
-            if cap_col:
-                listing = listing.sort_values(cap_col, ascending=False)
-            result = []
-            for _, row in listing.head(n).iterrows():
-                code = str(row.get("Code", row.get("Symbol", ""))).zfill(6)
-                name = str(row.get("Name", code))
-                market = str(row.get("Market", "KOSPI"))
-                result.append({"code": code, "name": name, "market": market, "market_cap": 0})
-            return result
+            if listing is not None and not listing.empty:
+                cap_col = next((c for c in listing.columns if "cap" in c.lower() or "시가총액" in c), None)
+                if cap_col:
+                    listing = listing.sort_values(cap_col, ascending=False)
+                result = []
+                for _, row in listing.head(n).iterrows():
+                    code = str(row.get("Code", row.get("Symbol", ""))).zfill(6)
+                    name = str(row.get("Name", code))
+                    market = str(row.get("Market", "KOSPI"))
+                    result.append({"code": code, "name": name, "market": market, "market_cap": 0})
+                if result:
+                    return result
         except Exception as e:
             _logger.warning(f"[종목목록] FDR 실패: {e}")
 
-    return []
+    # 3순위: 시총 상위 종목 하드코딩 (Streamlit Cloud 해외 IP 차단 대비)
+    _TOP_STOCKS_FALLBACK = [
+        ("005930","삼성전자","KOSPI"),("000660","SK하이닉스","KOSPI"),
+        ("373220","LG에너지솔루션","KOSPI"),("207940","삼성바이오로직스","KOSPI"),
+        ("005380","현대차","KOSPI"),("000270","기아","KOSPI"),
+        ("068270","셀트리온","KOSPI"),("105560","KB금융","KOSPI"),
+        ("055550","신한지주","KOSPI"),("012330","현대모비스","KOSPI"),
+        ("035420","NAVER","KOSPI"),("051910","LG화학","KOSPI"),
+        ("006400","삼성SDI","KOSPI"),("003550","LG","KOSPI"),
+        ("096770","SK이노베이션","KOSPI"),("034730","SK","KOSPI"),
+        ("028260","삼성물산","KOSPI"),("017670","SK텔레콤","KOSPI"),
+        ("030200","KT","KOSPI"),("032830","삼성생명","KOSPI"),
+        ("012450","한화에어로스페이스","KOSPI"),("047810","한국항공우주","KOSPI"),
+        ("042660","한화오션","KOSPI"),("009830","한화솔루션","KOSPI"),
+        ("011200","HMM","KOSPI"),("066570","LG전자","KOSPI"),
+        ("003490","대한항공","KOSPI"),("086790","하나금융지주","KOSPI"),
+        ("138040","메리츠금융지주","KOSPI"),("009150","삼성전기","KOSPI"),
+        ("018260","삼성에스디에스","KOSPI"),("010950","S-Oil","KOSPI"),
+        ("000810","삼성화재","KOSPI"),("024110","기업은행","KOSPI"),
+        ("316140","우리금융지주","KOSPI"),("039490","키움증권","KOSPI"),
+        ("035720","카카오","KOSPI"),("259960","크래프톤","KOSPI"),
+        ("036570","엔씨소프트","KOSPI"),("251270","넷마블","KOSPI"),
+        ("041510","에스엠","KOSPI"),("352820","하이브","KOSPI"),
+        # 코스닥 상위
+        ("247540","에코프로비엠","KOSDAQ"),("086520","에코프로","KOSDAQ"),
+        ("006280","녹십자","KOSDAQ"),("091990","셀트리온헬스케어","KOSDAQ"),
+        ("196170","알테오젠","KOSDAQ"),("263750","펄어비스","KOSDAQ"),
+        ("112040","위메이드","KOSDAQ"),("214150","클래시스","KOSDAQ"),
+        ("028300","HLB","KOSDAQ"),("145020","휴젤","KOSDAQ"),
+    ]
+    return [{"code": c, "name": n, "market": m, "market_cap": 0}
+            for c, n, m in _TOP_STOCKS_FALLBACK][:n]
 
 
 # ─────────────────────────────────────────────────────────
