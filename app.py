@@ -623,11 +623,6 @@ def render_home():
       <div class="hero-desc">{desc_full}</div>
       <div class="hero-tip"><i class="ti ti-bulb" style="font-size:14px;flex-shrink:0;"></i> {tip}</div>
     </div>""", unsafe_allow_html=True)
-    # 상세분석 버튼
-    if st.button("› KOSPI · KOSDAQ 상세 분석 보기", key="btn_market_detail",
-                 use_container_width=True):
-        st.session_state["show_market_detail"] = True
-        st.rerun()
 
     # ── 지수 카드 ──
     kp_cls = "up-card" if kp_pct >= 0 else "down-card"
@@ -791,6 +786,10 @@ def render_home():
     _render_prediction_history()
 
     # ── 수급 링크 ──
+    if st.button("› KOSPI · KOSDAQ 상세 분석 보기", key="btn_market_detail",
+                 use_container_width=True):
+        st.session_state["show_market_detail"] = True
+        st.rerun()
     st.markdown(f"""<div class="section">
       <div class="sec-title"><i class="ti ti-users" style="font-size:15px;color:#5B5BD6;"></i>외국인·기관 수급 흐름</div>
     </div>""", unsafe_allow_html=True)
