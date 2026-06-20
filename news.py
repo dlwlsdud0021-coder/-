@@ -1559,6 +1559,20 @@ def fetch_category_news(category: str, max_items: int = 15) -> list:
     return [_classify_item(it) for it in raw[:max_items]]
 
 
+def _generate_stock_brief(title: str, sentiment: str, stock_name: str) -> str:
+    """뉴스 제목 → 투자자 관점 1줄 요약. Gemini 캐시 활용."""
+    cache_key = hashlib.md5(("brief:" + title[:80]).encode()).hexdigest()
+    sent_kor = {"positive": "호재", "negative": "악재", "mixed": "혼조", "neutral": "중립"}.get(sentiment, "중립")
+    prompt = (
+        f"다음은 '{stock_name}' 관련 뉴스 제목입니다: \"{title}\"\n"
+        f"감성: {sent_kor}\n\n"
+        f"주식 투자자 입장에서 이 뉴스의 의미와 대응 방향을 20자 이내 1문장으로 요약하세요. "
+        f"예시: '실적 기대감으로 단기 상승 가능, 눌림목 매수 고려' / '공급 과잉 우려로 주가 하락 가능, 관망 권장'\n"
+        f"문장만 출력하세요."
+    )
+    return _call_gemini(prompt, cache_key)
+
+
 def fetch_stock_news(stock_name: str, max_items: int = 10) -> list:
     """종목명으로 뉴스 검색."""
     query = stock_name + " 주가 주식"
@@ -1571,7 +1585,10 @@ def fetch_stock_news(stock_name: str, max_items: int = 10) -> list:
         raw = _parse_feed(url, max_items, "구글뉴스")
 
     raw = _dedup(raw)
-    return [_classify_item(it) for it in raw[:max_items]]
+    items = [_classify_item(it) for it in raw[:max_items]]
+    for item in items:
+        item["brief"] = _generate_stock_brief(item.get("title", ""), item.get("sentiment", "neutral"), stock_name)
+    return items
 
 
 def summarize_sentiment(items):
