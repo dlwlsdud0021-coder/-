@@ -25,14 +25,26 @@ except ImportError:
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # CONFIG  (환경변수 또는 직접 입력)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-APP_KEY    = os.getenv("KIS_APP_KEY", "YOUR_APP_KEY_HERE")
-APP_SECRET = os.getenv("KIS_APP_SECRET", "YOUR_APP_SECRET_HERE")
-CANO       = os.getenv("KIS_CANO", "YOUR_ACCOUNT_NUMBER")  # 계좌번호 앞 8자리
-ACNT_PRDT_CD = os.getenv("KIS_ACNT_PRDT_CD", "01")         # 계좌상품코드
+def _get_secret(key: str, default: str = "") -> str:
+    """환경변수 → Streamlit Secrets 순으로 조회"""
+    val = os.getenv(key, "")
+    if val:
+        return val.strip()
+    try:
+        import streamlit as st
+        val = st.secrets.get(key, default)
+        return str(val).strip() if val else default
+    except Exception:
+        return default
+
+APP_KEY      = _get_secret("KIS_APP_KEY")
+APP_SECRET   = _get_secret("KIS_APP_SECRET")
+CANO         = _get_secret("KIS_CANO")
+ACNT_PRDT_CD = _get_secret("KIS_ACNT_PRDT_CD", "01")
 
 # 실전: https://openapi.koreainvestment.com:9443
 # 모의: https://openapivts.koreainvestment.com:29443
-BASE_URL = os.getenv("KIS_BASE_URL", "https://openapi.koreainvestment.com:9443")
+BASE_URL = _get_secret("KIS_BASE_URL", "https://openapivts.koreainvestment.com:29443")
 
 _token_cache: dict = {}
 

@@ -371,10 +371,29 @@ def get_ohlcv(code: str, days: int = 120) -> pd.DataFrame:
 @st.cache_data(ttl=60)
 def get_current_price(code: str) -> dict:
     """
-    현재가 정보 반환 (장중 실시간 - yfinance 15분 지연)
-    Returns: {current_price, change, change_pct, high, low, volume}
+    현재가 정보 반환
+    1순위: KIS API (진짜 실시간)
+    2순위: yfinance (15분 지연)
+    3순위: pykrx/FDR (종가 기반)
     """
-    # 1순위: yfinance 실시간 (장중 15분 지연)
+    # 1순위: KIS API 실시간
+    try:
+        from kis_api import get_current_price as kis_price
+        result = kis_price(code)
+        if result and result.get("current_price", 0) > 0:
+            _logger.info(f"[현재가] KIS API 성공({code}): {result['current_price']}")
+            return {
+                "current_price": result["current_price"],
+                "change":        result.get("change", 0),
+                "change_pct":    result.get("change_pct", 0),
+                "high":          result.get("high", 0),
+                "low":           result.get("low", 0),
+                "volume":        result.get("vol", 0),
+            }
+    except Exception as e:
+        _logger.warning(f"[현재가] KIS API 실패({code}): {e}")
+
+    # 2순위: yfinance 실시간 (장중 15분 지연)
     try:
         import yfinance as yf
         t = yf.Ticker(f"{code}.KS")
@@ -398,7 +417,7 @@ def get_current_price(code: str) -> dict:
     except Exception as e:
         _logger.warning(f"[현재가] yfinance 실패({code}): {e}")
 
-    # 2순위: pykrx / FDR (종가 기반)
+    # 3순위: pykrx / FDR (종가 기반)
     df = get_ohlcv(code, days=5)
     if df is None or df.empty:
         return {}
@@ -431,7 +450,32 @@ _INVESTOR_NEEDED  = ["외국인합계", "기관합계", "개인"]
 
 @st.cache_data(ttl=600)
 def get_investor_trading(code: str, days: int = 25) -> pd.DataFrame:
-    """종목별 투자자 순매수량 (일별). 실패 시 빈 DataFrame 반환."""
+    """
+    종목별 투자자 순매수량 (일별).
+    1순위: KIS API (Streamlit Cloud에서도 동작)
+    2순위: pykrx (로컬/한국 IP 전용)
+    """
+    # 1순위: KIS API
+    try:
+        from kis_api import get_investor_trading as kis_investor
+        rows = kis_investor(code, days)
+        if rows:
+            records = []
+            for r in rows:
+                date = pd.to_datetime(r["date"])
+                records.append({
+                    "날짜":    date,
+                    "외국인":  r.get("foreign_net", 0),
+                    "기관":    r.get("institution_net", 0),
+                })
+            df = pd.DataFrame(records).set_index("날짜")
+            df.index = pd.to_datetime(df.index)
+            _logger.info(f"[수급] KIS API 성공({code}): {len(df)}행")
+            return df.tail(days)
+    except Exception as e:
+        _logger.warning(f"[수급] KIS API 실패({code}): {e}")
+
+    # 2순위: pykrx (한국 IP에서만 동작)
     if not PYKRX_OK:
         return pd.DataFrame()
     try:
@@ -447,7 +491,7 @@ def get_investor_trading(code: str, days: int = 25) -> pd.DataFrame:
         result.index = pd.to_datetime(result.index)
         return result.tail(days)
     except Exception as e:
-        _logger.warning("[수급] 조회 실패 | code=%s | %s", code, e)
+        _logger.warning("[수급] pykrx 실패 | code=%s | %s", code, e)
         return pd.DataFrame()
 
 
