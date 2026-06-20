@@ -607,7 +607,13 @@ def render_home():
     sp_pct = sp.get("change_pct", 0)
     nd_pct = nd.get("change_pct", 0)
 
-    # ── 헤더 + 히어로 통합 ──
+    # ── 헤더 ──
+    st.markdown(f"""<div class="hdr">
+      <div><div class="hdr-title">오늘의 시장</div><div class="hdr-sub">{_now()} 기준</div></div>
+      <div style="color:#8E8E93;font-size:20px;"><i class="ti ti-refresh"></i></div>
+    </div>""", unsafe_allow_html=True)
+
+    # ── 히어로 (카드 없이 헤더 아래 이어지는 텍스트) ──
     badge_txt, status, desc, tip = _market_hero(idx)
     desc_full = (f"{desc} · S&P500 {'+' if sp_pct>=0 else ''}{sp_pct:.2f}%"
                  f" / 나스닥 {'+' if nd_pct>=0 else ''}{nd_pct:.2f}%")
@@ -615,22 +621,15 @@ def render_home():
                  else "#185FA5" if "하락" in status or "급락" in status
                  else "#FF9F0A")
     st.markdown(
-        '<div class="hdr" style="flex-direction:column;align-items:flex-start;gap:0;">'
-        '<div style="display:flex;justify-content:space-between;align-items:center;width:100%;">'
-        '<div><div class="hdr-title">오늘의 시장</div>'
-        '<div class="hdr-sub">' + _now() + ' 기준</div></div>'
-        '<div style="color:rgba(255,255,255,0.6);font-size:20px;"><i class="ti ti-refresh"></i></div>'
-        '</div>'
-        '<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid rgba(255,255,255,0.2);width:100%;">'
+        '<div style="padding:12px 20px 16px;background:#fff;border-bottom:0.5px solid #E5E5EA;">'
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">'
-        '<span style="font-size:16px;font-weight:800;color:#fff;">' + status + '</span>'
-        '<span style="font-size:11px;font-weight:600;color:' + badge_clr + ';background:rgba(255,255,255,0.12);'
+        '<span style="font-size:16px;font-weight:800;color:#1A1A2E;">' + status + '</span>'
+        '<span style="font-size:11px;font-weight:600;color:' + badge_clr + ';background:' + badge_clr + '18;'
         'padding:2px 8px;border-radius:20px;">' + badge_txt + '</span>'
         '</div>'
-        '<div style="font-size:11px;color:rgba(255,255,255,0.75);margin-bottom:8px;">' + desc_full + '</div>'
-        '<div style="font-size:11px;color:rgba(255,255,255,0.65);line-height:1.5;">'
-        '<i class="ti ti-bulb" style="font-size:12px;margin-right:4px;"></i>' + tip +
-        '</div>'
+        '<div style="font-size:11px;color:#8E8E93;margin-bottom:8px;">' + desc_full + '</div>'
+        '<div style="font-size:11px;color:#3C3C43;line-height:1.6;">'
+        '<i class="ti ti-bulb" style="font-size:12px;margin-right:4px;color:#FF9F0A;"></i>' + tip +
         '</div>'
         '</div>',
         unsafe_allow_html=True,
