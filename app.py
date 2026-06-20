@@ -2058,10 +2058,10 @@ def _holding_card(e, pfx="a"):
         for b in a.get("badges", [])[:2])
     pnl_10k = int(pnl_amt / 10000)
 
-    btn_key = f"hnav_{pfx}_{h['code']}"
-    # 카드 전체 클릭 → 숨겨진 버튼 JS 트리거
-    st.markdown(f"""<div class="stk-card" style="border-radius:16px;cursor:pointer;"
-      onclick="(function(){{var bs=document.querySelectorAll('button');for(var b of bs){{if(b.innerText.trim()==='{btn_key}'){{b.click();return;}}}}}})()" >
+    # 카드 body 클릭 → 바로 아래 버튼 JS 클릭
+    click_js = "(function(el){var p=el;while(p=p.parentElement){var s=p.nextElementSibling;if(s){var b=s.querySelector('button');if(b){b.click();return;}}}  })(this)"
+    st.markdown(f"""<div class="stk-card" style="border-radius:16px 16px 0 0;margin-bottom:0;border-bottom:none;cursor:pointer;"
+      onclick="{click_js}">
       <div style="display:flex;align-items:center;gap:10px;">
         <div class="stk-icon {ico}">{lbl}</div>
         <div><div style="font-size:13px;font-weight:600;">{h['name']}</div>
@@ -2083,16 +2083,13 @@ def _holding_card(e, pfx="a"):
       </div>
     </div>""", unsafe_allow_html=True)
 
-    # 숨겨진 버튼 (JS가 클릭 트리거)
-    st.markdown('<div class="stk-hidden-nav">', unsafe_allow_html=True)
-    if st.button(btn_key, key=f"h_{pfx}_{h['code']}", use_container_width=False):
+    if st.button("상세분석 보기  ›", key=f"h_{pfx}_{h['code']}", use_container_width=True):
         st.session_state.page = "holdings_detail"
         st.session_state.detail_code = h["code"]
         st.session_state.detail_name = h["name"]
         st.session_state.detail_avg  = h["avg_price"]
         st.session_state.detail_qty  = h["qty"]
         st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
     st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
 
