@@ -2082,37 +2082,16 @@ def _holding_card(e, pfx="a"):
       </div>
     </div>""", unsafe_allow_html=True)
 
-    # 하단 액션 바 (카드와 시각적으로 연결)
-    col_nav, col_del = st.columns([6, 1])
-    with col_nav:
-        st.markdown('<div class="hld-nav-wrap">', unsafe_allow_html=True)
-        if st.button("상세분석 보기  ›", key=f"h_{pfx}_{h['code']}", use_container_width=True):
-            st.session_state.page = "holdings_detail"
-            st.session_state.detail_code = h["code"]
-            st.session_state.detail_name = h["name"]
-            st.session_state.detail_avg  = h["avg_price"]
-            st.session_state.detail_qty  = h["qty"]
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-    with col_del:
-        st.markdown('<div class="hld-del-wrap">', unsafe_allow_html=True)
-        if st.button("✕", key=f"hdel_{pfx}_{h['code']}", use_container_width=True):
-            st.session_state[f"confirm_del_{h['code']}"] = True
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    # 삭제 확인 다이얼로그
-    if st.session_state.get(f"confirm_del_{h['code']}"):
-        st.warning(f"**'{h['name']}'** 종목을 보유 목록에서 삭제하시겠습니까?")
-        cc1, cc2 = st.columns(2)
-        with cc1:
-            if st.button("확인", key=f"hdel_ok_{pfx}_{h['code']}", type="primary", use_container_width=True):
-                delete_holding(st.session_state.user_id, h["code"])
-                st.session_state.pop(f"confirm_del_{h['code']}", None)
-                st.rerun()
-        with cc2:
-            if st.button("취소", key=f"hdel_cancel_{pfx}_{h['code']}", use_container_width=True):
-                st.session_state.pop(f"confirm_del_{h['code']}", None)
-                st.rerun()
+    # 하단 액션 바
+    st.markdown('<div class="hld-nav-wrap">', unsafe_allow_html=True)
+    if st.button("상세분석 보기  ›", key=f"h_{pfx}_{h['code']}", use_container_width=True):
+        st.session_state.page = "holdings_detail"
+        st.session_state.detail_code = h["code"]
+        st.session_state.detail_name = h["name"]
+        st.session_state.detail_avg  = h["avg_price"]
+        st.session_state.detail_qty  = h["qty"]
+        st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
     st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
 
 
@@ -2696,12 +2675,22 @@ def render_holdings_detail():
       </div>
     </div>""", unsafe_allow_html=True)
 
-    col_b_only, _ = st.columns([1, 1])
-    with col_b_only:
-        if st.button("⭐ 관심종목 추가", use_container_width=True):
-            ok, msg = add_watchlist(st.session_state.user_id, code, name, None, None)
-            if ok: st.success(f"{name}을 관심종목에 추가했습니다.")
-            else: st.info(msg)
+    # ── 종목 삭제 ──
+    if st.button("🗑️ 종목 삭제하기", use_container_width=True):
+        st.session_state["hd_confirm_del"] = True
+    if st.session_state.get("hd_confirm_del"):
+        st.warning(f"**'{name}'** 종목을 보유 목록에서 삭제하시겠습니까?")
+        cc1, cc2 = st.columns(2)
+        with cc1:
+            if st.button("확인", key="hd_del_ok", type="primary", use_container_width=True):
+                delete_holding(st.session_state.user_id, code)
+                st.session_state.pop("hd_confirm_del", None)
+                st.session_state.page = "main"
+                st.rerun()
+        with cc2:
+            if st.button("취소", key="hd_del_cancel", use_container_width=True):
+                st.session_state.pop("hd_confirm_del", None)
+                st.rerun()
 
     # 공시 섹션
     with st.spinner("공시 불러오는 중..."):
@@ -3173,6 +3162,23 @@ def render_watchlist_detail():
                 <span class="news-source">{n.get('source','')} · {n.get('published','')}</span></div>
               <div class="news-title">{n['title']}</div>
             </div></div>""", unsafe_allow_html=True)
+
+    # ── 종목 삭제 ──
+    if st.button("🗑️ 종목 삭제하기", key="wd_del_btn", use_container_width=True):
+        st.session_state["wd_confirm_del"] = True
+    if st.session_state.get("wd_confirm_del"):
+        st.warning(f"**'{name}'** 종목을 관심종목에서 삭제하시겠습니까?")
+        cc1, cc2 = st.columns(2)
+        with cc1:
+            if st.button("확인", key="wd_del_ok", type="primary", use_container_width=True):
+                delete_watchlist(st.session_state.user_id, code)
+                st.session_state.pop("wd_confirm_del", None)
+                st.session_state.page = "main"
+                st.rerun()
+        with cc2:
+            if st.button("취소", key="wd_del_cancel", use_container_width=True):
+                st.session_state.pop("wd_confirm_del", None)
+                st.rerun()
 
     st.caption("⚠️ 투자 결정은 본인 책임입니다. 이 앱의 정보는 참고용이며 투자 권유가 아닙니다.")
 
