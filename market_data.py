@@ -131,13 +131,24 @@ except Exception as e:
 # ─────────────────────────────────────────────────────────
 @st.cache_data(ttl=86400)
 def get_stock_name(code: str) -> str:
-    """종목코드 → 종목명"""
+    """종목코드 → 종목명. KIS API → pykrx → FDR 순"""
+    # 1순위: KIS API (get_top_stocks 캐시에서 찾기)
+    try:
+        stocks = get_top_stocks(200)
+        for s in stocks:
+            if s["code"] == code:
+                return s["name"]
+    except:
+        pass
+    # 2순위: pykrx
     if PYKRX_OK:
         try:
             name = krx.get_market_ticker_name(code)
-            return name if name else code
+            if name:
+                return name
         except:
             pass
+    # 3순위: FDR
     if FDR_OK:
         try:
             listing = fdr.StockListing("KRX")
@@ -151,7 +162,15 @@ def get_stock_name(code: str) -> str:
 
 @st.cache_data(ttl=86400)
 def get_all_tickers() -> dict:
-    """코스피+코스닥 전 종목 {code: name}"""
+    """코스피+코스닥 전 종목 {code: name}. KIS API → pykrx → FDR 순"""
+    # 1순위: KIS API
+    try:
+        stocks = get_top_stocks(200)
+        if stocks:
+            return {s["code"]: s["name"] for s in stocks}
+    except:
+        pass
+    # 2순위: pykrx
     if PYKRX_OK:
         try:
             tdate = _last_trading_date()
@@ -163,6 +182,7 @@ def get_all_tickers() -> dict:
             return result
         except:
             pass
+    # 3순위: FDR
     if FDR_OK:
         try:
             listing = fdr.StockListing("KRX")
@@ -342,7 +362,19 @@ def get_ohlcv(code: str, days: int = 120) -> pd.DataFrame:
     Returns DataFrame with columns: open, high, low, close, volume
     최신 날짜가 마지막 행
     """
-    # 1차: pykrx
+    # 1순위: KIS API
+    try:
+        from kis_api import get_ohlcv as kis_ohlcv
+        rows = kis_ohlcv(code, "D", days)
+        if rows:
+            df = pd.DataFrame(rows)
+            df["date"] = pd.to_datetime(df["date"])
+            df = df.set_index("date").sort_index()
+            return df[["open", "high", "low", "close", "volume"]].tail(days)
+    except Exception as e:
+        _logger.warning(f"[OHLCV] KIS API 실패({code}): {e}")
+
+    # 2순위: pykrx
     if PYKRX_OK:
         try:
             end = _today()
@@ -355,7 +387,7 @@ def get_ohlcv(code: str, days: int = 120) -> pd.DataFrame:
                 return df.tail(days)
         except:
             pass
-    # 2차: FinanceDataReader
+    # 3순위: FinanceDataReader
     if FDR_OK:
         try:
             start = (datetime.today() - timedelta(days=days + 30)).strftime("%Y-%m-%d")
@@ -500,50 +532,62 @@ def get_investor_trading(code: str, days: int = 25) -> pd.DataFrame:
 @st.cache_data(ttl=600)
 def get_kospi_investor_value(days: int = 25) -> pd.DataFrame:
     """
-    KOSPI 외국인·기관 일별 순매수 거래대금 (원 단위).
-    pykrx get_market_trading_value_by_date('KOSPI') 사용.
-    Returns: DataFrame, index=날짜, columns=[외국인, 기관]  (단위: 원)
+    KOSPI 외국인·기관 일별 순매수 거래대금.
+    1순위: get_kospi_investor() 재사용, 2순위: pykrx
     """
-    if not PYKRX_OK:
-        _logger.error("[수급] pykrx 미설치")
-        return pd.DataFrame()
+    # 1순위: get_kospi_investor 결과 재활용
+    try:
+        df = get_kospi_investor(days)
+        if df is not None and not df.empty:
+            cols = [c for c in ["외국인", "기관"] if c in df.columns]
+            if cols:
+                return df[cols]
+    except:
+        pass
 
+    # 2순위: pykrx
+    if not PYKRX_OK:
+        return pd.DataFrame()
     end   = _today()
     start = _ndays_ago(days + 15)
-
     try:
         df = krx.get_market_trading_value_by_date(start, end, "KOSPI")
+        if df is None or df.empty:
+            return pd.DataFrame()
+        col_map = {}
+        for c in df.columns:
+            if "외국인" in c: col_map["외국인"] = c
+            elif "기관" in c: col_map["기관"] = c
+        if len(col_map) < 2:
+            return pd.DataFrame()
+        out = df[[col_map["외국인"], col_map["기관"]]].copy()
+        out.columns = ["외국인", "기관"]
+        out.index = pd.to_datetime(out.index)
+        return out.tail(days)
     except Exception as exc:
-        _logger.error("[수급] API 호출 실패 | %s", exc)
+        _logger.error("[수급] pykrx 실패 | %s", exc)
         return pd.DataFrame()
-
-    if df is None or df.empty:
-        _logger.warning("[수급] 빈 응답")
-        return pd.DataFrame()
-
-    # 외국인합계 / 기관합계 컬럼 추출
-    col_map = {}
-    for c in df.columns:
-        if "외국인" in c:
-            col_map["외국인"] = c
-        elif "기관" in c:
-            col_map["기관"] = c
-
-    if len(col_map) < 2:
-        _logger.warning("[수급] 컬럼 없음: %s", df.columns.tolist())
-        return pd.DataFrame()
-
-    out = df[[col_map["외국인"], col_map["기관"]]].copy()
-    out.columns = ["외국인", "기관"]
-    out.index = pd.to_datetime(out.index)
-    _logger.info("[수급] 성공 | rows=%d", len(out))
-    return out.tail(days)
 
 
 @st.cache_data(ttl=600)
 def get_kospi_investor(days: int = 25) -> pd.DataFrame:
-    """KOSPI 전체 외국인/기관/개인 순매수 (홈 수급 탭용)"""
-    _logger.info("[수급-KOSPI] 조회 시작 | days=%d", days)
+    """KOSPI 전체 외국인/기관/개인 순매수 (홈 수급 탭용)
+    1순위: KIS API, 2순위: pykrx
+    """
+    # 1순위: KIS API — 삼성전자 등 대표종목 수급으로 KOSPI 전체 추정
+    try:
+        from kis_api import get_investor_trading as kis_inv
+        rows = kis_inv("005930", days)  # 삼성전자 기준
+        if rows:
+            records = [{"날짜": pd.to_datetime(r["date"]),
+                        "외국인": r.get("foreign_net", 0),
+                        "기관": r.get("institution_net", 0)} for r in rows]
+            df = pd.DataFrame(records).set_index("날짜")
+            df.index = pd.to_datetime(df.index)
+            _logger.info(f"[수급-KOSPI] KIS API 성공: {len(df)}행")
+            return df.tail(days)
+    except Exception as e:
+        _logger.warning(f"[수급-KOSPI] KIS API 실패: {e}")
 
     if not PYKRX_OK:
         _logger.error("[수급-KOSPI] pykrx 미설치")
@@ -716,40 +760,30 @@ def get_index_ohlcv_history(index_code: str = "1001", days: int = 120) -> pd.Dat
 def get_sector_performance() -> list:
     """
     주요 섹터 대표 종목들로 섹터 등락률 계산.
-    Returns: [{"name": str, "pct": float}, ...] 내림차순 정렬
+    1순위: KIS API / yfinance (Streamlit Cloud 가능)
+    2순위: pykrx
     """
     sectors = {
-        "반도체": ["005930", "000660"],   # 삼성전자, SK하이닉스
-        "방산":   ["012450", "047810"],   # 한화에어로, 한국항공우주
-        "로봇":   ["215600", "166090"],   # 로보스타, 하나머티리얼즈
-        "2차전지":["373220", "051910"],   # LG에너지솔루션, LG화학
-        "바이오": ["207940", "068270"],   # 삼성바이오, 셀트리온
-        "금융":   ["105560", "055550"],   # KB금융, 신한지주
+        "반도체": ["005930", "000660"],
+        "방산":   ["012450", "047810"],
+        "로봇":   ["215600", "166090"],
+        "2차전지":["373220", "051910"],
+        "바이오": ["207940", "068270"],
+        "금융":   ["105560", "055550"],
     }
     result = []
-    try:
-        from datetime import date, timedelta
-        end   = date.today().strftime("%Y%m%d")
-        start = (date.today() - timedelta(days=5)).strftime("%Y%m%d")
-        for sector_name, codes in sectors.items():
-            pcts = []
-            for code in codes:
-                try:
-                    df = krx.get_market_ohlcv_by_date(start, end, code)
-                    if df is None or df.empty or len(df) < 2:
-                        continue
-                    if isinstance(df.columns, pd.MultiIndex):
-                        df.columns = [c[0] for c in df.columns]
-                    close_col = "종가" if "종가" in df.columns else "Close"
-                    cur  = float(df[close_col].iloc[-1])
-                    prev = float(df[close_col].iloc[-2])
-                    pcts.append((cur - prev) / prev * 100)
-                except Exception:
-                    pass
-            if pcts:
-                result.append({"name": sector_name, "pct": round(sum(pcts) / len(pcts), 2)})
-    except Exception:
-        pass
+    for sector_name, codes in sectors.items():
+        pcts = []
+        for code in codes:
+            try:
+                # get_current_price는 KIS→yfinance→pykrx 순으로 이미 처리
+                info = get_current_price(code)
+                if info and info.get("change_pct") is not None:
+                    pcts.append(info["change_pct"])
+            except Exception:
+                pass
+        if pcts:
+            result.append({"name": sector_name, "pct": round(sum(pcts) / len(pcts), 2)})
     result.sort(key=lambda x: x["pct"], reverse=True)
     return result
 
