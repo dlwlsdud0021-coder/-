@@ -26,6 +26,128 @@ from news import (fetch_market_news, fetch_stock_news, enrich_top10_summaries,
 from home_analysis import analyze_us_impact, generate_forecast, calc_ma_status, _extra_metrics, market_phase, is_market_open
 from analysis import analyze_stock, watchlist_timing
 from database import get_recent_predictions, get_prediction_accuracy
+import requests as _requests
+
+# ─────────────────────────────────────────────────────────
+# DART 공시 API
+# ─────────────────────────────────────────────────────────
+_DART_KEY = os.environ.get("DART_API_KEY", "")
+_dart_corp_cache: dict = {}
+
+def _dart_corp_code(stock_code: str) -> str:
+    if stock_code in _dart_corp_cache:
+        return _dart_corp_cache[stock_code]
+    try:
+        r = _requests.get(
+            "https://opendart.fss.or.kr/api/company.json",
+            params={"crtfc_key": _DART_KEY, "stock_code": stock_code},
+            timeout=5,
+        )
+        d = r.json()
+        if d.get("status") == "000":
+            code = d.get("corp_code", "")
+            _dart_corp_cache[stock_code] = code
+            return code
+    except Exception:
+        pass
+    return ""
+
+def _dart_disclosures(stock_code: str, days: int = 30) -> list:
+    if not _DART_KEY:
+        return []
+    corp_code = _dart_corp_code(stock_code)
+    if not corp_code:
+        return []
+    try:
+        end_dt = datetime.now()
+        bgn_dt = end_dt - timedelta(days=days)
+        r = _requests.get(
+            "https://opendart.fss.or.kr/api/list.json",
+            params={
+                "crtfc_key": _DART_KEY,
+                "corp_code": corp_code,
+                "bgn_de": bgn_dt.strftime("%Y%m%d"),
+                "end_de": end_dt.strftime("%Y%m%d"),
+                "page_count": 6,
+            },
+            timeout=6,
+        )
+        data = r.json()
+        if data.get("status") == "000":
+            items = data.get("list", [])
+            result = []
+            for it in items[:6]:
+                rpt = it.get("report_nm", "")
+                meaning, impact, badge = _analyze_disclosure(rpt)
+                result.append({
+                    "title":   rpt,
+                    "date":    it.get("rcept_dt", "")[:10].replace("-", "."),
+                    "type":    it.get("pblntf_ty_nm") or "기타공시",
+                    "url":     f"https://dart.fss.or.kr/dsaf001/main.do?rcpNo={it.get('rcept_no','')}",
+                    "meaning": meaning,
+                    "impact":  impact,
+                    "badge":   badge,
+                })
+            return result
+    except Exception:
+        pass
+    return []
+
+def _analyze_disclosure(title: str) -> tuple:
+    """공시 제목 기반 투자자 해석 (rule-based)"""
+    t = title.lower()
+    # 내부자 거래
+    if "소유상황" in title or "임원" in title or "주요주주" in title:
+        return (
+            f"'{title}' 공시예요. 임원·주요주주가 주식을 사거나 팔 때 제출하는 공시로, "
+            "지분 변동 방향이 중요한 신호가 됩니다. DART에서 원문을 확인해 매수인지 매도인지 파악하세요.",
+            ["공시 당일: 매수면 긍정, 매도면 부정 신호로 해석", "단기(1~2주): 지분 변동 규모가 클수록 영향 커짐",
+             "주의사항: 소규모 변동은 세금·재무 목적일 수 있어 맹신 금지"],
+            "기타공시"
+        )
+    # 실적 보고
+    if any(k in title for k in ["사업보고서", "반기보고서", "분기보고서"]):
+        return (
+            f"'{title}' 공시예요. 회사의 공식 실적·재무 현황을 담은 정기 보고서입니다. "
+            "매출·영업이익 증감과 가이던스(향후 전망)가 주가에 직접 영향을 줍니다.",
+            ["공시 당일: 어닝 서프라이즈/쇼크 여부 확인 필수", "단기(1~2주): 애널리스트 목표가 변화 체크",
+             "중기(1개월): 실적 추세 방향이 주가 흐름 결정", "주의사항: 영업이익보다 순이익 왜곡 여부 확인"],
+            "정기공시"
+        )
+    # 주요 경영사항
+    if any(k in title for k in ["주요사항", "공급계약", "수주", "MOU", "협약", "투자"]):
+        return (
+            f"'{title}' 공시예요. 주가에 영향을 줄 수 있는 주요 경영 이슈를 공시한 것으로, "
+            "계약 규모와 상대방이 핵심 확인 포인트입니다.",
+            ["공시 당일: 계약 규모가 매출 대비 10% 이상이면 중요 호재", "단기(1~2주): 계약 이행 가능성 모니터링",
+             "중기(1개월): 실제 매출 반영 시점 확인", "주의사항: 조건부 계약은 불확실성 존재"],
+            "주요공시"
+        )
+    # 유상증자/CB
+    if any(k in title for k in ["유상증자", "전환사채", "신주", "CB", "BW"]):
+        return (
+            f"'{title}' 공시예요. 주식 발행을 통한 자금 조달로, 기존 주주의 지분이 희석될 수 있습니다. "
+            "조달 목적(성장투자 vs 부채상환)이 핵심 판단 기준입니다.",
+            ["공시 당일: 희석률과 조달 목적 즉시 확인", "단기(1~2주): 주가 하락 압력 가능성 높음",
+             "중기(1개월): 자금 사용 목적이 성장이라면 회복 가능", "주의사항: 부채상환 목적이면 재무 악화 신호"],
+            "주의공시"
+        )
+    # 배당
+    if any(k in title for k in ["배당", "결산"]):
+        return (
+            f"'{title}' 공시예요. 주주에게 이익을 배분하는 배당 관련 공시로, "
+            "배당 수익률과 지급 일정이 주가에 영향을 줍니다.",
+            ["공시 당일: 배당금액과 전년 대비 증감 확인", "단기: 배당락일 전후 매수·매도 전략 검토",
+             "주의사항: 배당락일 이후 주가 하락은 일반적인 현상"],
+            "배당공시"
+        )
+    # 기본 fallback
+    return (
+        f"'{title}' 공시예요. DART(dart.fss.or.kr)에서 원문을 직접 확인하면 더 자세한 내용을 볼 수 있어요.",
+        ["공시 당일: 시장 반응 확인 필요", "단기(1~2주): 공시 내용의 실현 가능성 모니터링",
+         "중기(1개월): 실제 영향 반영 여부 확인", "주의사항: 공시 하나만으로 매매 결정하지 마세요"],
+        "기타공시"
+    )
 
 # ─────────────────────────────────────────────────────────
 # JWT 설정
@@ -594,6 +716,9 @@ def holding_detail(code: str, user=Depends(get_current_user)):
 
         news = fetch_stock_news(code, h["name"])
         analysis["news"] = news[:3]
+
+        # DART 공시 (최근 30일)
+        analysis["disclosures"] = _dart_disclosures(code, days=30)
     except Exception as e:
         analysis = {"error": str(e), "cur_price": h["avg_price"]}
     return {"holding": h, "analysis": analysis}

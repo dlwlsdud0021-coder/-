@@ -1631,6 +1631,28 @@ function renderHoldingDetail(d, el) {
       </div>
     </div>` : ''}
 
+    <!-- 최근 공시 -->
+    ${(a.disclosures||[]).length > 0 ? `<div class="section">
+      <div class="sec-title"><i class="ti ti-file-text" style="font-size:15px;color:#5B5BD6;"></i>최근 공시 (30일)</div>
+      ${(a.disclosures||[]).map(dis => `
+        <div class="card" style="margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <span style="font-size:10px;padding:2px 8px;border-radius:5px;background:#EEEDFE;color:#3C3489;font-weight:600;">${dis.type||'기타공시'}</span>
+            <span style="font-size:10px;color:#8E8E9A;">${dis.date||''}</span>
+          </div>
+          <div style="font-size:13px;font-weight:600;color:#1A1A2E;margin-bottom:10px;line-height:1.5;">${dis.title||''}</div>
+          <div style="background:#F8F8FA;border-radius:10px;padding:10px 12px;margin-bottom:8px;">
+            <div style="font-size:10px;font-weight:700;color:#5B5BD6;margin-bottom:5px;">💡 이 공시가 의미하는 것</div>
+            <div style="font-size:11px;color:#3C3C43;line-height:1.6;">${dis.meaning||''}</div>
+          </div>
+          ${(dis.impact||[]).length > 0 ? `<div style="background:#F8F8FA;border-radius:10px;padding:10px 12px;">
+            <div style="font-size:10px;font-weight:700;color:#5B5BD6;margin-bottom:5px;">↗ 추가 영향 흐름</div>
+            ${(dis.impact||[]).map(pt => `<div style="font-size:11px;color:#3C3C43;line-height:1.8;">- ${pt}</div>`).join('')}
+          </div>` : ''}
+        </div>
+      `).join('')}
+    </div>` : ''}
+
     <!-- 뉴스 -->
     ${newsHtml ? `<div class="section">
       <div class="sec-title"><i class="ti ti-news" style="font-size:15px;color:#5B5BD6;"></i>${h.name} 뉴스</div>
