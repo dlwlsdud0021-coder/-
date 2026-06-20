@@ -1639,11 +1639,6 @@ _NEWS_TTL = 600  # TOP10 갱신 주기 (초)
 
 
 def render_news():
-    st.markdown(f"""<div class="hdr">
-      <div><div class="hdr-title">시장 핵심 뉴스 TOP10</div><div class="hdr-sub">{_now()} 기준 · 수급+뉴스 중요도 분석</div></div>
-      <div style="color:#8E8E93;font-size:20px;"><i class="ti ti-chart-bar"></i></div>
-    </div>""", unsafe_allow_html=True)
-
     # ── TOP10 — 10분 세션 캐시 ──
     now_ts = time.time()
     if ("top10_news" not in st.session_state or
@@ -1658,7 +1653,7 @@ def render_news():
 
     top10 = st.session_state.top10_news
 
-    # ── 감성 요약 바 (검색창 자리에 배치) ──
+    # ── 감성 분포 계산 후 헤더에 함께 렌더링 ──
     if top10:
         summ  = summarize_sentiment(top10)
         total = len(top10)
@@ -1668,32 +1663,36 @@ def render_news():
         overall_map = {"positive": ("긍정 우세", "#30D158"), "negative": ("부정 우세", "#E24B4A"),
                        "mixed": ("혼조", "#FF9F0A"), "neutral": ("중립", "#8E8E93")}
         ov_lbl, ov_clr = overall_map.get(summ["overall"], ("중립", "#8E8E93"))
-        st.markdown(f"""<div class="section"><div class="card" style="padding:12px 16px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <div style="font-size:12px;font-weight:600;color:#3C3C43;">TOP10 감성 분포</div>
-            <span style="font-size:11px;font-weight:700;color:{ov_clr};">{ov_lbl}</span>
-          </div>
-          <div style="display:flex;height:6px;border-radius:3px;overflow:hidden;gap:2px;">
-            <div style="width:{pos_pct}%;background:#30D158;border-radius:3px 0 0 3px;"></div>
-            <div style="width:{neg_pct}%;background:#E24B4A;"></div>
-            <div style="width:{neu_pct}%;background:#E5E5EA;border-radius:0 3px 3px 0;"></div>
-          </div>
-          <div style="display:flex;gap:12px;margin-top:6px;">
-            <span style="font-size:10px;color:#30D158;">● 긍정 {summ['positive_count']}건</span>
-            <span style="font-size:10px;color:#E24B4A;">● 부정 {summ['negative_count']}건</span>
-            <span style="font-size:10px;color:#FF9F0A;">● 혼조 {summ['mixed_count']}건</span>
-            <span style="font-size:10px;color:#8E8E93;">● 중립 {summ['neutral_count']}건</span>
-          </div>
-        </div></div>""", unsafe_allow_html=True)
+        sent_html = f"""
+          <div style="margin-top:10px;padding-top:10px;border-top:0.5px solid rgba(255,255,255,0.2);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:11px;color:rgba(255,255,255,0.7);">TOP10 감성 분포</span>
+              <span style="font-size:11px;font-weight:700;color:{ov_clr};">{ov_lbl}</span>
+            </div>
+            <div style="display:flex;height:5px;border-radius:3px;overflow:hidden;gap:2px;">
+              <div style="width:{pos_pct}%;background:#30D158;"></div>
+              <div style="width:{neg_pct}%;background:#E24B4A;"></div>
+              <div style="width:{neu_pct}%;background:rgba(255,255,255,0.2);"></div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:5px;">
+              <span style="font-size:10px;color:#30D158;">● 긍정 {summ['positive_count']}건</span>
+              <span style="font-size:10px;color:#E24B4A;">● 부정 {summ['negative_count']}건</span>
+              <span style="font-size:10px;color:#FF9F0A;">● 혼조 {summ['mixed_count']}건</span>
+              <span style="font-size:10px;color:rgba(255,255,255,0.5);">● 중립 {summ['neutral_count']}건</span>
+            </div>
+          </div>"""
+    else:
+        sent_html = ""
 
-    # ── 키워드 검색 ──
-    query = st.text_input("🔍 종목명·키워드 검색", label_visibility="collapsed")
-    if query.strip():
-        with st.spinner("뉴스 검색 중..."):
-            news_list = fetch_stock_news(query.strip(), max_items=15)
-        st.markdown(f'<div class="section"><div class="sec-title"><i class="ti ti-search" style="font-size:15px;color:#5B5BD6;"></i>"{query}" 검색 결과 ({len(news_list)}건)</div></div>', unsafe_allow_html=True)
-        _render_news_cards(news_list)
-        return
+    st.markdown(f"""<div class="hdr">
+      <div style="width:100%;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div><div class="hdr-title">시장 핵심 뉴스 TOP10</div><div class="hdr-sub">{_now()} 기준 · 수급+뉴스 중요도 분석</div></div>
+          <div style="color:rgba(255,255,255,0.6);font-size:20px;"><i class="ti ti-chart-bar"></i></div>
+        </div>
+        {sent_html}
+      </div>
+    </div>""", unsafe_allow_html=True)
 
     if not top10:
         st.info("뉴스를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.")
