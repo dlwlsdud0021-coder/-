@@ -638,92 +638,119 @@ def holding_detail(code: str, user=Depends(get_current_user)):
     h = next((x for x in holdings if x["code"] == code), None)
     if not h:
         raise HTTPException(status_code=404, detail="종목을 찾을 수 없습니다")
+    # ── 단계별 독립 실행: 하나 실패해도 나머지는 계속 ──
+    analysis: dict = {"cur_price": h["avg_price"]}
+
+    # 1) OHLCV + 기술 지표
+    ohlcv = None
     try:
         ohlcv = get_ohlcv(code, days=60)
-        inv = get_investor_trading(code, days=25)  # 5일→25일로 확장
-        analysis = analyze_stock(ohlcv, inv, h["avg_price"], h["qty"])
+        inv   = get_investor_trading(code, days=25)
+        result = analyze_stock(ohlcv, inv, h["avg_price"], h["qty"])
+        analysis.update(result)
+    except Exception as e:
+        print(f"[HoldingDetail] analyze_stock 실패({code}): {e}")
+
+    # 2) 현재가
+    try:
         pd2 = get_current_price(code)
         cur = pd2.get("current_price", h["avg_price"]) or h["avg_price"]
-        analysis["cur_price"] = cur
-        analysis["cur_change"] = pd2.get("change", 0)
+        analysis["cur_price"]      = cur
+        analysis["cur_change"]     = pd2.get("change", 0)
         analysis["cur_change_pct"] = pd2.get("change_pct", 0)
-        analysis["cur_high"] = pd2.get("high", 0)
-        analysis["cur_low"] = pd2.get("low", 0)
-        analysis["cur_volume"] = pd2.get("volume", 0)
+        analysis["cur_high"]       = pd2.get("high", 0)
+        analysis["cur_low"]        = pd2.get("low", 0)
+        analysis["cur_volume"]     = pd2.get("volume", 0)
+    except Exception as e:
+        print(f"[HoldingDetail] get_current_price 실패({code}): {e}")
+        cur = h["avg_price"]
 
-        # 목표가/손절가 자동 계산
-        boll = analysis.get("bollinger", {})
-        ma20 = analysis.get("ma20")
+    # 3) 목표가/손절가
+    try:
+        avg_p = h["avg_price"]
+        boll  = analysis.get("bollinger", {})
+        ma20  = analysis.get("ma20")
         boll_upper = boll.get("upper")
         boll_lower = boll.get("lower")
-        avg_p = h["avg_price"]
         tp, tb = None, ""
         if boll_upper and boll_upper > cur:
             tp = round(boll_upper / 100) * 100; tb = "볼린저 상단"
         elif ohlcv is not None and not ohlcv.empty:
-            _hcol = "high" if "high" in ohlcv.columns else "고가"
-            if _hcol in ohlcv.columns:
-                high60 = float(ohlcv[_hcol].tail(60).max())
+            hcol = "high" if "high" in ohlcv.columns else "고가"
+            if hcol in ohlcv.columns:
+                high60 = float(ohlcv[hcol].tail(60).max())
                 if high60 > cur * 1.03:
                     tp = round(high60 / 100) * 100; tb = "60일 고점"
         avg_tp = round(avg_p * 1.10 / 100) * 100
-        if not tp or avg_tp > tp:
-            tp = avg_tp; tb = "평단가 +10%"
-        if not tp:
-            tp = round(cur * 1.08 / 100) * 100; tb = "현재가 +8%"
+        if not tp or avg_tp > tp: tp = avg_tp; tb = "평단가 +10%"
+        if not tp: tp = round(cur * 1.08 / 100) * 100; tb = "현재가 +8%"
         sp, sb = None, ""
         if boll_lower and boll_lower < cur:
             sp = round(boll_lower / 100) * 100; sb = "볼린저 하단"
         elif ma20 and ma20 * 0.97 < cur:
             sp = round(ma20 * 0.97 / 100) * 100; sb = "20일선 -3%"
         avg_sp = round(avg_p * 0.93 / 100) * 100
-        if not sp or avg_sp > sp:
-            sp = avg_sp; sb = "평단가 -7%"
-        if not sp:
-            sp = round(cur * 0.95 / 100) * 100; sb = "현재가 -5%"
+        if not sp or avg_sp > sp: sp = avg_sp; sb = "평단가 -7%"
+        if not sp: sp = round(cur * 0.95 / 100) * 100; sb = "현재가 -5%"
         tu = (tp - cur) / cur * 100 if cur else 0
         sd = (sp - cur) / cur * 100 if cur else 0
         avs = (sp - avg_p) / avg_p * 100 if avg_p and sp else None
-        rr = abs(tu / sd) if sd else 0
+        rr  = abs(tu / sd) if sd else 0
         analysis["targets"] = {
             "target_price": tp, "target_basis": tb, "target_upside": round(tu, 1),
             "stop_price": sp, "stop_basis": sb, "stop_downside": round(sd, 1),
             "avg_vs_stop": round(avs, 1) if avs is not None else None,
             "risk_reward": round(rr, 1),
         }
+    except Exception as e:
+        print(f"[HoldingDetail] targets 계산 실패({code}): {e}")
 
-        # 수급 일별 칩 (inv_df → 리스트)
+    # 4) 수급 일별 데이터
+    try:
         inv_list = []
-        if inv is not None and not inv.empty:
-            for dt, row in inv.tail(5).iterrows():
-                inv_list.append({
-                    "date": str(dt)[:10],
-                    "foreign": int(row.get("외국인", 0)),
-                    "inst": int(row.get("기관", 0)),
-                })
+        if ohlcv is not None:
+            inv2 = get_investor_trading(code, days=5)
+            if inv2 is not None and not inv2.empty:
+                for dt, row in inv2.tail(5).iterrows():
+                    inv_list.append({
+                        "date": str(dt)[:10],
+                        "foreign": int(row.get("외국인", 0)),
+                        "inst":    int(row.get("기관", 0)),
+                    })
         analysis["inv_list"] = inv_list
+    except Exception as e:
+        analysis["inv_list"] = []
 
-        # 차트용 OHLCV 데이터 (최근 60일)
+    # 5) OHLCV 차트 데이터
+    try:
         ohlcv_data = []
         if ohlcv is not None and not ohlcv.empty:
             for dt, row in ohlcv.tail(60).iterrows():
                 ohlcv_data.append({
-                    "date": str(dt)[:10],
-                    "open":  int(row.get("open",  row.get("시가",  0))),
-                    "high":  int(row.get("high",  row.get("고가",  0))),
-                    "low":   int(row.get("low",   row.get("저가",  0))),
-                    "close": int(row.get("close", row.get("종가",  0))),
-                    "volume":int(row.get("volume",row.get("거래량",0))),
+                    "date":   str(dt)[:10],
+                    "open":   int(row.get("open",   row.get("시가",  0))),
+                    "high":   int(row.get("high",   row.get("고가",  0))),
+                    "low":    int(row.get("low",    row.get("저가",  0))),
+                    "close":  int(row.get("close",  row.get("종가",  0))),
+                    "volume": int(row.get("volume", row.get("거래량",0))),
                 })
         analysis["ohlcv"] = ohlcv_data
+    except Exception as e:
+        analysis["ohlcv"] = []
 
+    # 6) 종목 뉴스
+    try:
         news = fetch_stock_news(code, h["name"])
         analysis["news"] = news[:3]
+    except Exception:
+        analysis["news"] = []
 
-        # DART 공시 (최근 30일)
+    # 7) DART 공시
+    try:
         analysis["disclosures"] = _dart_disclosures(code, days=30)
-    except Exception as e:
-        analysis = {"error": str(e), "cur_price": h["avg_price"]}
+    except Exception:
+        analysis["disclosures"] = []
+
     return {"holding": h, "analysis": analysis}
 
 # ─────────────────────────────────────────────────────────
