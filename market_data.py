@@ -507,15 +507,13 @@ def get_investor_trading(code: str, days: int = 25) -> pd.DataFrame:
         if rows:
             records = []
             for r in rows:
-                date = pd.to_datetime(r["date"])
                 records.append({
-                    "날짜":    date,
+                    "날짜":    pd.to_datetime(r["date"], format="%Y%m%d"),
                     "외국인":  r.get("foreign_net", 0),
                     "기관":    r.get("institution_net", 0),
                 })
-            df = pd.DataFrame(records).set_index("날짜")
-            df.index = pd.to_datetime(df.index)
-            _logger.info(f"[수급] KIS API 성공({code}): {len(df)}행")
+            df = pd.DataFrame(records).set_index("날짜").sort_index()
+            _logger.info(f"[수급] KIS API 성공({code}): {len(df)}행, 최신={df.index[-1].date()}")
             return df.tail(days)
     except Exception as e:
         _logger.warning(f"[수급] KIS API 실패({code}): {e}")
@@ -591,12 +589,11 @@ def get_kospi_investor(days: int = 25) -> pd.DataFrame:
         rows = kis_inv_val("005930", days)  # 삼성전자 거래대금 기준
         # 값이 모두 0이면 필드 미지원 → pykrx로 폴백
         if rows and any(abs(r.get("foreign_net", 0)) > 0 for r in rows):
-            records = [{"날짜": pd.to_datetime(r["date"]),
+            records = [{"날짜": pd.to_datetime(r["date"], format="%Y%m%d"),
                         "외국인": r.get("foreign_net", 0),   # 백만원 단위
                         "기관":   r.get("institution_net", 0)} for r in rows]
-            df = pd.DataFrame(records).set_index("날짜")
-            df.index = pd.to_datetime(df.index)
-            _logger.info(f"[수급-KOSPI] KIS 금액 성공: {len(df)}행")
+            df = pd.DataFrame(records).set_index("날짜").sort_index()
+            _logger.info(f"[수급-KOSPI] KIS 금액 성공: {len(df)}행, 최신날짜={df.index[-1].date()}")
             return df.tail(days)
         else:
             raise ValueError("KIS 수급 금액 필드 0 또는 미지원 → pykrx 폴백")
@@ -608,14 +605,12 @@ def get_kospi_investor(days: int = 25) -> pd.DataFrame:
         from kis_api import get_investor_trading as kis_inv_qty
         rows = kis_inv_qty("005930", days)
         if rows and any(abs(r.get("foreign_net", 0)) > 0 for r in rows):
-            # 수량(주) 단위 그대로 저장 — 프론트에서 만주 단위로 표시
-            records = [{"날짜": pd.to_datetime(r["date"]),
+            records = [{"날짜": pd.to_datetime(r["date"], format="%Y%m%d"),
                         "외국인": r.get("foreign_net", 0),
                         "기관":   r.get("institution_net", 0),
                         "_unit": "qty"} for r in rows]
-            df = pd.DataFrame(records).set_index("날짜")
-            df.index = pd.to_datetime(df.index)
-            _logger.info(f"[수급-KOSPI] KIS 수량 폴백 성공: {len(df)}행")
+            df = pd.DataFrame(records).set_index("날짜").sort_index()
+            _logger.info(f"[수급-KOSPI] KIS 수량 폴백 성공: {len(df)}행, 최신날짜={df.index[-1].date()}")
             return df.tail(days)
     except Exception as e:
         _logger.warning(f"[수급-KOSPI] KIS 수량 폴백 실패: {e}")
@@ -639,8 +634,9 @@ def get_kospi_investor(days: int = 25) -> pd.DataFrame:
                 result = df[[col_map["외국인"], col_map["기관"]]].copy()
                 result.columns = ["외국인", "기관"]
                 result.index = pd.to_datetime(result.index)
+                result = result.sort_index()
                 result["_unit"] = "won"
-                _logger.info("[수급-KOSPI] pykrx 거래대금 성공")
+                _logger.info("[수급-KOSPI] pykrx 거래대금 성공, 최신=%s", result.index[-1].date())
                 return result.tail(days)
     except Exception as exc:
         _logger.warning("[수급-KOSPI] pykrx 거래대금 실패 | %s", exc)
@@ -666,8 +662,9 @@ def get_kospi_investor(days: int = 25) -> pd.DataFrame:
 
     result = df[available].rename(columns=_INVESTOR_COL_MAP)
     result.index = pd.to_datetime(result.index)
+    result = result.sort_index()
     result["_unit"] = "qty"
-    _logger.info("[수급-KOSPI] 성공 | rows=%d", len(result))
+    _logger.info("[수급-KOSPI] 성공 | rows=%d, 최신=%s", len(result), result.index[-1].date())
     return result.tail(days)
 
 

@@ -430,6 +430,7 @@ async function openSupplyDetail() {
 
 function renderSupplyDetail(d, el) {
   const rows = Array.isArray(d.rows) ? d.rows : [];
+  const unit = d.unit || '억';
   const tf = d.total_foreign || 0;
   const ti = d.total_inst || 0;
   const bdf = d.buy_days_foreign || 0;
@@ -472,8 +473,8 @@ function renderSupplyDetail(d, el) {
       return `<div class="day-row">
         <span class="day-date">${r.date.slice(5)}</span>
         <div class="net-bar-bg"><div class="net-bar ${barCls}" style="width:${barW}%;"></div></div>
-        <span class="${fCls}" style="text-align:right;font-weight:600;">${fv>=0?'+':''}${fmtEok(fv)}</span>
-        <span class="${iCls}" style="text-align:right;font-weight:600;">${iv>=0?'+':''}${fmtEok(iv)}</span>
+        <span class="${fCls}" style="text-align:right;font-weight:600;">${fv>=0?'+':''}${fmtInv(fv,unit)}</span>
+        <span class="${iCls}" style="text-align:right;font-weight:600;">${iv>=0?'+':''}${fmtInv(iv,unit)}</span>
       </div>`;
     }).join('');
 
@@ -488,7 +489,7 @@ function renderSupplyDetail(d, el) {
       </div>
       ${sf > 2 ? `<div class="streak-box">
         <div class="streak-icon"><i class="ti ti-flame" style="font-size:20px;"></i></div>
-        <div><div class="streak-title">외국인 ${sf}일 연속 순매수 중</div><div class="streak-sub">누적 ${tf>=0?'+':''}${fmtEok(tf)} · ${sf>=5?'강한 매집 신호':'지속 관찰 필요'}</div></div>
+        <div><div class="streak-title">외국인 ${sf}일 연속 순매수 중</div><div class="streak-sub">누적 ${tf>=0?'+':''}${fmtInv(tf,unit)} · ${sf>=5?'강한 매집 신호':'지속 관찰 필요'}</div></div>
       </div>` : sf < -2 ? `<div class="streak-box" style="background:#FCEBEB;">
         <div class="streak-icon" style="background:#E24B4A;"><i class="ti ti-trending-down" style="font-size:20px;"></i></div>
         <div><div class="streak-title" style="color:#A32D2D;">외국인 ${Math.abs(sf)}일 연속 순매도 중</div><div class="streak-sub" style="color:#791F1F;">이탈 흐름 · 주의 필요</div></div>
@@ -517,7 +518,7 @@ function renderSupplyDetail(d, el) {
     </div>
 
     <div class="summary-row">
-      <div class="sum-card"><div class="sum-label">${days}일 순매수</div><div class="sum-val ${tf>=0?'up':'down'}">${tf>=0?'+':''}${fmtEok(tf)}</div></div>
+      <div class="sum-card"><div class="sum-label">${days}일 순매수</div><div class="sum-val ${tf>=0?'up':'down'}">${tf>=0?'+':''}${fmtInv(tf,unit)}</div></div>
       <div class="sum-card"><div class="sum-label">연속 ${sf>=0?'매수':'매도'}일</div><div class="sum-val" style="color:#3C3489;">${Math.abs(sf)}일</div></div>
       <div class="sum-card"><div class="sum-label">매수 우위일</div><div class="sum-val up">${bdf}일</div></div>
     </div>
@@ -529,8 +530,8 @@ function renderSupplyDetail(d, el) {
     <div class="section">
       <div class="sec-title"><i class="ti ti-calculator" style="font-size:15px;color:#5B5BD6;"></i>누적 현황 (${days}일)</div>
       <div class="cumul-row">
-        <div class="cumul-card"><div class="cumul-label">외국인 누적</div><div class="cumul-val ${tf>=0?'up':'down'}">${tf>=0?'+':''}${fmtEok(tf)}</div><div class="cumul-sub">매수 우위 ${bdf}일</div></div>
-        <div class="cumul-card"><div class="cumul-label">기관 누적</div><div class="cumul-val ${ti>=0?'up':'down'}">${ti>=0?'+':''}${fmtEok(ti)}</div><div class="cumul-sub">매수 우위 ${bdi}일</div></div>
+        <div class="cumul-card"><div class="cumul-label">외국인 누적</div><div class="cumul-val ${tf>=0?'up':'down'}">${tf>=0?'+':''}${fmtInv(tf,unit)}</div><div class="cumul-sub">매수 우위 ${bdf}일</div></div>
+        <div class="cumul-card"><div class="cumul-label">기관 누적</div><div class="cumul-val ${ti>=0?'up':'down'}">${ti>=0?'+':''}${fmtInv(ti,unit)}</div><div class="cumul-sub">매수 우위 ${bdi}일</div></div>
         <div class="cumul-card"><div class="cumul-label">동반 매수일</div><div class="cumul-val" style="color:#3C3489;">${bothBuy}일</div><div class="cumul-sub">전체의 ${Math.round(bothBuy/days*100)}%</div></div>
         <div class="cumul-card"><div class="cumul-label">동반 매도일</div><div class="cumul-val" style="color:#8E8E9A;">${bothSell}일</div><div class="cumul-sub">전체의 ${Math.round(bothSell/days*100)}%</div></div>
       </div>

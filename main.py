@@ -303,17 +303,22 @@ def supply_detail():
     try:
         inv_df = get_kospi_investor(days=35)
         rows = []
+        disp_unit = "억"
         if inv_df is not None and not inv_df.empty:
+            unit = inv_df["_unit"].iloc[0] if "_unit" in inv_df.columns else "qty"
             for dt, row in inv_df.tail(25).iterrows():
-                f_raw = int(row.get("외국인", 0))
-                i_raw = int(row.get("기관", 0))
-                scale = 1e8
-                if abs(f_raw) < 1e6:
-                    scale = 100
+                f_raw = float(row.get("외국인", 0))
+                i_raw = float(row.get("기관", 0))
+                if unit == "won":
+                    f_val, i_val, disp_unit = round(f_raw/1e8, 0), round(i_raw/1e8, 0), "억"
+                elif abs(f_raw) > 0 and abs(f_raw) < 1e6:
+                    f_val, i_val, disp_unit = round(f_raw/100, 0), round(i_raw/100, 0), "억"
+                else:
+                    f_val, i_val, disp_unit = round(f_raw/10000, 1), round(i_raw/10000, 1), "만주"
                 rows.append({
                     "date": str(dt)[:10],
-                    "foreign": round(f_raw / scale, 1),
-                    "inst":    round(i_raw / scale, 1),
+                    "foreign": f_val,
+                    "inst":    i_val,
                 })
 
         # 집계 계산
@@ -343,7 +348,8 @@ def supply_detail():
             streak_txt = f"외국인 {streak_f}일 연속 순매수로 매집 흐름이 이어지고 있어요. "
         elif streak_f < -2:
             streak_txt = f"외국인 {abs(streak_f)}일 연속 순매도로 이탈 흐름이 감지돼요. "
-        advice = f"{streak_txt}25일 누적 외국인 {total_f:+.0f}억, 기관 {total_i:+.0f}억. " + (
+        unit_label = disp_unit
+        advice = f"{streak_txt}25일 누적 외국인 {total_f:+.1f}{unit_label}, 기관 {total_i:+.1f}{unit_label}. " + (
             "외국인·기관 동반 매수 흐름으로 수급 기반이 탄탄해요." if both_buy > 10 else
             "외국인·기관 엇갈린 흐름이 이어지고 있어요. 방향 확인이 필요해요." if both_sell < 3 else
             "외국인·기관이 함께 매도하는 날이 많아요. 조심이 필요한 시점이에요."
@@ -351,6 +357,7 @@ def supply_detail():
 
         return {
             "rows": rows,
+            "unit": disp_unit,
             "total_foreign": round(total_f, 1),
             "total_inst": round(total_i, 1),
             "buy_days_foreign": buy_days_f,
