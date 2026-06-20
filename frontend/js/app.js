@@ -478,6 +478,7 @@ function renderSupplyDetail(d, el) {
     });
 
     // 상세 테이블 (최근 8일)
+    const singleGrid = 'grid-template-columns:44px 1fr auto';
     const tableRows = [...rows].reverse().slice(0, 8).map(r => {
       const fv = r.foreign, iv = r.inst;
       const activeVal = tab === 'inst' ? iv : fv;
@@ -511,7 +512,6 @@ function renderSupplyDetail(d, el) {
       }
     }
 
-    const singleGrid = 'grid-template-columns:44px 1fr auto';
     const tableHeader = tab === 'both'
       ? `<div class="day-header"><span>날짜</span><span>외국인</span><span style="text-align:right;">기관</span><span style="text-align:right;">동반</span></div>`
       : tab === 'inst'
