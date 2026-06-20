@@ -461,6 +461,19 @@ def get_holdings_list(user=Depends(get_current_user)):
         pnl_pct = (pnl / cost * 100) if cost > 0 else 0
         total_value += value
         total_cost += cost
+        # 미니 분석 (카드에 RSI/이격도/지지선 표시용)
+        try:
+            ohlcv = get_ohlcv(code, days=60)
+            inv   = get_investor_trading(code, days=5)
+            a     = analyze_stock(ohlcv, inv, h["avg_price"], h["qty"])
+            rsi       = round(a.get("rsi", 50), 1)
+            gap20     = round(a.get("gap20", 100), 1)
+            ma20      = a.get("ma20")
+            ma60      = a.get("ma60")
+            boll      = a.get("bollinger", {})
+            badges    = a.get("badges", [])
+        except Exception:
+            rsi = 50; gap20 = 100; ma20 = None; ma60 = None; boll = {}; badges = []
         result.append({
             **h,
             "cur_price": cur_price,
@@ -468,6 +481,12 @@ def get_holdings_list(user=Depends(get_current_user)):
             "value": value,
             "pnl": pnl,
             "pnl_pct": round(pnl_pct, 2),
+            "rsi": rsi,
+            "gap20": gap20,
+            "ma20": ma20,
+            "ma60": ma60,
+            "boll_lower": boll.get("lower"),
+            "badges": badges,
         })
     total_pnl = total_value - total_cost
     total_pnl_pct = (total_pnl / total_cost * 100) if total_cost > 0 else 0

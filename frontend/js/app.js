@@ -1218,26 +1218,63 @@ function filterHoldings(filter, btn) {
 }
 
 function renderHoldings() {
+  const all = _allHoldings;
+  const profit  = all.filter(h => (h.pnl_pct || 0) >= 0);
+  const loss    = all.filter(h => (h.pnl_pct || 0) < 0);
+  const sellSig = all.filter(h => (h.badges||[]).some(b => b.type === 'sell' || b.type === 'warn'));
+
+  let sections;
+  if (_holdingsFilter === '수익')       sections = [['수익 중인 종목', profit]];
+  else if (_holdingsFilter === '손실')  sections = [['손실 중인 종목', loss]];
+  else if (_holdingsFilter === '매도신호') sections = [['매도신호 종목', sellSig]];
+  else sections = [['수익 중인 종목', profit], ['손실 중인 종목', loss]];
+
   const el = document.getElementById('holdings-content');
-  let list = _allHoldings;
-  if (_holdingsFilter === '수익') list = list.filter(h => h.pnl >= 0);
-  else if (_holdingsFilter === '손실') list = list.filter(h => h.pnl < 0);
-  if (!list.length) {
-    el.innerHTML = '<div class="empty-state"><i class="ti ti-briefcase"></i>종목을 추가해보세요</div>';
+  const hasAny = sections.some(([,items]) => items.length > 0);
+  if (!hasAny) {
+    el.innerHTML = '<div class="empty-state"><i class="ti ti-briefcase"></i>해당하는 종목이 없습니다</div>';
     return;
   }
-  const profit = list.filter(h => h.pnl >= 0);
-  const loss = list.filter(h => h.pnl < 0);
   let html = '';
-  if (profit.length) html += `<div class="section"><div class="sec-label">수익 중인 종목</div>${profit.map(holdingCard).join('')}</div>`;
-  if (loss.length) html += `<div class="section"><div class="sec-label">손실 중인 종목</div>${loss.map(holdingCard).join('')}</div>`;
+  for (const [lbl, items] of sections) {
+    if (!items.length) continue;
+    html += `<div class="section"><div class="sec-label">${lbl}</div>${items.map(holdingCard).join('')}</div>`;
+  }
   el.innerHTML = html;
 }
-
 function holdingCard(h) {
   const pnlPct = h.pnl_pct || 0;
   const barWidth = Math.min(Math.abs(pnlPct) * 2, 100);
   const barColor = pnlPct >= 0 ? '#E24B4A' : '#185FA5';
+  const rsi = h.rsi || 50;
+  const gap20 = h.gap20 || 100;
+  const cur = h.cur_price || h.avg_price;
+
+  // RSI 색상
+  const rsiColor = rsi >= 70 ? '#E24B4A' : rsi <= 30 ? '#185FA5' : rsi >= 60 ? '#BA7517' : '#3B6D11';
+
+  // 지지선 거리 칩
+  let supChips = '';
+  if (h.ma20) {
+    const d = (cur - h.ma20) / h.ma20 * 100;
+    supChips += `<span class="sup-chip">20일선 <span class="${d>=0?'up':'down'}">${d>=0?'+':''}${d.toFixed(1)}%</span></span>`;
+  }
+  if (h.ma60) {
+    const d = (cur - h.ma60) / h.ma60 * 100;
+    supChips += `<span class="sup-chip">60일선 <span class="${d>=0?'up':'down'}">${d>=0?'+':''}${d.toFixed(1)}%</span></span>`;
+  }
+  if (h.boll_lower) {
+    const d = (cur - h.boll_lower) / h.boll_lower * 100;
+    supChips += `<span class="sup-chip">볼하단 <span class="${d>=0?'up':'down'}">${d>=0?'+':''}${d.toFixed(1)}%</span></span>`;
+  }
+
+  // 분석 배지 (최대 2개)
+  const bdgMap = {sell:'badge-sell', warn:'badge-warn', buy:'badge-buy', ok:'badge-ok'};
+  const badgesArr = Array.isArray(h.badges) ? h.badges : [];
+  const badgesHtml = badgesArr.slice(0,2).map(b =>
+    `<span class="badge ${bdgMap[b.type]||'badge-ok'}">${b.text}</span>`
+  ).join('') || `<span class="badge ${pnlPct>=0?'badge-ok':'badge-sell'}">${pnlPct>=0?'수익 중':'손실 중'}</span>`;
+
   return `<div class="card clickable" onclick="openHoldingDetail('${h.code}', '${h.name}')">
     <div class="card-top">
       <div class="stock-icon ${iconColors(h.name)}">${iconText(h.name)}</div>
@@ -1246,23 +1283,23 @@ function holdingCard(h) {
         <div class="stock-sub">평단 ${fmtNum(h.avg_price)}원 · ${h.qty}주</div>
       </div>
       <div class="stock-right">
-        <div class="stock-price">${fmtNum(h.value)}원</div>
+        <div class="stock-price">${fmtNum(cur)}원</div>
         <div class="stock-change ${pnlClass(pnlPct)}">${pnlPct>=0?'▲':'▼'} ${fmtPct(Math.abs(pnlPct))}</div>
       </div>
     </div>
     <div class="mini-grid">
       <div class="mini-item"><div class="mini-label">평가손익</div><div class="mini-val ${pnlClass(h.pnl)}">${fmtPnl(h.pnl)}</div></div>
-      <div class="mini-item"><div class="mini-label">현재가</div><div class="mini-val">${fmtNum(h.cur_price)}</div></div>
-      <div class="mini-item"><div class="mini-label">수익률</div><div class="mini-val ${pnlClass(pnlPct)}">${fmtPct(pnlPct)}</div></div>
+      <div class="mini-item"><div class="mini-label">RSI</div><div class="mini-val" style="color:${rsiColor};">${rsi.toFixed(0)}</div></div>
+      <div class="mini-item"><div class="mini-label">이격도</div><div class="mini-val">${gap20.toFixed(0)}%</div></div>
     </div>
     <div class="pnl-bar-wrap"><div class="pnl-bar" style="width:${barWidth}%;background:${barColor};"></div></div>
+    ${supChips ? `<div class="support-mini">${supChips}</div>` : ''}
     <div class="card-bottom">
-      <div class="signal-badges"><span class="badge ${pnlPct>=0?'badge-ok':'badge-sell'}">${pnlPct>=0?'수익 중':'손실 중'}</span></div>
+      <div class="signal-badges">${badgesHtml}</div>
       <i class="ti ti-chevron-right" style="color:#C7C7CC;font-size:18px;"></i>
     </div>
   </div>`;
 }
-
 function openHoldingDetail(code, name) {
   _prevScreen = 'holdings';
   showScreen('holding-detail');
