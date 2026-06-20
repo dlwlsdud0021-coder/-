@@ -34,7 +34,7 @@ def _get_gemini():
             import google.generativeai as genai
             genai.configure(api_key=_GEMINI_KEY)
             _gemini_model = genai.GenerativeModel(
-                "gemini-1.5-flash-latest",
+                "gemini-2.0-flash",
                 generation_config={"temperature": 0.4, "max_output_tokens": 1500},
             )
         except Exception:
