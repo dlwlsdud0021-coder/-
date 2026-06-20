@@ -160,6 +160,34 @@ def get_ohlcv(code: str, period: str = "D", count: int = 60) -> list[dict]:
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 외국인·기관 수급
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+def get_investor_trading_value(code: str, days: int = 25) -> list[dict]:
+    """외국인·기관 일별 순매수 거래대금 (단위: 백만원)"""
+    end_date = datetime.today().strftime("%Y%m%d")
+    start_date = (datetime.today() - timedelta(days=days + 10)).strftime("%Y%m%d")
+    url = f"{BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor"
+    params = {
+        "fid_cond_mrkt_div_code": "J",
+        "fid_input_iscd": code,
+        "fid_input_date_1": start_date,
+        "fid_input_date_2": end_date,
+    }
+    try:
+        resp = requests.get(url, headers=_headers("FHKST01010900"), params=params)
+        resp.raise_for_status()
+        rows = resp.json().get("output", [])
+        result = []
+        for r in rows[:days]:
+            result.append({
+                "date": r["stck_bsop_date"],
+                "foreign_net": int(r.get("frgn_ntby_tr_pbmn", 0)),   # 백만원
+                "institution_net": int(r.get("orgn_ntby_tr_pbmn", 0)),
+            })
+        return result
+    except Exception as e:
+        print(f"[KIS] get_investor_trading_value({code}) 오류: {e}")
+        return []
+
+
 def get_investor_trading(code: str, days: int = 25) -> list[dict]:
     """
     외국인·기관 일별 순매수 조회

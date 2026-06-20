@@ -38,7 +38,7 @@ function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + id).classList.add('active');
   const nav = document.getElementById('bottom-nav');
-  const noNav = ['login', 'register', 'holding-detail', 'watchlist-detail', 'news-detail', 'index-detail', 'forecast-detail'];
+  const noNav = ['login', 'register', 'holding-detail', 'watchlist-detail', 'news-detail', 'index-detail', 'forecast-detail', 'supply-detail'];
   nav.style.display = noNav.includes(id) ? 'none' : 'flex';
 }
 
@@ -281,9 +281,16 @@ function renderHome(d, el) {
     ${investorHtml}`;
 }
 
+function fmtEok(v) {
+  // 이미 억원 단위로 정규화된 값 표시
+  const abs = Math.abs(v);
+  if (abs >= 10000) return (v/10000).toFixed(1) + '조';
+  if (abs >= 1)     return v.toFixed(0) + '억';
+  return (v * 100).toFixed(0) + '백만';
+}
+
 function buildInvestorSection(investor) {
   if (!investor || !investor.length) return '';
-  // 최근 5일 합계로 방향 판단
   const total5 = investor.reduce((acc, r) => ({
     foreign: acc.foreign + (r.foreign || 0),
     inst: acc.inst + (r.inst || 0),
@@ -296,32 +303,42 @@ function buildInvestorSection(investor) {
   const rows = [...investor].reverse().map(r => {
     const fc = r.foreign > 0 ? 'up' : 'down';
     const ic = r.inst > 0 ? 'up' : 'down';
-    const f = (r.foreign / 1e8).toFixed(0);
-    const i = (r.inst / 1e8).toFixed(0);
-    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid #F0F0F5;font-size:13px;">
-      <span style="color:#8E8E9A;min-width:56px;">${r.date.slice(5)}</span>
-      <span class="${fc}" style="flex:1;text-align:center;">외국인<br><b>${r.foreign>0?'+':''}${f}억</b></span>
-      <span class="${ic}" style="flex:1;text-align:center;">기관<br><b>${r.inst>0?'+':''}${i}억</b></span>
+    return `<div style="display:grid;grid-template-columns:44px 1fr 80px 80px;gap:4px;align-items:center;padding:8px 0;border-bottom:0.5px solid #F0F0F5;font-size:12px;">
+      <span style="color:#8E8E9A;">${r.date.slice(5)}</span>
+      <div style="height:5px;background:#F0F0F5;border-radius:3px;overflow:hidden;">
+        <div style="height:5px;border-radius:3px;width:${Math.min(Math.abs(r.foreign)/Math.max(Math.abs(total5.foreign/5),1)*60+20,90)}%;background:${r.foreign>=0?'rgba(226,75,74,0.4)':'rgba(24,95,165,0.3)'};"></div>
+      </div>
+      <span class="${fc}" style="text-align:right;font-weight:600;">${r.foreign>=0?'+':''}${fmtEok(r.foreign)}</span>
+      <span class="${ic}" style="text-align:right;font-weight:600;">${r.inst>=0?'+':''}${fmtEok(r.inst)}</span>
     </div>`;
   }).join('');
 
   return `
     <div class="section">
-      <div class="sec-title"><i class="ti ti-users" style="font-size:15px;color:#5B5BD6;"></i>외국인·기관 수급 (5일)</div>
-      <div class="card">
+      <div class="sec-title clickable" onclick="openSupplyDetail()" style="cursor:pointer;">
+        <i class="ti ti-users" style="font-size:15px;color:#5B5BD6;"></i>외국인·기관 수급 (5일)
+        <i class="ti ti-chevron-right" style="font-size:13px;color:#C7C7CC;margin-left:auto;"></i>
+      </div>
+      <div class="card clickable" onclick="openSupplyDetail()" style="cursor:pointer;">
         <div style="display:flex;gap:10px;margin-bottom:12px;">
           <div style="flex:1;text-align:center;padding:10px 6px;background:#F8F8FA;border-radius:10px;">
-            <div style="font-size:11px;color:#8E8E9A;margin-bottom:4px;">외국인 5일 합계</div>
-            <div class="${fCls}" style="font-size:16px;font-weight:700;">${total5.foreign>0?'+':''}${(total5.foreign/1e8).toFixed(0)}억</div>
+            <div style="font-size:10px;color:#8E8E9A;margin-bottom:4px;">외국인 5일 합계</div>
+            <div class="${fCls}" style="font-size:17px;font-weight:700;">${total5.foreign>=0?'+':''}${fmtEok(total5.foreign)}</div>
             <div class="${fCls}" style="font-size:11px;">${fDir}</div>
           </div>
           <div style="flex:1;text-align:center;padding:10px 6px;background:#F8F8FA;border-radius:10px;">
-            <div style="font-size:11px;color:#8E8E9A;margin-bottom:4px;">기관 5일 합계</div>
-            <div class="${iCls}" style="font-size:16px;font-weight:700;">${total5.inst>0?'+':''}${(total5.inst/1e8).toFixed(0)}억</div>
+            <div style="font-size:10px;color:#8E8E9A;margin-bottom:4px;">기관 5일 합계</div>
+            <div class="${iCls}" style="font-size:17px;font-weight:700;">${total5.inst>=0?'+':''}${fmtEok(total5.inst)}</div>
             <div class="${iCls}" style="font-size:11px;">${iDir}</div>
           </div>
         </div>
+        <div style="display:grid;grid-template-columns:44px 1fr 80px 80px;gap:4px;padding-bottom:6px;border-bottom:0.5px solid #E5E5EA;font-size:10px;color:#8E8E9A;">
+          <span>날짜</span><span>추세</span><span style="text-align:right;">외국인</span><span style="text-align:right;">기관</span>
+        </div>
         ${rows}
+        <div style="text-align:center;margin-top:10px;font-size:11px;color:#5B5BD6;font-weight:600;">
+          25일 상세 보기 <i class="ti ti-arrow-right" style="font-size:11px;"></i>
+        </div>
       </div>
     </div>`;
 }
@@ -385,6 +402,146 @@ function renderNews() {
 }
 
 // ─────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────
+// 수급 상세 화면
+// ─────────────────────────────────────────────────────────
+async function openSupplyDetail() {
+  _currentTab = 'home';
+  showScreen('supply-detail');
+  const el = document.getElementById('supply-detail-content');
+  el.innerHTML = '<div class="loading" style="padding:40px;"><div class="spinner"></div> 수급 데이터 불러오는 중...</div>';
+  try {
+    const d = await api('GET', '/api/supply');
+    renderSupplyDetail(d, el);
+  } catch(e) {
+    el.innerHTML = `<div style="padding:24px;color:#8E8E9A;">수급 데이터를 불러오지 못했습니다.<br>${e.message}</div>`;
+  }
+}
+
+function renderSupplyDetail(d, el) {
+  const rows = Array.isArray(d.rows) ? d.rows : [];
+  const tf = d.total_foreign || 0;
+  const ti = d.total_inst || 0;
+  const bdf = d.buy_days_foreign || 0;
+  const bdi = d.buy_days_inst || 0;
+  const bothBuy = d.both_buy || 0;
+  const bothSell = d.both_sell || 0;
+  const sf = d.streak_foreign || 0;
+  const days = d.days || rows.length;
+
+  // 최대값 (바 차트 스케일)
+  const maxAbs = Math.max(...rows.map(r => Math.max(Math.abs(r.foreign), Math.abs(r.inst))), 1);
+
+  // 현재 탭 상태
+  let activeTab = 'foreign';
+
+  function buildTabContent(tab) {
+    // 바 차트
+    const barCols = rows.map(r => {
+      const val = tab === 'foreign' ? r.foreign : tab === 'inst' ? r.inst : null;
+      const bothVal = tab === 'both' ? (r.foreign > 0 && r.inst > 0 ? r.foreign : r.foreign < 0 && r.inst < 0 ? r.foreign : 0) : null;
+      const v = tab === 'both' ? (r.foreign > 0 && r.inst > 0 ? 1 : r.foreign < 0 && r.inst < 0 ? -1 : 0) : val;
+      const h = Math.min(Math.abs(val||0) / maxAbs * 90, 90);
+      const isUp = (val||0) >= 0;
+      const label = r.date.slice(5);
+      return `<div class="bar-col">
+        ${isUp ? `<div class="bar-up" style="height:${h}px;background:rgba(226,75,74,${0.3+h/90*0.5});"></div>` : `<div style="flex:1;"></div>`}
+        <div class="zero-line"></div>
+        ${!isUp ? `<div class="bar-down" style="height:${h}px;background:rgba(24,95,165,${0.3+h/90*0.4});"></div>` : ''}
+        <div class="bar-label">${label}</div>
+      </div>`;
+    });
+
+    // 상세 테이블 (최근 8일)
+    const tableRows = [...rows].reverse().slice(0, 8).map(r => {
+      const fv = r.foreign, iv = r.inst;
+      const fCls = fv >= 0 ? 'up' : 'down';
+      const iCls = iv >= 0 ? 'up' : 'down';
+      const barW = Math.min(Math.max(Math.abs(fv) / maxAbs * 80, 5), 80);
+      const barCls = fv >= 0 ? 'bar-buy' : 'bar-sell';
+      return `<div class="day-row">
+        <span class="day-date">${r.date.slice(5)}</span>
+        <div class="net-bar-bg"><div class="net-bar ${barCls}" style="width:${barW}%;"></div></div>
+        <span class="${fCls}" style="text-align:right;font-weight:600;">${fv>=0?'+':''}${fmtEok(fv)}</span>
+        <span class="${iCls}" style="text-align:right;font-weight:600;">${iv>=0?'+':''}${fmtEok(iv)}</span>
+      </div>`;
+    }).join('');
+
+    return `
+      <div class="chart-area">
+        <div class="chart-title"><i class="ti ti-chart-bar" style="font-size:14px;color:#5B5BD6;"></i>일별 ${tab==='foreign'?'외국인':tab==='inst'?'기관':'동반'} 순매수</div>
+        <div class="bar-chart">${barCols.join('')}</div>
+        <div class="legend-row">
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(226,75,74,0.6);"></div>순매수</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(24,95,165,0.4);"></div>순매도</div>
+        </div>
+      </div>
+      ${sf > 2 ? `<div class="streak-box">
+        <div class="streak-icon"><i class="ti ti-flame" style="font-size:20px;"></i></div>
+        <div><div class="streak-title">외국인 ${sf}일 연속 순매수 중</div><div class="streak-sub">누적 ${tf>=0?'+':''}${fmtEok(tf)} · ${sf>=5?'강한 매집 신호':'지속 관찰 필요'}</div></div>
+      </div>` : sf < -2 ? `<div class="streak-box" style="background:#FCEBEB;">
+        <div class="streak-icon" style="background:#E24B4A;"><i class="ti ti-trending-down" style="font-size:20px;"></i></div>
+        <div><div class="streak-title" style="color:#A32D2D;">외국인 ${Math.abs(sf)}일 연속 순매도 중</div><div class="streak-sub" style="color:#791F1F;">이탈 흐름 · 주의 필요</div></div>
+      </div>` : ''}
+      <div class="section">
+        <div class="sec-title"><i class="ti ti-list-details" style="font-size:15px;color:#5B5BD6;"></i>일별 상세 (최근 8일)</div>
+        <div class="card">
+          <div class="day-header"><span>날짜</span><span>추세</span><span style="text-align:right;">외국인</span><span style="text-align:right;">기관</span></div>
+          ${tableRows}
+        </div>
+      </div>`;
+  }
+
+  const today = new Date().toLocaleDateString('ko-KR', {year:'numeric', month:'2-digit', day:'2-digit'}).replace(/\. /g,'.').replace('.','');
+
+  el.innerHTML = `
+    <div style="padding:14px 16px 10px;background:#fff;border-bottom:0.5px solid #E5E5EA;">
+      <div style="font-size:14px;font-weight:700;">외국인·기관 수급 흐름</div>
+      <div style="font-size:11px;color:#8E8E9A;margin-top:2px;">KOSPI ${days}일 기준</div>
+    </div>
+
+    <div class="tab-row" style="display:flex;padding:10px 16px;gap:6px;background:#fff;border-bottom:0.5px solid #E5E5EA;">
+      <button id="tab-foreign" class="tab active" onclick="switchSupplyTab('foreign')">외국인</button>
+      <button id="tab-inst" class="tab inactive" onclick="switchSupplyTab('inst')">기관</button>
+      <button id="tab-both" class="tab inactive" onclick="switchSupplyTab('both')">동반매수</button>
+    </div>
+
+    <div class="summary-row">
+      <div class="sum-card"><div class="sum-label">${days}일 순매수</div><div class="sum-val ${tf>=0?'up':'down'}">${tf>=0?'+':''}${fmtEok(tf)}</div></div>
+      <div class="sum-card"><div class="sum-label">연속 ${sf>=0?'매수':'매도'}일</div><div class="sum-val" style="color:#3C3489;">${Math.abs(sf)}일</div></div>
+      <div class="sum-card"><div class="sum-label">매수 우위일</div><div class="sum-val up">${bdf}일</div></div>
+    </div>
+
+    <div id="supply-tab-content">
+      ${buildTabContent('foreign')}
+    </div>
+
+    <div class="section">
+      <div class="sec-title"><i class="ti ti-calculator" style="font-size:15px;color:#5B5BD6;"></i>누적 현황 (${days}일)</div>
+      <div class="cumul-row">
+        <div class="cumul-card"><div class="cumul-label">외국인 누적</div><div class="cumul-val ${tf>=0?'up':'down'}">${tf>=0?'+':''}${fmtEok(tf)}</div><div class="cumul-sub">매수 우위 ${bdf}일</div></div>
+        <div class="cumul-card"><div class="cumul-label">기관 누적</div><div class="cumul-val ${ti>=0?'up':'down'}">${ti>=0?'+':''}${fmtEok(ti)}</div><div class="cumul-sub">매수 우위 ${bdi}일</div></div>
+        <div class="cumul-card"><div class="cumul-label">동반 매수일</div><div class="cumul-val" style="color:#3C3489;">${bothBuy}일</div><div class="cumul-sub">전체의 ${Math.round(bothBuy/days*100)}%</div></div>
+        <div class="cumul-card"><div class="cumul-label">동반 매도일</div><div class="cumul-val" style="color:#8E8E9A;">${bothSell}일</div><div class="cumul-sub">전체의 ${Math.round(bothSell/days*100)}%</div></div>
+      </div>
+    </div>
+
+    ${d.advice ? `<div class="advice-box">
+      <div class="advice-title"><i class="ti ti-bulb" style="font-size:15px;"></i>시스템 판단</div>
+      <div class="advice-text">${d.advice}</div>
+    </div>` : ''}
+    <div style="height:24px;"></div>`;
+
+  // 탭 전환 함수 (전역 등록)
+  window.switchSupplyTab = function(tab) {
+    ['foreign','inst','both'].forEach(t => {
+      const btn = document.getElementById('tab-'+t);
+      if (btn) { btn.className = 'tab ' + (t===tab?'active':'inactive'); }
+    });
+    document.getElementById('supply-tab-content').innerHTML = buildTabContent(tab);
+  };
+}
+
 // 예측 상세 + 히스토리
 // ─────────────────────────────────────────────────────────
 async function openForecastDetail() {

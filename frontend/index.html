@@ -212,6 +212,44 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
 .metric-label { font-size: 9px; color: #8E8E93; }
 .metric-val { font-size: 12px; font-weight: 600; margin-top: 1px; }
 
+/* ── 수급 상세 ── */
+.tab-row { display:flex; padding:10px 16px; gap:6px; background:#fff; border-bottom:0.5px solid #E5E5EA; }
+.tab { padding:6px 16px; border-radius:20px; font-size:12px; font-weight:500; border:none; cursor:pointer; }
+.tab.active { background:#5B5BD6; color:#fff; }
+.tab.inactive { background:#F0F0F5; color:#6B6B8A; }
+.summary-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:12px 16px; }
+.sum-card { background:#fff; border-radius:12px; padding:10px 12px; border:0.5px solid #E5E5EA; text-align:center; }
+.sum-label { font-size:10px; color:#8E8E93; margin-bottom:3px; }
+.sum-val { font-size:15px; font-weight:700; }
+.chart-area { background:#fff; margin:0 16px 8px; border-radius:16px; padding:14px 16px; border:0.5px solid #E5E5EA; }
+.chart-title { font-size:12px; font-weight:600; margin-bottom:10px; display:flex; align-items:center; gap:5px; }
+.bar-chart { display:flex; align-items:flex-end; gap:2px; height:100px; padding:0 2px; }
+.bar-col { display:flex; flex-direction:column; align-items:center; flex:1; gap:0; min-width:0; }
+.bar-up { border-radius:2px 2px 0 0; width:100%; }
+.bar-down { border-radius:0 0 2px 2px; width:100%; }
+.zero-line { height:1px; background:#E5E5EA; width:100%; flex-shrink:0; }
+.bar-label { font-size:7px; color:#C7C7CC; margin-top:2px; white-space:nowrap; }
+.legend-row { display:flex; gap:12px; margin-top:8px; }
+.legend-item { display:flex; align-items:center; gap:4px; font-size:10px; color:#6B6B8A; }
+.legend-dot { width:8px; height:8px; border-radius:2px; }
+.streak-box { background:#EEEDFE; border-radius:12px; padding:12px 14px; margin:0 16px 8px; display:flex; align-items:center; gap:12px; }
+.streak-icon { width:36px; height:36px; background:#5B5BD6; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:18px; flex-shrink:0; }
+.streak-title { font-size:13px; font-weight:600; color:#3C3489; }
+.streak-sub { font-size:11px; color:#534AB7; margin-top:2px; }
+.day-row { display:grid; grid-template-columns:44px 1fr 72px 72px; gap:4px; align-items:center; padding:7px 0; border-bottom:0.5px solid #F0F0F5; font-size:11px; }
+.day-row:last-child { border-bottom:none; }
+.day-header { display:grid; grid-template-columns:44px 1fr 72px 72px; gap:4px; padding:0 0 6px; border-bottom:0.5px solid #E5E5EA; margin-bottom:2px; font-size:10px; color:#8E8E93; font-weight:500; }
+.day-date { color:#8E8E93; }
+.net-bar-bg { height:5px; background:#F0F0F5; border-radius:3px; overflow:hidden; }
+.net-bar { height:5px; border-radius:3px; }
+.cumul-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:0 16px; margin-bottom:8px; }
+.cumul-card { background:#F8F8FA; border-radius:10px; padding:10px 12px; }
+.cumul-label { font-size:10px; color:#8E8E93; margin-bottom:3px; }
+.cumul-val { font-size:14px; font-weight:700; }
+.cumul-sub { font-size:10px; color:#8E8E93; margin-top:2px; }
+.advice-box { background:#EEEDFE; border-radius:14px; padding:14px 16px; margin:0 16px 8px; }
+.advice-title { font-size:13px; font-weight:600; color:#3C3489; margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.advice-text { font-size:11px; color:#534AB7; line-height:1.6; }
 /* ── 기술 지표 ── */
 .ind-row { display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:0.5px solid #F0F0F5; }
 .ind-row:last-child { border-bottom:none; }
@@ -414,6 +452,16 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
     <button class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left"></i> 뉴스</button>
   </div>
   <div id="news-detail-content" class="scroll-area" style="padding-bottom:32px;"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     수급 상세
+════════════════════════════════════════════════════════ -->
+<div id="screen-supply-detail" class="screen">
+  <div class="detail-header">
+    <button class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left"></i> 홈</button>
+  </div>
+  <div id="supply-detail-content" class="scroll-area" style="padding-bottom:32px;"></div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════

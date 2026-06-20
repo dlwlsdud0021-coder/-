@@ -147,17 +147,24 @@ def home_data():
             kp_hist = None
             ma = {}
 
-        # 외국인/기관 수급 최근 5일
+        # 외국인/기관 수급 최근 5일 (억원 단위로 정규화)
         investor = []
         try:
-            inv_df = get_kospi_investor(days=10)
+            inv_df = get_kospi_investor(days=30)
             if inv_df is not None and not inv_df.empty:
                 for dt, row in inv_df.tail(5).iterrows():
+                    f_raw = int(row.get("외국인", 0))
+                    i_raw = int(row.get("기관", 0))
+                    # 단위 감지: 절댓값이 1e6 이상이면 원(원화) 단위, 1e4 이상이면 백만원
+                    # KIS는 백만원, pykrx는 원 단위 가능성 모두 처리
+                    scale = 1e8  # 원 → 억
+                    if abs(f_raw) < 1e6:  # 백만원 단위로 판단
+                        scale = 100  # 백만원 → 억 (÷100)
                     investor.append({
                         "date": str(dt)[:10],
-                        "foreign": int(row.get("외국인", 0)),
-                        "inst": int(row.get("기관", 0)),
-                        "individual": int(row.get("개인", 0)) if "개인" in row else 0,
+                        "foreign": round(f_raw / scale, 1),   # 억원
+                        "inst":    round(i_raw / scale, 1),
+                        "individual": round(int(row.get("개인", 0)) / scale, 1) if "개인" in row else 0,
                     })
         except Exception:
             pass
@@ -267,6 +274,77 @@ def index_detail(name: str):
         }
     except Exception as e:
         return {"error": str(e), "name": name, "info": {}, "ma": {}, "investor": [], "sectors": [], "analysis": []}
+
+# ─────────────────────────────────────────────────────────
+# 외국인·기관 수급 25일 상세 API
+# ─────────────────────────────────────────────────────────
+@app.get("/api/supply")
+def supply_detail():
+    """KOSPI 외국인·기관 수급 25일 상세 (홈화면 클릭 시 진입)"""
+    try:
+        inv_df = get_kospi_investor(days=35)
+        rows = []
+        if inv_df is not None and not inv_df.empty:
+            for dt, row in inv_df.tail(25).iterrows():
+                f_raw = int(row.get("외국인", 0))
+                i_raw = int(row.get("기관", 0))
+                scale = 1e8
+                if abs(f_raw) < 1e6:
+                    scale = 100
+                rows.append({
+                    "date": str(dt)[:10],
+                    "foreign": round(f_raw / scale, 1),
+                    "inst":    round(i_raw / scale, 1),
+                })
+
+        # 집계 계산
+        total_f = sum(r["foreign"] for r in rows)
+        total_i = sum(r["inst"] for r in rows)
+        buy_days_f = sum(1 for r in rows if r["foreign"] > 0)
+        buy_days_i = sum(1 for r in rows if r["inst"] > 0)
+        both_buy  = sum(1 for r in rows if r["foreign"] > 0 and r["inst"] > 0)
+        both_sell = sum(1 for r in rows if r["foreign"] < 0 and r["inst"] < 0)
+
+        # 연속 순매수/매도일 (최근부터 역산)
+        streak_f, streak_i = 0, 0
+        for r in reversed(rows):
+            if r["foreign"] > 0 and streak_f >= 0: streak_f += 1
+            elif r["foreign"] < 0 and streak_f <= 0: streak_f -= 1
+            else: break
+        for r in reversed(rows):
+            if r["inst"] > 0 and streak_i >= 0: streak_i += 1
+            elif r["inst"] < 0 and streak_i <= 0: streak_i -= 1
+            else: break
+
+        # 시스템 판단 문구
+        f_trend = "순매수" if total_f > 0 else "순매도"
+        i_trend = "순매수" if total_i > 0 else "순매도"
+        streak_txt = ""
+        if streak_f > 2:
+            streak_txt = f"외국인 {streak_f}일 연속 순매수로 매집 흐름이 이어지고 있어요. "
+        elif streak_f < -2:
+            streak_txt = f"외국인 {abs(streak_f)}일 연속 순매도로 이탈 흐름이 감지돼요. "
+        advice = f"{streak_txt}25일 누적 외국인 {total_f:+.0f}억, 기관 {total_i:+.0f}억. " + (
+            "외국인·기관 동반 매수 흐름으로 수급 기반이 탄탄해요." if both_buy > 10 else
+            "외국인·기관 엇갈린 흐름이 이어지고 있어요. 방향 확인이 필요해요." if both_sell < 3 else
+            "외국인·기관이 함께 매도하는 날이 많아요. 조심이 필요한 시점이에요."
+        )
+
+        return {
+            "rows": rows,
+            "total_foreign": round(total_f, 1),
+            "total_inst": round(total_i, 1),
+            "buy_days_foreign": buy_days_f,
+            "buy_days_inst": buy_days_i,
+            "both_buy": both_buy,
+            "both_sell": both_sell,
+            "streak_foreign": streak_f,
+            "streak_inst": streak_i,
+            "advice": advice,
+            "days": len(rows),
+        }
+    except Exception as e:
+        return {"error": str(e), "rows": []}
 
 # ─────────────────────────────────────────────────────────
 # 시장 지수 API

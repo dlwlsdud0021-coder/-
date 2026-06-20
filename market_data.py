@@ -585,17 +585,17 @@ def get_kospi_investor(days: int = 25) -> pd.DataFrame:
     """KOSPI 전체 외국인/기관/개인 순매수 (홈 수급 탭용)
     1순위: KIS API, 2순위: pykrx
     """
-    # 1순위: KIS API — 삼성전자 등 대표종목 수급으로 KOSPI 전체 추정
+    # 1순위: KIS API — 거래대금(백만원) 기준으로 KOSPI 수급 추정
     try:
-        from kis_api import get_investor_trading as kis_inv
-        rows = kis_inv("005930", days)  # 삼성전자 기준
+        from kis_api import get_investor_trading_value as kis_inv_val
+        rows = kis_inv_val("005930", days)  # 삼성전자 거래대금 기준
         if rows:
             records = [{"날짜": pd.to_datetime(r["date"]),
-                        "외국인": r.get("foreign_net", 0),
-                        "기관": r.get("institution_net", 0)} for r in rows]
+                        "외국인": r.get("foreign_net", 0),   # 백만원 단위
+                        "기관":   r.get("institution_net", 0)} for r in rows]
             df = pd.DataFrame(records).set_index("날짜")
             df.index = pd.to_datetime(df.index)
-            _logger.info(f"[수급-KOSPI] KIS API 성공: {len(df)}행")
+            _logger.info(f"[수급-KOSPI] KIS 금액 성공: {len(df)}행")
             return df.tail(days)
     except Exception as e:
         _logger.warning(f"[수급-KOSPI] KIS API 실패: {e}")
