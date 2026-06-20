@@ -711,6 +711,89 @@ async function openIndexDetail(name) {
   }
 }
 
+// ─────────────────────────────────────────────────────────
+// 지표 용어 설명 모달
+// ─────────────────────────────────────────────────────────
+const _TERM_CONTENT = {
+  rsi: {
+    icon: '📊', title: 'RSI (상대강도지수)',
+    what: 'RSI는 주식 시장에서 최근 14거래일 동안 "오른 날의 평균 상승폭"과 "내린 날의 평균 하락폭"을 비교해서 0~100 사이 숫자로 표현한 지표예요.\n\n쉽게 말하면 — "시장이 지금 얼마나 달아올랐거나, 얼마나 지쳐있는가"를 수치로 보여주는 온도계 같은 거예요.',
+    levels: [
+      { dot: '#E24B4A', text: 'RSI 70 이상 → 과열 구간. 사람들이 너무 흥분해서 계속 사고 있는 상태예요. 고무줄이 한쪽으로 너무 당겨진 것처럼 조정이 올 수 있어요.' },
+      { dot: '#FF9F0A', text: 'RSI 50~70 → 상승 중인 정상 구간. 시장 분위기가 좋고 매수 압력이 강한 상태예요. 추세를 타고 있어요.' },
+      { dot: '#5B5BD6', text: 'RSI 30~50 → 하락 중인 정상 구간. 관망하는 분위기거나 약한 하락 흐름이에요. 급격한 움직임은 없어요.' },
+      { dot: '#185FA5', text: 'RSI 30 이하 → 과매도 구간. 사람들이 너무 팔아서 주가가 지나치게 내려온 상태예요. 반등 기회가 올 수 있어요.' },
+    ],
+  },
+  disp: {
+    icon: '📏', title: '이격도 (괴리율)',
+    what: '이격도는 현재 주가가 20일 이동평균선(최근 20거래일 평균 가격)보다 얼마나 위아래로 벗어나 있는지 보여주는 지표예요.\n\n쉽게 말하면 — 주가가 평균값에서 얼마나 "멀어졌는가"를 %로 나타낸 거예요. 용수철처럼 너무 늘어나면 다시 돌아오려는 힘이 생겨요.',
+    levels: [
+      { dot: '#E24B4A', text: '이격도 110% 이상 → 강한 과열. 평균선보다 10% 이상 위에 있어요. 지금 사면 고점 매수 위험이 있어요.' },
+      { dot: '#FF9F0A', text: '이격도 105~110% → 과열 주의. 상승세가 강하지만 조정이 올 수 있는 구간이에요.' },
+      { dot: '#5B5BD6', text: '이격도 97~105% → 정상 범위. 평균선 근처에서 안정적으로 움직이는 건강한 상태예요.' },
+      { dot: '#185FA5', text: '이격도 97% 이하 → 침체 구간. 평균선 아래에 있어요. 상대적으로 싸게 살 수 있는 구간일 수 있어요.' },
+    ],
+  },
+  r5: {
+    icon: '📈', title: '5일 누적 등락률',
+    what: '최근 5거래일(약 1주일) 동안 지수가 얼마나 올랐거나 내렸는지를 보여주는 지표예요.\n\n쉽게 말하면 — "이번 주에 시장이 얼마나 빠르게 움직였나?"를 알려주는 속도계예요. 너무 빠르면 쉬어갈 수 있어요.',
+    levels: [
+      { dot: '#E24B4A', text: '+10% 이상 → 급등 피로. 한 주에 너무 많이 올랐어요. 차익 실현 매물이 나올 수 있어요.' },
+      { dot: '#FF9F0A', text: '+5~10% → 강한 상승. 좋은 흐름이지만 눌림목(잠깐 조정)이 올 수 있어요.' },
+      { dot: '#5B5BD6', text: '-5~+5% → 정상 범위. 큰 이슈 없이 안정적인 흐름이에요.' },
+      { dot: '#185FA5', text: '-10% 이하 → 급락 과매도. 한 주에 너무 많이 내렸어요. 반등 기회가 올 수 있지만 추가 하락도 주의해야 해요.' },
+    ],
+  },
+  vol: {
+    icon: '📦', title: '거래량 (20일 평균비)',
+    what: '오늘 거래량이 최근 20일 평균 거래량에 비해 얼마나 많은지를 배수로 나타낸 지표예요.\n\n쉽게 말하면 — 평소보다 얼마나 많은 사람이 사고팔았는지 보여줘요. 거래량이 많다는 건 "관심이 높다"는 신호예요.',
+    levels: [
+      { dot: '#E24B4A', text: '1.5배 이상 → 매우 활발. 평소보다 훨씬 많이 거래됐어요. 중요한 이슈가 있거나 큰 세력이 움직이는 신호일 수 있어요.' },
+      { dot: '#5B5BD6', text: '0.8~1.5배 → 보통. 평소와 비슷한 수준이에요. 특이 신호 없이 평범한 하루예요.' },
+      { dot: '#8E8E9A', text: '0.6배 이하 → 관망. 거래가 적어요. 눈치를 보며 기다리는 분위기예요. 방향성이 아직 결정 안 된 상태예요.' },
+    ],
+  },
+};
+
+function showTermModal(type, val, valStr, statusLabel) {
+  const existing = document.getElementById('term-modal-overlay');
+  if (existing) existing.remove();
+
+  const content = _TERM_CONTENT[type];
+  if (!content) return;
+
+  const levelsHtml = content.levels.map(l => `
+    <div style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:0.5px solid #F0F0F5;">
+      <div style="width:10px;height:10px;border-radius:50%;background:${l.dot};flex-shrink:0;margin-top:4px;"></div>
+      <div style="font-size:12px;color:#3C3C43;line-height:1.7;">${l.text}</div>
+    </div>`).join('');
+
+  const overlay = document.createElement('div');
+  overlay.id = 'term-modal-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;display:flex;align-items:flex-end;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:420px;max-height:82vh;overflow-y:auto;padding:20px 20px 36px;">
+      <div style="width:36px;height:4px;background:#E5E5EA;border-radius:2px;margin:0 auto 16px;"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+        <span style="font-size:22px;">${content.icon}</span>
+        <div>
+          <div style="font-size:16px;font-weight:700;color:#1C1C1E;">${content.title}</div>
+          <div style="font-size:12px;color:#8E8E9A;margin-top:2px;">현재값: ${valStr} → ${statusLabel}</div>
+        </div>
+      </div>
+      <hr style="border:none;border-top:0.5px solid #F0F0F5;margin:12px 0;">
+      <div style="font-size:13px;font-weight:600;color:#1C1C1E;margin-bottom:8px;">${content.title.split('(')[0].trim()}가 뭐예요?</div>
+      <div style="font-size:13px;color:#3C3C43;line-height:1.8;white-space:pre-line;">${content.what}</div>
+      <hr style="border:none;border-top:0.5px solid #F0F0F5;margin:14px 0 10px;">
+      <div style="font-size:13px;font-weight:600;color:#1C1C1E;margin-bottom:4px;">숫자별로 어떤 의미예요?</div>
+      ${levelsHtml}
+      <button onclick="document.getElementById('term-modal-overlay').remove()" style="width:100%;margin-top:16px;padding:14px;background:#5B5BD6;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;">닫기</button>
+    </div>`;
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
 function renderIndexDetail(d, el) {
   const name = d.name || 'KOSPI';
   const info = d.info || {};
@@ -809,21 +892,22 @@ function renderIndexDetail(d, el) {
   // ── 외국인/기관 수급 ──
   let investorHtml = '';
   if (investor.length) {
+    const invUnit = investor[0]?.unit || '억';
+    const maxAbs = Math.max(...investor.map(x => Math.max(Math.abs(x.foreign||0), Math.abs(x.inst||0))), 1);
     const invRows = investor.slice().reverse().map(r => {
-      const fCls = r.foreign >= 0 ? 'up' : 'down';
-      const iCls = r.inst >= 0 ? 'up' : 'down';
-      const maxAbs = Math.max(...investor.map(x => Math.max(Math.abs(x.foreign), Math.abs(x.inst))), 1);
-      const bw = Math.min(Math.abs(r.foreign) / maxAbs * 70 + 10, 80);
-      const bc = r.foreign >= 0 ? 'rgba(226,75,74,0.35)' : 'rgba(24,95,165,0.3)';
+      const fCls = (r.foreign||0) >= 0 ? 'up' : 'down';
+      const iCls = (r.inst||0) >= 0 ? 'up' : 'down';
+      const bw = Math.min(Math.abs(r.foreign||0) / maxAbs * 70 + 10, 80);
+      const bc = (r.foreign||0) >= 0 ? 'rgba(226,75,74,0.35)' : 'rgba(24,95,165,0.3)';
       return `<div class="day-row">
         <span class="day-date">${r.date.slice(5)}</span>
         <div class="net-bar-bg"><div class="net-bar" style="width:${bw}%;background:${bc};"></div></div>
-        <span class="${fCls}" style="text-align:right;font-weight:600;">${r.foreign>=0?'+':''}${fmtEok(r.foreign)}</span>
-        <span class="${iCls}" style="text-align:right;font-weight:600;">${r.inst>=0?'+':''}${fmtEok(r.inst)}</span>
+        <span class="${fCls}" style="text-align:right;font-weight:600;">${(r.foreign||0)>=0?'+':''}${fmtInv(r.foreign,invUnit)}</span>
+        <span class="${iCls}" style="text-align:right;font-weight:600;">${(r.inst||0)>=0?'+':''}${fmtInv(r.inst,invUnit)}</span>
       </div>`;
     }).join('');
-    const totF = investor.reduce((s,r) => s + r.foreign, 0);
-    const totI = investor.reduce((s,r) => s + r.inst, 0);
+    const totF = investor.reduce((s,r) => s + (r.foreign||0), 0);
+    const totI = investor.reduce((s,r) => s + (r.inst||0), 0);
     investorHtml = `
       <div class="section">
         <div class="sec-title"><i class="ti ti-users" style="font-size:15px;color:#5B5BD6;"></i>외국인·기관 수급 (5일)</div>
@@ -831,14 +915,14 @@ function renderIndexDetail(d, el) {
           <div style="display:flex;gap:8px;margin-bottom:12px;">
             <div style="flex:1;background:#F8F8FA;border-radius:10px;padding:10px 12px;text-align:center;">
               <div style="font-size:10px;color:#8E8E9A;margin-bottom:3px;">외국인 합계</div>
-              <div class="${totF>=0?'up':'down'}" style="font-size:16px;font-weight:700;">${totF>=0?'+':''}${fmtEok(totF)}</div>
+              <div class="${totF>=0?'up':'down'}" style="font-size:16px;font-weight:700;">${totF>=0?'+':''}${fmtInv(totF,invUnit)}</div>
             </div>
             <div style="flex:1;background:#F8F8FA;border-radius:10px;padding:10px 12px;text-align:center;">
               <div style="font-size:10px;color:#8E8E9A;margin-bottom:3px;">기관 합계</div>
-              <div class="${totI>=0?'up':'down'}" style="font-size:16px;font-weight:700;">${totI>=0?'+':''}${fmtEok(totI)}</div>
+              <div class="${totI>=0?'up':'down'}" style="font-size:16px;font-weight:700;">${totI>=0?'+':''}${fmtInv(totI,invUnit)}</div>
             </div>
           </div>
-          <div class="day-header"><span>날짜</span><span>추세</span><span style="text-align:right;">외국인</span><span style="text-align:right;">기관</span></div>
+          <div class="day-header"><span>날짜</span><span>추세</span><span style="text-align:right;">외국인(${invUnit})</span><span style="text-align:right;">기관(${invUnit})</span></div>
           ${invRows}
         </div>
       </div>`;
@@ -909,28 +993,28 @@ function renderIndexDetail(d, el) {
       </div>
     </div>
 
-    <!-- 주요 기술 지표 -->
+    <!-- 주요 기술 지표 (항목 클릭 → 설명 모달) -->
     <div class="section">
-      <div class="sec-title"><i class="ti ti-chart-bar" style="font-size:15px;color:#5B5BD6;"></i>주요 기술 지표</div>
+      <div class="sec-title"><i class="ti ti-chart-bar" style="font-size:15px;color:#5B5BD6;"></i>주요 기술 지표 <span style="font-size:10px;color:#8E8E9A;font-weight:400;">항목을 누르면 설명이 나와요</span></div>
       <div class="card">
-        ${rsi ? `<div class="ind-row">
-          <span class="ind-label">RSI (14일)</span>
+        ${rsi ? `<div class="ind-row clickable" onclick="showTermModal('rsi',${rsiW},'${rsiStr}','${rsiLbl}')" style="cursor:pointer;">
+          <span class="ind-label" style="color:#5B5BD6;text-decoration:underline dotted;">RSI (14일) <i class="ti ti-info-circle" style="font-size:11px;"></i></span>
           <div class="ind-right">
             <div class="rsi-bar-wrap"><div class="rsi-bar-fill" style="width:${rsiW}%;background:${rsiColor};"></div></div>
             <span class="ind-val">${rsiStr}</span>
             <span class="ind-status ${rsiCls}">${rsiLbl}</span>
           </div>
         </div>` : ''}
-        ${disp ? `<div class="ind-row">
-          <span class="ind-label">이격도 (20일선)</span>
+        ${disp ? `<div class="ind-row clickable" onclick="showTermModal('disp',${disp},'${dispStr}','${dispLbl}')" style="cursor:pointer;">
+          <span class="ind-label" style="color:#5B5BD6;text-decoration:underline dotted;">이격도 (20일선) <i class="ti ti-info-circle" style="font-size:11px;"></i></span>
           <div class="ind-right"><span class="ind-val">${dispStr}</span><span class="ind-status ${dispCls}">${dispLbl}</span></div>
         </div>` : ''}
-        ${r5 ? `<div class="ind-row">
-          <span class="ind-label">5일 누적 등락률</span>
+        ${r5 ? `<div class="ind-row clickable" onclick="showTermModal('r5',${r5},'${r5Str}','${r5Lbl}')" style="cursor:pointer;">
+          <span class="ind-label" style="color:#5B5BD6;text-decoration:underline dotted;">5일 누적 등락률 <i class="ti ti-info-circle" style="font-size:11px;"></i></span>
           <div class="ind-right"><span class="ind-val" style="color:${r5Color};">${r5Str}</span><span class="ind-status ${r5Cls}">${r5Lbl}</span></div>
         </div>` : ''}
-        <div class="ind-row">
-          <span class="ind-label">거래량 (20일 평균비)</span>
+        <div class="ind-row clickable" onclick="showTermModal('vol',${vr||0},'${vrStr}','${vrLbl}')" style="cursor:pointer;">
+          <span class="ind-label" style="color:#5B5BD6;text-decoration:underline dotted;">거래량 (20일 평균비) <i class="ti ti-info-circle" style="font-size:11px;"></i></span>
           <div class="ind-right"><span class="ind-val">${vrStr}</span><span class="ind-status ${vrCls}">${vrLbl}</span></div>
         </div>
       </div>
@@ -959,7 +1043,6 @@ function renderIndexDetail(d, el) {
 
     ${investorHtml}
     ${sectorHtml}
-    ${aiHtml}
     <div style="height:24px;"></div>`;
 }
 
