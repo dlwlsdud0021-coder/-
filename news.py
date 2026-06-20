@@ -879,34 +879,43 @@ def generate_ai_summary(title, summary, sentiment, category):
         "글로벌": "글로벌 시장", "전체": "국내 증시",
     }.get(category, category)
 
-    # 섹션 1: 무슨 뉴스? — 실제 기사 내용 우선 반영
-    # 고정 텍스트 1차 사용시 기사 내용과 반대가 될 위험이 있음
-    sent_label = {
-        "positive": f"{sector_kr} 섹터에 긍정적인 신호로 해석됩니다.",
-        "negative": f"{sector_kr} 섹터에 부정적인 신호로 해석됩니다.",
-        "mixed":    "긍정·부정 요소가 혼재되어 있어 시장 반응을 먼저 확인하는 것이 좋습니다.",
-        "neutral":  "시장에 직접적 영향이 제한적일 수 있습니다.",
-    }.get(sentiment, "")
+    # 섹션 1: 무슨 뉴스인가요? — 투자자 관점 해석
+    # article_body 복사 금지: 위 기사 요약 박스와 중복됨
+    # Gemini 미작동 시에도 카테고리+감성 기반 투자자 해석 문장 제공
+    eff_what_sent = (sentiment if sentiment in ['positive', 'negative']
+                     else 'negative' if neg_hits else 'positive' if pos_hits else 'neutral')
 
-    if article_body and len(article_body) > 60:
-        snippet = article_body[:220].rstrip()
-        if len(article_body) > 220:
-            last_end = max(snippet.rfind(". "), snippet.rfind("다."), snippet.rfind("요."), snippet.rfind("다 "))
-            if last_end > 80:
-                snippet = snippet[:last_end + 1]
-        what = snippet + " " + sent_label
+    if co_str and num_str:
+        what = f"{co_str}와 관련해 {num_str} 규모의 이슈가 발생했습니다. "
+        what += {
+            'positive': f"{co_str} 주가에 단기 긍정적인 영향이 예상됩니다.",
+            'negative': f"{co_str} 주가에 단기 하락 압력이 가해질 수 있습니다.",
+        }.get(eff_what_sent, f"{sector_kr} 관련 이슈입니다.")
     elif co_str:
-        sent_desc = {
-            "positive": f"{co_str}에 긍정적인 뉴스가 나왔습니다. 주가 상승의 직접적 트리거가 될 수 있습니다.",
-            "negative": f"{co_str}에 부정적인 뉴스가 나왔습니다. 주가 하락 압력으로 작용할 수 있습니다.",
-            "mixed":    f"{co_str} 관련 뉴스로 긍정·부정 요소가 혼재되어 있습니다. 시장 반응을 먼저 확인하세요.",
-            "neutral":  f"{co_str} 관련 참고 뉴스입니다. 중장기 방향성에 영향을 줄 수 있습니다.",
-        }
-        what = sent_desc.get(sentiment, f"{co_str} 관련 중요 뉴스입니다.")
-        if num_str:
-            what = f"{co_str}와 관련해 {num_str} 규모의 이슈가 발생했습니다. " + what
+        what = {
+            'positive': f"{co_str}에 긍정적인 뉴스가 나왔습니다. 실적 개선, 수주, 신사업 등 주가 상승의 직접적 트리거가 될 수 있습니다.",
+            'negative': f"{co_str}에 부정적인 뉴스가 나왔습니다. 실적 부진, 계약 취소, 규제 이슈 등 주가 하락 압력으로 작용할 수 있습니다.",
+            'mixed':    f"{co_str} 관련 뉴스로 긍정, 부정 요소가 혼재합니다. 장 초반 주가 반응을 먼저 확인하세요.",
+            'neutral':  f"{co_str} 관련 공시, 참고 뉴스입니다. 중장기 방향성에 영향을 줄 수 있습니다.",
+        }.get(eff_what_sent, f"{co_str} 관련 뉴스입니다.")
     else:
-        what = f"{title[:50]}... 관련 뉴스입니다. {sent_label}"
+        cat_what = {
+            ('전체', 'negative'): '국내 증시에 부정적인 이슈가 발생했습니다. 대외 악재나 수급 불균형으로 코스피, 코스닥 전반에 하락 압력이 가해질 수 있어 포트폴리오 점검이 필요합니다.',
+            ('전체', 'positive'): '국내 증시에 긍정적인 이슈가 발생했습니다. 수급 개선이나 호재로 코스피, 코스닥이 상승 탄력을 받을 수 있습니다.',
+            ('글로벌', 'negative'): '글로벌 시장에 불안 요인이 부각됐습니다. 해외 악재는 외국인 매도를 유발해 국내 증시에도 하락 압력을 전이시킬 수 있습니다.',
+            ('글로벌', 'positive'): '글로벌 시장에 긍정적 신호가 나왔습니다. 미국 증시 호조는 다음 날 국내 증시 상승으로 이어지는 경향이 강하며 외국인 순매수 유입을 기대할 수 있습니다.',
+            ('반도체', 'negative'): '반도체 업황에 우려 신호가 나왔습니다. 수요 감소, 가격 하락 이슈는 삼성전자, SK하이닉스 등 대형주 전반에 하락 압력을 주고 장비, 소재주에도 영향을 미칩니다.',
+            ('반도체', 'positive'): '반도체 섹터에 긍정적 이슈가 발생했습니다. AI 수요 확대나 실적 호조 뉴스는 삼성전자, SK하이닉스 상승의 트리거이며 장비, 소재 중소형주로도 낙수 효과가 나타납니다.',
+            ('금융', 'negative'): '금리 인상 또는 긴축 기조 신호가 나왔습니다. 금리가 오르면 고PER 성장주가 가장 먼저 타격을 받으며 주식에서 채권으로 자금이 이동합니다.',
+            ('금융', 'positive'): '금리 인하 또는 완화 기조 신호가 나왔습니다. 금리가 내리면 주식 시장 전반에 호재이며 특히 고PER 성장주와 부동산 관련주가 큰 수혜를 받습니다.',
+            ('바이오', 'negative'): '바이오, 제약 섹터에 부정적 이슈가 발생했습니다. 임상 실패나 허가 반려는 해당 종목의 급락을 유발하고 비슷한 파이프라인을 가진 다른 바이오주도 투자심리가 냉각될 수 있습니다.',
+            ('바이오', 'positive'): '바이오, 제약 섹터에 긍정적 이슈가 발생했습니다. 임상 성공, FDA 승인, 기술수출 등은 해당 종목 급등의 트리거이며 섹터 전반 상승 랠리로 이어지기도 합니다.',
+            ('2차전지', 'negative'): '2차전지, 배터리 섹터에 우려 뉴스가 나왔습니다. 전기차 수요 둔화나 중국 경쟁 심화 이슈는 배터리 셀, 소재, 장비 전 밸류체인에 매도 압력을 줍니다.',
+            ('2차전지', 'positive'): '2차전지, 배터리 섹터에 긍정적 이슈가 발생했습니다. 전기차 수요 확대나 대규모 수주는 LG에너지솔루션, 삼성SDI와 에코프로, 포스코퓨처엠 등 소재주까지 함께 끌어올립니다.',
+        }
+        what = cat_what.get((category, eff_what_sent),
+                cat_what.get(('전체', eff_what_sent),
+                f"{sector_kr} 관련 이슈가 발생했습니다. 시장 반응을 주의 깊게 관찰하세요."))
     # 섹션 2: 주가 영향
     impact_detail = {
         ("반도체", "positive"): (
