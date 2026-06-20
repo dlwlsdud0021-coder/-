@@ -583,9 +583,25 @@ def get_kospi_investor(days: int = 25) -> pd.DataFrame:
 def get_top_stocks(n: int = 200) -> list:
     """
     시가총액 상위 N개 종목 리스트
-    1순위: pykrx (한국 IP), 2순위: FDR (Streamlit Cloud)
+    1순위: KIS API (Streamlit Cloud도 가능)
+    2순위: pykrx (한국 IP)
+    3순위: FDR
+    4순위: 하드코딩 50개
     """
-    # 1순위: pykrx
+    # 1순위: KIS API (해외 IP 차단 없음)
+    try:
+        from kis_api import get_top_stocks_by_cap
+        kospi  = get_top_stocks_by_cap("J", n // 2)
+        kosdaq = get_top_stocks_by_cap("Q", n // 2)
+        result = kospi + kosdaq
+        if result:
+            result.sort(key=lambda x: x["market_cap"], reverse=True)
+            _logger.info(f"[종목목록] KIS API 성공: {len(result)}개")
+            return result[:n]
+    except Exception as e:
+        _logger.warning(f"[종목목록] KIS API 실패: {e}")
+
+    # 2순위: pykrx
     if PYKRX_OK:
         try:
             tdate = _last_trading_date()

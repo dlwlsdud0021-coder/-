@@ -193,6 +193,47 @@ def get_investor_trading(code: str, days: int = 25) -> list[dict]:
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 시가총액 상위 종목 (KRX IP 차단 없이 Streamlit Cloud에서도 동작)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+def get_top_stocks_by_cap(market: str = "J", n: int = 100) -> list[dict]:
+    """
+    시가총액 상위 종목 조회 (KIS API)
+    market: J=코스피, Q=코스닥
+    Returns: [{"code", "name", "market", "market_cap"}, ...]
+    """
+    url = f"{BASE_URL}/uapi/domestic-stock/v1/ranking/market-cap"
+    params = {
+        "fid_cond_mrkt_div_code": market,
+        "fid_cond_scr_div_code": "20174",
+        "fid_div_cls_code": "0",
+        "fid_blng_cls_code": "0",
+        "fid_trgt_cls_code": "0",
+        "fid_trgt_exls_cls_code": "0",
+        "fid_input_price_1": "",
+        "fid_input_price_2": "",
+        "fid_vol_cnt": "",
+        "fid_input_iscd": "0000",
+    }
+    market_name = "KOSPI" if market == "J" else "KOSDAQ"
+    try:
+        resp = requests.get(url, headers=_headers("FHPST01740000"), params=params, timeout=10)
+        resp.raise_for_status()
+        rows = resp.json().get("output", [])
+        result = []
+        for r in rows[:n]:
+            result.append({
+                "code":       r.get("stck_shrn_iscd", ""),
+                "name":       r.get("hts_kor_isnm", ""),
+                "market":     market_name,
+                "market_cap": int(r.get("stck_avls", 0)),
+            })
+        return result
+    except Exception as e:
+        print(f"[KIS] get_top_stocks_by_cap({market}) 오류: {e}")
+        return []
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 지수 현재가 (KOSPI/KOSDAQ)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 def get_index_price(index_code: str = "0001") -> Optional[dict]:
