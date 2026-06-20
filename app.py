@@ -411,7 +411,7 @@ def _init():
         "detail_code": "", "detail_name": "", "detail_avg": 0.0,
         "detail_qty": 0, "detail_target": 0.0, "detail_stop": 0.0,
         "scanner_results": [], "scanner_ran": False, "login_tab": "login",
-        "show_supply_detail": False,
+        "active_tab": "홈", "show_supply_detail": False,
         "holdings_filter": "all",
         "watchlist_filter": "all",
         "scanner_filter": "all",
@@ -3543,12 +3543,11 @@ if st.session_state.get("show_market_detail"):
     render_market_detail(_idx, _us, _ma_kp, _ma_kd, _kp_hist, _kd_hist)
     st.stop()
 
-# ── 바텀 네비게이션 (query param 기반) ──
+# ── 바텀 네비게이션 (session_state 기반 — 로그인 세션 유지) ──
 _TAB_NAMES = ["홈", "뉴스", "보유", "관심", "매집"]
 _TAB_ICONS = ["ti-home", "ti-news", "ti-briefcase", "ti-star", "ti-chart-bar"]
-_active_tab = st.query_params.get("tab", "홈")
-if _active_tab not in _TAB_NAMES:
-    _active_tab = "홈"
+
+_active_tab = st.session_state.active_tab
 
 # 탭 콘텐츠 렌더링
 if _active_tab == "홈":
@@ -3562,12 +3561,94 @@ elif _active_tab == "관심":
 elif _active_tab == "매집":
     render_scanner()
 
-# 하단 네비바 HTML
-_nav_items = ""
-for _name, _icon in zip(_TAB_NAMES, _TAB_ICONS):
-    _cls = "nav-item active" if _name == _active_tab else "nav-item"
-    _nav_items += f'<a class="{_cls}" href="?tab={_name}"><i class="ti {_icon}"></i><span>{_name}</span></a>'
-st.markdown(f'<div class="bottom-nav">{_nav_items}</div>', unsafe_allow_html=True)
+# 바텀 네비 — st.container(key) + CSS fixed 포지션
+st.markdown("""
+<style>
+/* 바텀 네비 컨테이너 */
+[data-st-key="bottom_nav_container"] {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: 380px !important;
+  max-width: 100vw !important;
+  background: #fff !important;
+  border-top: 0.5px solid #E5E5EA !important;
+  z-index: 9999 !important;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.04) !important;
+  padding: 10px 0 16px !important;
+}
+/* 컨테이너 내부 horizontal block */
+[data-st-key="bottom_nav_container"] [data-testid="stHorizontalBlock"] {
+  gap: 0 !important;
+  padding: 0 !important;
+}
+/* 각 버튼 (비활성) */
+[data-st-key="bottom_nav_container"] button[kind="secondary"] {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #C7C7CC !important;
+  font-size: 10px !important;
+  padding: 4px 0 !important;
+  min-height: 52px !important;
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 3px !important;
+  line-height: 1.2 !important;
+}
+/* 활성 버튼 */
+[data-st-key="bottom_nav_container"] button[kind="primary"] {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #5B5BD6 !important;
+  font-size: 10px !important;
+  padding: 4px 0 !important;
+  min-height: 52px !important;
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 3px !important;
+  line-height: 1.2 !important;
+}
+[data-st-key="bottom_nav_container"] button:hover {
+  background: transparent !important;
+  border: none !important;
+  opacity: 0.8 !important;
+}
+/* 아이콘 (::before 가상요소) */
+[data-st-key="bottom_nav_container"] button p::before {
+  display: block !important;
+  font-family: 'tabler-icons' !important;
+  font-size: 22px !important;
+  line-height: 1 !important;
+  margin-bottom: 3px !important;
+}
+[data-st-key="bottom_nav_container"] [data-testid="stHorizontalBlock"] > div:nth-child(1) button p::before { content: '\ea76'; } /* home */
+[data-st-key="bottom_nav_container"] [data-testid="stHorizontalBlock"] > div:nth-child(2) button p::before { content: '\f0e9'; } /* news */
+[data-st-key="bottom_nav_container"] [data-testid="stHorizontalBlock"] > div:nth-child(3) button p::before { content: '\ea3b'; } /* briefcase */
+[data-st-key="bottom_nav_container"] [data-testid="stHorizontalBlock"] > div:nth-child(4) button p::before { content: '\ebeb'; } /* star */
+[data-st-key="bottom_nav_container"] [data-testid="stHorizontalBlock"] > div:nth-child(5) button p::before { content: '\ed12'; } /* chart-bar */
+</style>
+""", unsafe_allow_html=True)
+
+with st.container(key="bottom_nav_container"):
+    _cols = st.columns(5)
+    for _name, _icon, _col in zip(_TAB_NAMES, _TAB_ICONS, _cols):
+        with _col:
+            _is_active = (_name == _active_tab)
+            if st.button(
+                _name,
+                key=f"navbtn_{_name}",
+                use_container_width=True,
+                type="primary" if _is_active else "secondary",
+            ):
+                st.session_state.active_tab = _name
+                st.rerun()
 
 with st.sidebar:
     st.markdown(f"**{st.session_state.username}** 님")
