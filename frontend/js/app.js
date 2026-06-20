@@ -38,7 +38,7 @@ function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + id).classList.add('active');
   const nav = document.getElementById('bottom-nav');
-  const noNav = ['login', 'register', 'holding-detail', 'watchlist-detail', 'news-detail'];
+  const noNav = ['login', 'register', 'holding-detail', 'watchlist-detail', 'news-detail', 'index-detail'];
   nav.style.display = noNav.includes(id) ? 'none' : 'flex';
 }
 
@@ -226,13 +226,13 @@ function renderHome(d, el) {
     </div>
 
     <div class="index-row">
-      <div class="index-card ${kpPct>=0?'up-border':'down-border'}">
-        <div class="index-name">KOSPI</div>
+      <div class="index-card ${kpPct>=0?'up-border':'down-border'} clickable" onclick="openIndexDetail('KOSPI')" style="cursor:pointer;">
+        <div class="index-name">KOSPI <i class="ti ti-chevron-right" style="font-size:10px;color:#C7C7CC;"></i></div>
         <div class="index-val">${fmtNum(kospi)}</div>
         <div class="index-change ${pnlClass(kpPct)}">${kpPct>=0?'▲':'▼'} ${fmtPct(Math.abs(kpPct))}</div>
       </div>
-      <div class="index-card ${kdPct>=0?'up-border':'down-border'}">
-        <div class="index-name">KOSDAQ</div>
+      <div class="index-card ${kdPct>=0?'up-border':'down-border'} clickable" onclick="openIndexDetail('KOSDAQ')" style="cursor:pointer;">
+        <div class="index-name">KOSDAQ <i class="ti ti-chevron-right" style="font-size:10px;color:#C7C7CC;"></i></div>
         <div class="index-val">${fmtNum(kosdaq)}</div>
         <div class="index-change ${pnlClass(kdPct)}">${kdPct>=0?'▲':'▼'} ${fmtPct(Math.abs(kdPct))}</div>
       </div>
@@ -332,6 +332,143 @@ function renderNews() {
     </div>`;
   }).join('');
   el.innerHTML = `<div class="section" style="margin-top:12px;">${html}</div>`;
+}
+
+// ─────────────────────────────────────────────────────────
+// 지수 상세 (KOSPI / KOSDAQ)
+// ─────────────────────────────────────────────────────────
+async function openIndexDetail(name) {
+  _currentTab = 'home';
+  showScreen('index-detail');
+  const el = document.getElementById('index-detail-content');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div> 분석 중...</div>';
+  try {
+    const d = await api('GET', `/api/index/${name}`);
+    renderIndexDetail(d, el);
+  } catch(e) {
+    el.innerHTML = `<div class="loading">데이터를 불러오지 못했습니다</div>`;
+  }
+}
+
+function renderIndexDetail(d, el) {
+  const name = d.name || 'KOSPI';
+  const info = d.info || {};
+  const ma = d.ma || {};
+  const investor = d.investor || [];
+  const sectors = d.sectors || [];
+  const analysis = d.analysis || [];
+
+  const cur = info.current || 0;
+  const chg = info.change || 0;
+  const chgPct = info.change_pct || 0;
+  const isUp = chgPct >= 0;
+
+  // 이동평균선 카드
+  const ma20 = ma.ma20 ? ma.ma20.toFixed(2) : '-';
+  const ma60 = ma.ma60 ? ma.ma60.toFixed(2) : '-';
+  const dist20 = ma.ma20_dist_pct !== undefined ? (ma.ma20_dist_pct > 0 ? '+' : '') + ma.ma20_dist_pct.toFixed(2) + '%' : '-';
+  const dist60 = ma.ma60_dist_pct !== undefined ? (ma.ma60_dist_pct > 0 ? '+' : '') + ma.ma60_dist_pct.toFixed(2) + '%' : '-';
+  const trend = ma.trend || '-';
+  const trendColor = trend.includes('상승') ? '#E24B4A' : trend.includes('하락') ? '#185FA5' : '#8E8E9A';
+  const gcBadge = ma.golden_cross
+    ? `<span class="badge badge-buy">정배열 ✓</span>`
+    : `<span class="badge badge-sell">역배열</span>`;
+  const a20Badge = ma.above_ma20
+    ? `<span class="badge badge-ok">20일선 위</span>`
+    : `<span class="badge badge-sell">20일선 아래</span>`;
+  const a60Badge = ma.above_ma60
+    ? `<span class="badge badge-ok">60일선 위</span>`
+    : `<span class="badge badge-sell">60일선 아래</span>`;
+
+  // 외국인/기관 수급 (최근 5일)
+  let investorHtml = '';
+  if (investor.length) {
+    const rows = investor.slice().reverse().map(r => {
+      const fCls = r.foreign > 0 ? 'up' : 'down';
+      const iCls = r.inst > 0 ? 'up' : 'down';
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:0.5px solid #F0F0F5;font-size:13px;">
+        <span style="color:#8E8E9A;min-width:70px;">${r.date.slice(5)}</span>
+        <span class="${fCls}" style="min-width:80px;text-align:right;">외국인 ${r.foreign > 0 ? '+' : ''}${(r.foreign/1e8).toFixed(0)}억</span>
+        <span class="${iCls}" style="min-width:80px;text-align:right;">기관 ${r.inst > 0 ? '+' : ''}${(r.inst/1e8).toFixed(0)}억</span>
+      </div>`;
+    }).join('');
+    investorHtml = `
+      <div class="section">
+        <div class="sec-title"><i class="ti ti-users" style="font-size:15px;color:#5B5BD6;"></i>외국인·기관 수급 (최근 5일)</div>
+        <div class="card">${rows}</div>
+      </div>`;
+  }
+
+  // 섹터 퍼포먼스
+  let sectorHtml = '';
+  if (sectors.length) {
+    const bars = sectors.map(s => {
+      const cls = s.pct >= 0 ? 'up' : 'down';
+      const barW = Math.min(Math.abs(s.pct) * 10, 100);
+      const barColor = s.pct >= 0 ? '#E24B4A' : '#185FA5';
+      return `<div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px;">
+          <span style="font-weight:500;">${s.name}</span>
+          <span class="${cls}">${s.pct >= 0 ? '+' : ''}${s.pct}%</span>
+        </div>
+        <div style="height:5px;background:#F0F0F5;border-radius:3px;">
+          <div style="height:5px;width:${barW}%;background:${barColor};border-radius:3px;"></div>
+        </div>
+      </div>`;
+    }).join('');
+    sectorHtml = `
+      <div class="section">
+        <div class="sec-title"><i class="ti ti-chart-bar" style="font-size:15px;color:#5B5BD6;"></i>섹터별 등락률</div>
+        <div class="card">${bars}</div>
+      </div>`;
+  }
+
+  // AI 시장 분석
+  let aiHtml = '';
+  if (analysis.length) {
+    const dotColors = ['dot-blue', 'dot-green', 'dot-orange'];
+    const items = analysis.map((a, i) => `
+      <div class="analysis-item">
+        <div class="analysis-label"><div class="dot ${dotColors[i] || 'dot-blue'}"></div>${a.label || '분석'}</div>
+        <div class="analysis-text">${a.text || ''}</div>
+      </div>`).join('');
+    aiHtml = `
+      <div class="section">
+        <div class="sec-title"><i class="ti ti-search" style="font-size:15px;color:#5B5BD6;"></i>AI 시장 분석</div>
+        <div class="card">${items}</div>
+      </div>`;
+  }
+
+  el.innerHTML = `
+    <div class="detail-hero">
+      <div class="detail-name">${name}</div>
+      <div class="detail-price" style="${isUp ? '' : 'color:#fff;'}">${cur.toLocaleString('ko-KR', {minimumFractionDigits:2, maximumFractionDigits:2})}</div>
+      <div style="font-size:15px;margin-top:4px;opacity:0.9;">${isUp ? '▲' : '▼'} ${Math.abs(chg).toFixed(2)} (${isUp ? '+' : ''}${chgPct.toFixed(2)}%)</div>
+    </div>
+    <div class="section" style="margin-top:12px;">
+      <div class="sec-title"><i class="ti ti-trending-up" style="font-size:15px;color:#5B5BD6;"></i>이동평균선 분석</div>
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+          ${gcBadge} ${a20Badge} ${a60Badge}
+        </div>
+        <div style="font-size:15px;font-weight:700;color:${trendColor};margin-bottom:12px;">현재 추세: ${trend}</div>
+        <div class="mini-grid" style="grid-template-columns:1fr 1fr;">
+          <div class="mini-item">
+            <div class="mini-label">20일 이동평균</div>
+            <div class="mini-val">${ma20}</div>
+            <div style="font-size:11px;color:#8E8E9A;margin-top:2px;">이격도 ${dist20}</div>
+          </div>
+          <div class="mini-item">
+            <div class="mini-label">60일 이동평균</div>
+            <div class="mini-val">${ma60}</div>
+            <div style="font-size:11px;color:#8E8E9A;margin-top:2px;">이격도 ${dist60}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    ${investorHtml}
+    ${sectorHtml}
+    ${aiHtml}`;
 }
 
 // ─────────────────────────────────────────────────────────

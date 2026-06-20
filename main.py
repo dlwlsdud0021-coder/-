@@ -18,7 +18,8 @@ from pydantic import BaseModel
 
 import database as db
 from market_data import (get_index_data, get_us_indices, search_stock_by_name,
-    get_all_tickers, get_top_stocks, get_ohlcv, get_investor_trading, get_current_price)
+    get_all_tickers, get_top_stocks, get_ohlcv, get_investor_trading, get_current_price,
+    get_index_ohlcv_history, get_kospi_investor, get_sector_performance)
 from news import fetch_market_news, fetch_stock_news, enrich_top10_summaries, rank_by_importance
 from home_analysis import analyze_us_impact, generate_forecast, calc_ma_status, market_phase, is_market_open
 from analysis import analyze_stock, watchlist_timing
@@ -154,6 +155,67 @@ def home_data():
         }
     except Exception as e:
         return {"error": str(e), "indices": {}, "analysis": [], "forecast": {}, "market_phase": "close", "is_open": False}
+
+# ─────────────────────────────────────────────────────────
+# 지수 상세 API (KOSPI / KOSDAQ)
+# ─────────────────────────────────────────────────────────
+@app.get("/api/index/{name}")
+def index_detail(name: str):
+    """name: KOSPI 또는 KOSDAQ"""
+    try:
+        idx = get_index_data()
+        us_raw = get_us_indices()
+        info = idx.get(name.upper(), {})
+
+        # 이동평균선 (KOSPI=1001, KOSDAQ=2001)
+        index_code = "1001" if name.upper() == "KOSPI" else "2001"
+        hist_df = get_index_ohlcv_history(index_code, days=120)
+        ma = calc_ma_status(hist_df)
+
+        # 외국인/기관 수급 (KOSPI만)
+        investor_data = []
+        if name.upper() == "KOSPI":
+            try:
+                inv_df = get_kospi_investor(days=10)
+                if inv_df is not None and not inv_df.empty:
+                    for dt, row in inv_df.tail(5).iterrows():
+                        investor_data.append({
+                            "date": str(dt)[:10],
+                            "foreign": int(row.get("외국인", 0)),
+                            "inst": int(row.get("기관", 0)),
+                            "individual": int(row.get("개인", 0)) if "개인" in row else 0,
+                        })
+            except Exception:
+                pass
+
+        # 섹터 퍼포먼스
+        try:
+            sectors = get_sector_performance()
+        except Exception:
+            sectors = []
+
+        # AI 분석 (generate_forecast 재활용)
+        try:
+            analysis = analyze_us_impact(us_raw, idx, ma)
+            analysis_out = []
+            for item in (analysis or []):
+                if isinstance(item, (list, tuple)) and len(item) >= 3:
+                    analysis_out.append({"dot": item[0], "label": item[1], "text": item[2]})
+                elif isinstance(item, dict):
+                    analysis_out.append(item)
+        except Exception:
+            analysis_out = []
+
+        return {
+            "name": name.upper(),
+            "info": info,
+            "ma": ma,
+            "investor": investor_data,
+            "sectors": sectors,
+            "analysis": analysis_out,
+        }
+    except Exception as e:
+        return {"error": str(e), "name": name, "info": {}, "ma": {}, "investor": [], "sectors": [], "analysis": []}
 
 # ─────────────────────────────────────────────────────────
 # 시장 지수 API
