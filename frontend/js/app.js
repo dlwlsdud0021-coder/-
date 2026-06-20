@@ -487,7 +487,8 @@ function renderSupplyDetail(d, el) {
       const barCls = activeVal >= 0 ? 'bar-buy' : 'bar-sell';
       const fCell = tab === 'inst' ? '' : `<span class="${fCls}" style="text-align:right;font-weight:600;">${fv>=0?'+':''}${fmtInv(fv,unit)}</span>`;
       const iCell = tab === 'foreign' ? '' : `<span class="${iCls}" style="text-align:right;font-weight:600;">${iv>=0?'+':''}${fmtInv(iv,unit)}</span>`;
-      return `<div class="day-row">
+      const rowStyle = tab !== 'both' ? ` style="${singleGrid}"` : '';
+      return `<div class="day-row"${rowStyle}>
         <span class="day-date">${r.date.slice(5)}</span>
         <div class="net-bar-bg"><div class="net-bar ${barCls}" style="width:${barW}%;"></div></div>
         ${fCell}${iCell}
@@ -510,11 +511,12 @@ function renderSupplyDetail(d, el) {
       }
     }
 
+    const singleGrid = 'grid-template-columns:44px 1fr auto';
     const tableHeader = tab === 'both'
       ? `<div class="day-header"><span>날짜</span><span>외국인</span><span style="text-align:right;">기관</span><span style="text-align:right;">동반</span></div>`
       : tab === 'inst'
-        ? `<div class="day-header"><span>날짜</span><span>추세</span><span style="text-align:right;">기관</span></div>`
-        : `<div class="day-header"><span>날짜</span><span>추세</span><span style="text-align:right;">외국인</span></div>`;
+        ? `<div class="day-header" style="${singleGrid}"><span>날짜</span><span>추세</span><span style="text-align:right;">기관</span></div>`
+        : `<div class="day-header" style="${singleGrid}"><span>날짜</span><span>추세</span><span style="text-align:right;">외국인</span></div>`;
 
     return `
       ${summaryHtml}
