@@ -50,7 +50,7 @@ body { background: #F5F5F7; color: #1A1A2E; }
 .hdr-title { font-size:16px; font-weight:600; }
 .hdr-sub { font-size:11px; color:#8E8E93; margin-top:2px; }
 /* 히어로 카드 */
-.hero { margin:0; background:#5B5BD6; border-radius:0; padding:18px 20px; color:#fff; }
+.hero { margin:0; background:#5B5BD6; border-radius:0 0 20px 20px; padding:18px 20px; color:#fff; }
 .hero-badge { display:inline-flex; align-items:center; gap:5px; background:rgba(255,255,255,0.18); border-radius:20px; padding:4px 10px; font-size:11px; margin-bottom:10px; }
 .hero-status { font-size:18px; font-weight:700; margin-bottom:6px; }
 .hero-desc { font-size:11px; color:rgba(255,255,255,0.8); line-height:1.5; }
