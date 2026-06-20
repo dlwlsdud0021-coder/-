@@ -632,6 +632,23 @@ def delete_holding(code: str, user=Depends(get_current_user)):
     db.delete_holding(user["user_id"], code)
     return {"message": "삭제 완료"}
 
+def _to_python(obj):
+    """numpy/pandas 타입 → Python 기본 타입 변환 (JSON 직렬화용)"""
+    import numpy as np
+    if isinstance(obj, dict):
+        return {k: _to_python(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_to_python(v) for v in obj]
+    if isinstance(obj, (np.integer,)):
+        return int(obj)
+    if isinstance(obj, (np.floating,)):
+        return float(obj)
+    if isinstance(obj, (np.bool_,)):
+        return bool(obj)
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    return obj
+
 @app.get("/api/holdings/{code}/detail")
 def holding_detail(code: str, user=Depends(get_current_user)):
     holdings = db.get_holdings(user["user_id"])
@@ -751,7 +768,7 @@ def holding_detail(code: str, user=Depends(get_current_user)):
     except Exception:
         analysis["disclosures"] = []
 
-    return {"holding": h, "analysis": analysis}
+    return _to_python({"holding": h, "analysis": analysis})
 
 # ─────────────────────────────────────────────────────────
 # 관심종목 API
