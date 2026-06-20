@@ -1653,50 +1653,55 @@ def render_news():
 
     top10 = st.session_state.top10_news
 
-    # ── 감성 분포 계산 후 헤더에 함께 렌더링 ──
-    if top10:
-        summ  = summarize_sentiment(top10)
-        total = len(top10)
-        pos_pct = round(summ["positive_count"] / total * 100) if total else 0
-        neg_pct = round(summ["negative_count"] / total * 100) if total else 0
-        neu_pct = max(0, 100 - pos_pct - neg_pct)
-        overall_map = {"positive": ("긍정 우세", "#30D158"), "negative": ("부정 우세", "#E24B4A"),
-                       "mixed": ("혼조", "#FF9F0A"), "neutral": ("중립", "#8E8E93")}
-        ov_lbl, ov_clr = overall_map.get(summ["overall"], ("중립", "#8E8E93"))
-        sent_html = f"""
-          <div style="margin-top:10px;padding-top:10px;border-top:0.5px solid rgba(255,255,255,0.2);">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-              <span style="font-size:11px;color:rgba(255,255,255,0.7);">TOP10 감성 분포</span>
-              <span style="font-size:11px;font-weight:700;color:{ov_clr};">{ov_lbl}</span>
-            </div>
-            <div style="display:flex;height:5px;border-radius:3px;overflow:hidden;gap:2px;">
-              <div style="width:{pos_pct}%;background:#30D158;"></div>
-              <div style="width:{neg_pct}%;background:#E24B4A;"></div>
-              <div style="width:{neu_pct}%;background:rgba(255,255,255,0.2);"></div>
-            </div>
-            <div style="display:flex;gap:10px;margin-top:5px;">
-              <span style="font-size:10px;color:#30D158;">● 긍정 {summ['positive_count']}건</span>
-              <span style="font-size:10px;color:#E24B4A;">● 부정 {summ['negative_count']}건</span>
-              <span style="font-size:10px;color:#FF9F0A;">● 혼조 {summ['mixed_count']}건</span>
-              <span style="font-size:10px;color:rgba(255,255,255,0.5);">● 중립 {summ['neutral_count']}건</span>
-            </div>
-          </div>"""
-    else:
-        sent_html = ""
-
-    st.markdown(f"""<div class="hdr">
-      <div style="width:100%;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-          <div><div class="hdr-title">시장 핵심 뉴스 TOP10</div><div class="hdr-sub">{_now()} 기준 · 수급+뉴스 중요도 분석</div></div>
-          <div style="color:rgba(255,255,255,0.6);font-size:20px;"><i class="ti ti-chart-bar"></i></div>
-        </div>
-        {sent_html}
-      </div>
-    </div>""", unsafe_allow_html=True)
+    # ── 헤더 ──
+    st.markdown(
+        '<div class="hdr">'
+        '<div><div class="hdr-title">시장 핵심 뉴스 TOP10</div>'
+        '<div class="hdr-sub">' + _now() + ' 기준 · 수급+뉴스 중요도 분석</div></div>'
+        '<div style="color:rgba(255,255,255,0.6);font-size:20px;"><i class="ti ti-chart-bar"></i></div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
 
     if not top10:
         st.info("뉴스를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.")
         return
+
+    # ── 감성 분포 (헤더 바로 아래, 구분 없이 이어지는 스타일) ──
+    summ  = summarize_sentiment(top10)
+    total = len(top10)
+    pos_pct = round(summ["positive_count"] / total * 100) if total else 0
+    neg_pct = round(summ["negative_count"] / total * 100) if total else 0
+    neu_pct = max(0, 100 - pos_pct - neg_pct)
+    overall_map = {"positive": ("긍정 우세", "#30D158"), "negative": ("부정 우세", "#E24B4A"),
+                   "mixed": ("혼조", "#FF9F0A"), "neutral": ("중립", "#8E8E93")}
+    ov_lbl, ov_clr = overall_map.get(summ["overall"], ("중립", "#8E8E93"))
+    p_cnt = summ["positive_count"]
+    n_cnt = summ["negative_count"]
+    m_cnt = summ["mixed_count"]
+    u_cnt = summ["neutral_count"]
+    bar_pos  = f'<div style="width:{pos_pct}%;background:#30D158;"></div>'
+    bar_neg  = f'<div style="width:{neg_pct}%;background:#E24B4A;"></div>'
+    bar_neu  = f'<div style="width:{neu_pct}%;background:#E5E5EA;"></div>'
+    lbl_html = (
+        f'<span style="font-size:10px;color:#30D158;">● 긍정 {p_cnt}건</span>'
+        f'<span style="font-size:10px;color:#E24B4A;margin-left:10px;">● 부정 {n_cnt}건</span>'
+        f'<span style="font-size:10px;color:#FF9F0A;margin-left:10px;">● 혼조 {m_cnt}건</span>'
+        f'<span style="font-size:10px;color:#8E8E93;margin-left:10px;">● 중립 {u_cnt}건</span>'
+    )
+    ov_span = f'<span style="font-size:11px;font-weight:700;color:{ov_clr};">{ov_lbl}</span>'
+    st.markdown(
+        '<div style="padding:10px 20px 14px;background:#fff;border-bottom:0.5px solid #E5E5EA;">'
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+        '<span style="font-size:11px;color:#8E8E93;">TOP10 감성 분포</span>' + ov_span +
+        '</div>'
+        '<div style="display:flex;height:5px;border-radius:3px;overflow:hidden;gap:2px;">' +
+        bar_pos + bar_neg + bar_neu +
+        '</div>'
+        '<div style="display:flex;margin-top:5px;">' + lbl_html + '</div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
 
     # ── 2탭: 뉴스+분석 통합 / 전략 ──
     tab1, tab2 = st.tabs(["📰 뉴스 & 분석", "⚡ 투자 전략"])
