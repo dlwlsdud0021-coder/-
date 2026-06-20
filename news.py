@@ -850,44 +850,34 @@ def _extract_term(text: str, term: str) -> str:
 
 
 def generate_ai_summary(title, summary, sentiment, category):
-    cache_key = hashlib.md5(("summary5:" + title[:80]).encode()).hexdigest()
+    cache_key = hashlib.md5(("v2:" + title[:80]).encode()).hexdigest()
     sentiment_kor = {"positive": "긍정", "negative": "부정", "mixed": "혼재", "neutral": "중립"}.get(sentiment, "중립")
-    category_label = {
-        "반도체": "반도체·AI", "바이오": "바이오·제약", "2차전지": "2차전지·배터리",
-        "금융": "금융·증권", "글로벌": "글로벌 시장", "전체": "국내 증시",
-    }.get(category, category)
 
-    article_body = summary[:400] if summary else ""
+    article_body = summary[:500] if summary else ""
     body_part = f"본문: {article_body}\n" if article_body else ""
     prompt = (
-        "한국 주식 초보 투자자를 위한 뉴스 분석. 아래 5개 섹션을 [태그] 형식으로 작성하세요.\n"
+        "한국 주식 초보 투자자를 위한 뉴스 분석. 반드시 아래 기사 내용만 바탕으로 작성하세요.\n"
         "기사 제목: " + title + "\n"
         + body_part +
-        "분야: " + category_label + " / 감성: " + sentiment_kor + "\n\n"
-        "[핵심요약] 기사 핵심 사실을 3~4문장으로. 숫자/날짜 포함. 완전한 문장.\n"
-        "[영향종목] ▲수혜 종목명 — 이유(1줄) / ▼피해 종목명 — 이유(1줄). ETF 대체 가능.\n"
-        "[투자전략] 호재/악재 판단 + 보유자/미보유자 각 행동지침(손절가-X%, 목표가+X%) + 주의사항\n"
-        "[시장분위기] 지금 이 섹터 분위기 2~3문장. 강세/약세 근거와 투자자 심리.\n"
-        "[매매방법] ▶단기(1~2주): 보유자/미보유자 행동 손절-X% 목표+X% ▶중기(1~3개월): 추세 조건과 비중\n"
+        "감성: " + sentiment_kor + "\n\n"
+        "[분석] 이 기사의 핵심 사실을 2~3문장으로 요약. "
+        "누가/무엇을/왜/어떤 숫자가 나왔는지 포함. 기사에 없는 내용 추론 금지. 완전한 문장으로.\n"
+        "[영향] ▲수혜: 종목명 — 이유 한줄 / ▼피해: 종목명 — 이유 한줄 (특정 불가시 ETF 대체)\n"
     )
     raw = _call_gemini(prompt, cache_key)
     if raw:
         def _ext(tag, text):
             m = re.search(r"\[" + tag + r"\]\s*([\s\S]*?)(?=\[|$)", text)
             return m.group(1).strip() if m else ""
-        summary_txt = _ext("핵심요약", raw)
-        impact_txt  = _ext("영향종목", raw)
-        strat_txt   = _ext("투자전략", raw)
-        if summary_txt and impact_txt and strat_txt:
-            return (
-                summary_txt.replace("\n", "<br>") + "<br><br>"
-                "<b>📌 영향받는 종목</b><br>"
-                + impact_txt.replace("\n", "<br>") + "<br><br>"
-                "<b>💡 투자 전략</b><br>"
-                + strat_txt.replace("\n", "<br>")
-            )
-        if len(raw) > 80:
-            return raw.replace("\n", "<br>")
+        analysis_txt = _ext("분석", raw)
+        impact_txt   = _ext("영향", raw)
+        if analysis_txt:
+            result = "<b>📋 이 뉴스는?</b><br>" + analysis_txt.replace("\n", "<br>")
+            if impact_txt:
+                result += "<br><br><b>📌 영향 종목</b><br>" + impact_txt.replace("\n", "<br>")
+            return result
+        if len(raw) > 40:
+            return "<b>📋 이 뉴스는?</b><br>" + raw.replace("\n", "<br>")
 
     # Rule-based 폴백 (Gemini 실패시)
     text = title + " " + summary
@@ -1555,19 +1545,24 @@ def rank_by_importance(items: list) -> list:
 
 
 def enrich_top10_summaries(items: list) -> list:
-    """상위 뉴스 목록에 AI 요약/전략 필드를 추가해 반환."""
+    """상위 뉴스 목록에 AI 요약/전략 필드를 추가해 반환. (최대 5개만 Gemini 처리)"""
     enriched = []
-    for item in items:
+    for idx, item in enumerate(items):
         title    = item.get("title", "")
         summary  = item.get("summary", "")
         sentiment_info = classify_sentiment(title + " " + summary)
         category = item.get("category") or classify_category(title, summary)
         sentiment = sentiment_info["sentiment"]
 
-        ai_summary = item.get("ai_summary") or generate_ai_summary(
-            title, summary, sentiment, category
-        )
-        strategy, _ = generate_strategy(sentiment, category, title, summary)
+        # 상위 5개만 Gemini AI 분석, 나머지는 rule-based
+        if idx < 5:
+            ai_summary = item.get("ai_summary") or generate_ai_summary(
+                title, summary, sentiment, category
+            )
+            strategy, _ = generate_strategy(sentiment, category, title, summary)
+        else:
+            ai_summary = item.get("ai_summary") or ""
+            strategy = ""
 
         enriched.append({
             **item,

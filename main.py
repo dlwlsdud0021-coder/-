@@ -512,10 +512,11 @@ def market_data():
 @app.get("/api/news")
 def market_news():
     try:
-        raw = fetch_market_news(max_items=15)
-        ranked = rank_by_importance(raw)
-        # 모든 뉴스 기본 분류만 (AI 분석은 클릭 시 온디맨드로 생성)
-        return {"news": ranked}
+        raw = fetch_market_news(max_items=12)
+        ranked = rank_by_importance(raw)[:8]
+        # 상위 5개는 Gemini AI 분석 포함, 나머지는 기본 분류만
+        enriched = enrich_top10_summaries(ranked)
+        return {"news": enriched}
     except Exception as e:
         return {"news": [], "error": str(e)}
 

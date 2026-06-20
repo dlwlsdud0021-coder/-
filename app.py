@@ -1660,8 +1660,8 @@ def render_news():
     if ("top10_news" not in st.session_state or
             now_ts - st.session_state.get("top10_ts", 0) > _NEWS_TTL):
         with st.spinner("시장 핵심 뉴스 분석 중..."):
-            all_news = fetch_market_news(max_items=15)
-            top10 = rank_by_importance(all_news)[:10]
+            all_news = fetch_market_news(max_items=10)
+            top10 = rank_by_importance(all_news)[:8]
         with st.spinner("기사 본문 수집 중... (최대 8초)"):
             top10 = enrich_top10_summaries(top10)
         st.session_state.top10_news = top10
