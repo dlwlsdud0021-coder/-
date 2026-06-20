@@ -613,27 +613,16 @@ def render_home():
       <div style="color:#8E8E93;font-size:20px;"><i class="ti ti-refresh"></i></div>
     </div>""", unsafe_allow_html=True)
 
-    # ── 히어로 (카드 없이 헤더 아래 이어지는 텍스트) ──
+    # ── 히어로 카드 ──
     badge_txt, status, desc, tip = _market_hero(idx)
     desc_full = (f"{desc} · S&P500 {'+' if sp_pct>=0 else ''}{sp_pct:.2f}%"
                  f" / 나스닥 {'+' if nd_pct>=0 else ''}{nd_pct:.2f}%")
-    badge_clr = ("#E24B4A" if "상승" in status or "강한" in status
-                 else "#185FA5" if "하락" in status or "급락" in status
-                 else "#FF9F0A")
-    st.markdown(
-        '<div style="padding:12px 20px 16px;background:#fff;border-bottom:0.5px solid #E5E5EA;">'
-        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">'
-        '<span style="font-size:16px;font-weight:800;color:#1A1A2E;">' + status + '</span>'
-        '<span style="font-size:11px;font-weight:600;color:' + badge_clr + ';background:' + badge_clr + '18;'
-        'padding:2px 8px;border-radius:20px;">' + badge_txt + '</span>'
-        '</div>'
-        '<div style="font-size:11px;color:#8E8E93;margin-bottom:8px;">' + desc_full + '</div>'
-        '<div style="font-size:11px;color:#3C3C43;line-height:1.6;">'
-        '<i class="ti ti-bulb" style="font-size:12px;margin-right:4px;color:#FF9F0A;"></i>' + tip +
-        '</div>'
-        '</div>',
-        unsafe_allow_html=True,
-    )
+    st.markdown(f"""<div class="hero">
+      <div class="hero-badge"><i class="ti ti-rocket" style="font-size:13px;"></i> {badge_txt}</div>
+      <div class="hero-status">{status}</div>
+      <div class="hero-desc">{desc_full}</div>
+      <div class="hero-tip"><i class="ti ti-bulb" style="font-size:14px;flex-shrink:0;"></i> {tip}</div>
+    </div>""", unsafe_allow_html=True)
     # 상세분석 버튼
     if st.button("› KOSPI · KOSDAQ 상세 분석 보기", key="btn_market_detail",
                  use_container_width=True):
