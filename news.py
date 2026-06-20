@@ -146,7 +146,7 @@ CATEGORY_NAMES = list(CATEGORY_CONFIG.keys())
 
 POSITIVE_KEYWORDS = [
     # 주가 직접 상승 신호
-    "급등", "상한가", "신고가", "주가 상승", "증시 상승", "주식 상승",
+    "상한가", "신고가", "주가 상승", "증시 상승", "주식 상승", "급등세", "급등했",
     # 실적/사업 호조
     "호재", "흑자", "실적개선", "실적 호조", "영업이익 증가", "매출 증가",
     "수주", "기술수출", "기대감", "돌파", "청신호",
@@ -159,7 +159,7 @@ POSITIVE_KEYWORDS = [
 
 NEGATIVE_KEYWORDS = [
     # 주가 직접 하락 신호
-    "급락", "하락", "하한가", "신저가", "주가 하락", "증시 하락",
+    "급락", "급등락", "폭락", "폭등락", "하락", "하한가", "신저가", "주가 하락", "증시 하락", "지수 하락",
     # 실적/사업 부진
     "악재", "적자", "실적부진", "실적 부진", "영업손실", "감소", "취소", "손실",
     "불안", "매도", "하회", "외국인 매도", "기관 매도",
@@ -208,9 +208,13 @@ def classify_sentiment(text: str) -> dict:
     neg = sum(1 for k in NEGATIVE_KEYWORDS if k in text)
     score = pos - neg
 
-    # score 절댓값이 크면 혼재라도 우세한 방향으로 판정 (금리인상 기사가 mixed 오판 방지)
+    # score 절댓값이 크면 혼재라도 우세한 방향으로 판정 (금리인상/급등락 기사 오판 방지)
     if pos > 0 and neg > 0 and abs(score) <= 2:
-        return {"sentiment": "mixed",    "label": "혼조", "badge_type": "warn",    "score": score}
+        # neg 키워드 개수가 pos보다 훨씬 많으면 negative (예: 급등락 → 급등 1개지만 neg 많은 경우)
+        if neg >= pos * 2:
+            pass  # negative 경로로 fall-through
+        else:
+            return {"sentiment": "mixed",    "label": "혼조", "badge_type": "warn",    "score": score}
     elif score >= 2:
         return {"sentiment": "positive", "label": "긍정", "badge_type": "buy",     "score": score}
     elif score == 1:
