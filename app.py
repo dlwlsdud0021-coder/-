@@ -383,7 +383,77 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"],
 }
 .nav-item.active { color: #5B5BD6; }
 .nav-item i { font-size: 22px; }
-/* 콘텐츠 영역 — 하단 네비에 가리지 않도록 여백 */
+/* ── 바텀 네비게이션 ── */
+/* overflow 해제: position:fixed가 동작하려면 조상에 overflow:hidden이 없어야 함 */
+html, body,
+[data-testid="stApp"],
+[data-testid="stAppViewContainer"],
+[data-testid="stMain"],
+[data-testid="stMainBlockContainer"],
+.main, .block-container {
+  overflow: visible !important;
+}
+/* 탭바 하단 고정 */
+[data-testid="stTabsTabList"] {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: 380px !important;
+  max-width: 100vw !important;
+  background: #fff !important;
+  border-top: 0.5px solid #E5E5EA !important;
+  border-bottom: none !important;
+  display: flex !important;
+  padding: 10px 0 16px !important;
+  z-index: 99999 !important;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.04) !important;
+  gap: 0 !important;
+}
+/* 탭 인디케이터 제거 */
+[data-baseweb="tab-highlight"],
+[data-baseweb="tab-border"] { display: none !important; }
+/* 각 탭 버튼 */
+[data-baseweb="tab"] {
+  flex: 1 !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 2px !important;
+  padding: 4px 0 !important;
+  color: #C7C7CC !important;
+  border: none !important;
+  background: transparent !important;
+  min-height: 52px !important;
+  margin: 0 !important;
+}
+[data-baseweb="tab"] p {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 2px !important;
+  font-size: 10px !important;
+  margin: 0 !important;
+  line-height: 1.2 !important;
+}
+/* 아이콘 */
+[data-baseweb="tab"] p::before {
+  font-family: 'tabler-icons' !important;
+  font-size: 22px !important;
+  line-height: 1 !important;
+  display: block !important;
+}
+[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(1) p::before { content: '\ea76'; }
+[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(2) p::before { content: '\f0e9'; }
+[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(3) p::before { content: '\ea3b'; }
+[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(4) p::before { content: '\ebeb'; }
+[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(5) p::before { content: '\ed12'; }
+/* 활성 탭 */
+[aria-selected="true"][data-baseweb="tab"] { color: #5B5BD6 !important; }
+[aria-selected="true"][data-baseweb="tab"] p::before { color: #5B5BD6 !important; }
+/* 콘텐츠 영역 하단 여백 (탭바에 가리지 않도록) */
+[data-testid="stTabsContent"],
+[data-baseweb="tab-panel"],
 .main .block-container { padding-bottom: 90px !important; }
 </style>
 """, unsafe_allow_html=True)
@@ -3547,100 +3617,6 @@ with tab3: render_holdings()
 with tab4: render_watchlist()
 with tab5: render_scanner()
 
-# JS: stTabsTabList DOM 요소를 body로 옮겨서 진짜 하단 고정
-import streamlit.components.v1 as _cv1
-_cv1.html("""
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
-<script>
-(function() {
-  var ICONS = ['ti-home','ti-news','ti-briefcase','ti-star','ti-chart-bar'];
-
-  function moveTabBar() {
-    var p = window.parent.document;
-    var tabList = p.querySelector('[data-testid="stTabsTabList"]');
-    if (!tabList) { setTimeout(moveTabBar, 200); return; }
-
-    // 이미 body 직속 자식이면 스킵
-    if (tabList.parentElement === p.body) {
-      applyStyle(p, tabList);
-      return;
-    }
-
-    // body로 이동 (클릭 이벤트 핸들러 유지됨)
-    p.body.appendChild(tabList);
-    applyStyle(p, tabList);
-  }
-
-  function applyStyle(p, tabList) {
-    // CSS (한 번만)
-    if (!p.getElementById('__nav_style__')) {
-      var s = p.createElement('style');
-      s.id = '__nav_style__';
-      s.textContent = `
-        [data-testid="stTabsTabList"] {
-          position: fixed !important;
-          bottom: 0 !important;
-          left: 50% !important;
-          transform: translateX(-50%) !important;
-          width: 380px !important;
-          max-width: 100vw !important;
-          background: #fff !important;
-          border-top: 0.5px solid #E5E5EA !important;
-          border-bottom: none !important;
-          display: flex !important;
-          padding: 10px 0 16px !important;
-          z-index: 99999 !important;
-          box-shadow: 0 -2px 8px rgba(0,0,0,0.04) !important;
-          gap: 0 !important;
-        }
-        [data-baseweb="tab-highlight"], [data-baseweb="tab-border"] {
-          display: none !important;
-        }
-        [data-baseweb="tab"] {
-          flex: 1 !important;
-          flex-direction: column !important;
-          align-items: center !important;
-          justify-content: center !important;
-          gap: 3px !important;
-          padding: 4px 0 !important;
-          color: #C7C7CC !important;
-          border: none !important;
-          background: transparent !important;
-          min-height: 52px !important;
-          margin: 0 !important;
-          font-size: 10px !important;
-        }
-        [data-baseweb="tab"] p {
-          display: flex !important;
-          flex-direction: column !important;
-          align-items: center !important;
-          gap: 3px !important;
-          font-size: 10px !important;
-          margin: 0 !important;
-        }
-        [data-baseweb="tab"] p::before {
-          font-family: 'tabler-icons' !important;
-          font-size: 22px !important;
-          line-height: 1 !important;
-          display: block !important;
-        }
-        [data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(1) p::before { content: '\\ea76'; }
-        [data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(2) p::before { content: '\\f0e9'; }
-        [data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(3) p::before { content: '\\ea3b'; }
-        [data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(4) p::before { content: '\\ebeb'; }
-        [data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(5) p::before { content: '\\ed12'; }
-        [aria-selected="true"][data-baseweb="tab"] { color: #5B5BD6 !important; }
-        [aria-selected="true"][data-baseweb="tab"] p::before { color: #5B5BD6 !important; }
-      `;
-      p.head.appendChild(s);
-    }
-  }
-
-  moveTabBar();
-  setTimeout(moveTabBar, 600);
-})();
-</script>
-""", height=0, scrolling=False)
 
 with st.sidebar:
     st.markdown(f"**{st.session_state.username}** 님")
