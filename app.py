@@ -2103,32 +2103,32 @@ def _holding_card(e, pfx="a"):
 # 관심종목 탭
 # ─────────────────────────────────────────────────────────
 def render_watchlist():
+    watchlist = get_watchlist(st.session_state.user_id)
+
     st.markdown(f"""<div class="hdr">
       <div><div class="hdr-title">관심종목 모니터링</div>
         <div class="hdr-sub">매수 타이밍 · 추격금지 신호</div></div>
     </div>""", unsafe_allow_html=True)
 
-    with st.expander("➕ 관심종목 추가"):
-        with st.form("awf", clear_on_submit=True):
-            c1, c2 = st.columns(2)
-            with c1: code = st.text_input("종목코드", placeholder="277810")
-            with c2: name_in = st.text_input("종목명", placeholder="레인보우로보틱스")
-            c3, c4 = st.columns(2)
-            with c3: target = st.number_input("목표가 (선택)", min_value=0, step=100)
-            with c4: stop = st.number_input("손절가 (선택)", min_value=0, step=100)
-            if st.form_submit_button("추가", use_container_width=True, type="primary"):
-                if not code: st.error("종목코드를 입력해주세요.")
-                else:
-                    code = code.strip().zfill(6)
-                    name = name_in.strip() or get_stock_name(code) or code
-                    ok, msg = add_watchlist(st.session_state.user_id, code, name,
-                                           target or None, stop or None)
-                    if ok: st.success(msg); st.rerun()
-                    else: st.error(msg)
-
-    watchlist = get_watchlist(st.session_state.user_id)
     if not watchlist:
         st.info("관심종목을 추가해보세요!")
+        with st.expander("➕ 관심종목 추가"):
+            with st.form("awf", clear_on_submit=True):
+                c1, c2 = st.columns(2)
+                with c1: code = st.text_input("종목코드", placeholder="277810")
+                with c2: name_in = st.text_input("종목명", placeholder="레인보우로보틱스")
+                c3, c4 = st.columns(2)
+                with c3: target = st.number_input("목표가 (선택)", min_value=0, step=100)
+                with c4: stop = st.number_input("손절가 (선택)", min_value=0, step=100)
+                if st.form_submit_button("추가", use_container_width=True, type="primary"):
+                    if not code: st.error("종목코드를 입력해주세요.")
+                    else:
+                        code = code.strip().zfill(6)
+                        name = name_in.strip() or get_stock_name(code) or code
+                        ok, msg = add_watchlist(st.session_state.user_id, code, name,
+                                               target or None, stop or None)
+                        if ok: st.success(msg); st.rerun()
+                        else: st.error(msg)
         return
 
     buy_ok = []; chase_no = []; watch_lst = []
@@ -2144,33 +2144,45 @@ def render_watchlist():
         elif t["status"] == "chase_no": chase_no.append(item)
         else: watch_lst.append(item)
 
-    # 필터 탭
-    filt = st.session_state.watchlist_filter
-    filter_labels = [("all","전체"), ("buy_ok","매수검토"), ("chase_no","추격금지"), ("watch","관망")]
-    cols = st.columns(len(filter_labels))
-    for i, (key, label) in enumerate(filter_labels):
-        with cols[i]:
-            if st.button(label, key=f"wflt_{key}", use_container_width=True,
-                         type="primary" if filt == key else "secondary"):
-                st.session_state.watchlist_filter = key; st.rerun()
+    # st.tabs 필터
+    tab_all, tab_buy, tab_chase, tab_watch = st.tabs(["전체", "매수검토", "추격금지", "관망"])
 
-    filt = st.session_state.watchlist_filter
-    if filt == "buy_ok":
-        sections = [("매수 검토 가능", buy_ok)]
-    elif filt == "chase_no":
-        sections = [("추격매수 금지", chase_no)]
-    elif filt == "watch":
-        sections = [("관망", watch_lst)]
-    else:
-        sections = [("매수 검토 가능", buy_ok), ("추격매수 금지", chase_no), ("관망", watch_lst)]
+    def _render_w_sections(sections, show_empty=False):
+        has_any = any(items for _, items in sections)
+        for lbl, items in sections:
+            if not items:
+                if show_empty and not has_any:
+                    st.info("해당하는 종목이 없습니다.")
+                continue
+            st.markdown(f'<div class="section"><div class="sec-lbl">{lbl}</div></div>', unsafe_allow_html=True)
+            for item in items:
+                _watchlist_card(item)
 
-    for sec_lbl, items in sections:
-        if not items:
-            st.info("해당하는 종목이 없습니다.")
-            continue
-        st.markdown(f'<div class="section"><div class="sec-lbl">{sec_lbl}</div></div>', unsafe_allow_html=True)
-        for item in items:
-            _watchlist_card(item)
+    with tab_all:
+        _render_w_sections([("매수 검토 가능", buy_ok), ("추격매수 금지", chase_no), ("관망", watch_lst)])
+        with st.expander("➕ 관심종목 추가"):
+            with st.form("awf", clear_on_submit=True):
+                c1, c2 = st.columns(2)
+                with c1: code = st.text_input("종목코드", placeholder="277810")
+                with c2: name_in = st.text_input("종목명", placeholder="레인보우로보틱스")
+                c3, c4 = st.columns(2)
+                with c3: target = st.number_input("목표가 (선택)", min_value=0, step=100)
+                with c4: stop = st.number_input("손절가 (선택)", min_value=0, step=100)
+                if st.form_submit_button("추가", use_container_width=True, type="primary"):
+                    if not code: st.error("종목코드를 입력해주세요.")
+                    else:
+                        code = code.strip().zfill(6)
+                        name = name_in.strip() or get_stock_name(code) or code
+                        ok, msg = add_watchlist(st.session_state.user_id, code, name,
+                                               target or None, stop or None)
+                        if ok: st.success(msg); st.rerun()
+                        else: st.error(msg)
+    with tab_buy:
+        _render_w_sections([("매수 검토 가능", buy_ok)], show_empty=True)
+    with tab_chase:
+        _render_w_sections([("추격매수 금지", chase_no)], show_empty=True)
+    with tab_watch:
+        _render_w_sections([("관망", watch_lst)], show_empty=True)
 
 
 def _watchlist_card(item):
@@ -2217,34 +2229,14 @@ def _watchlist_card(item):
       </div>
     </div>""", unsafe_allow_html=True)
 
-    col_nav, col_del = st.columns([6, 1])
-    with col_nav:
-        st.markdown('<div class="hld-nav-wrap">', unsafe_allow_html=True)
-        if st.button("상세분석 보기  ›", key=f"w_{w['code']}", use_container_width=True):
-            st.session_state.page = "watchlist_detail"
-            st.session_state.detail_code = w["code"]
-            st.session_state.detail_name = w["name"]
-            st.session_state.detail_target = w.get("target_price", 0) or 0
-            st.session_state.detail_stop = w.get("stop_loss", 0) or 0
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-    with col_del:
-        st.markdown('<div class="hld-del-wrap">', unsafe_allow_html=True)
-        if st.button("✕", key=f"wdel_{w['code']}", use_container_width=True):
-            st.session_state[f"confirm_wdel_{w['code']}"] = True
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    if st.session_state.get(f"confirm_wdel_{w['code']}"):
-        st.warning(f"**'{w['name']}'** 종목을 관심목록에서 삭제하시겠습니까?")
-        cc1, cc2 = st.columns(2)
-        with cc1:
-            if st.button("확인", key=f"wdel_ok_{w['code']}", type="primary", use_container_width=True):
-                delete_watchlist(st.session_state.user_id, w["code"])
-                st.session_state.pop(f"confirm_wdel_{w['code']}", None); st.rerun()
-        with cc2:
-            if st.button("취소", key=f"wdel_cancel_{w['code']}", use_container_width=True):
-                st.session_state.pop(f"confirm_wdel_{w['code']}", None); st.rerun()
-    st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
+    if st.button("상세분석 보기  ›", key=f"w_{w['code']}", use_container_width=True):
+        st.session_state.page = "watchlist_detail"
+        st.session_state.detail_code = w["code"]
+        st.session_state.detail_name = w["name"]
+        st.session_state.detail_target = w.get("target_price", 0) or 0
+        st.session_state.detail_stop = w.get("stop_loss", 0) or 0
+        st.rerun()
+    st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
 
 # ─────────────────────────────────────────────────────────
