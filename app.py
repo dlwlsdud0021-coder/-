@@ -3176,6 +3176,26 @@ def render_watchlist_detail():
                 st.session_state.pop("wd_confirm_del", None)
                 st.rerun()
 
+    # ── 보유종목 추가 ──
+    if st.button("➕ 보유종목 추가하기", key="wd_add_holding", use_container_width=True):
+        st.session_state["wd_show_add_holding"] = True
+    if st.session_state.get("wd_show_add_holding"):
+        with st.form("wd_add_holding_form", clear_on_submit=True):
+            c1, c2 = st.columns(2)
+            with c1: avg_p = st.number_input("평균 매수가", min_value=0, step=100)
+            with c2: qty = st.number_input("수량 (주)", min_value=0, step=1)
+            if st.form_submit_button("추가", use_container_width=True, type="primary"):
+                if not avg_p or not qty:
+                    st.error("평균가와 수량을 입력해주세요.")
+                else:
+                    ok, msg = add_holding(st.session_state.user_id, code, name, avg_p, int(qty))
+                    if ok:
+                        st.success(f"{name}을 보유종목에 추가했습니다.")
+                        st.session_state.pop("wd_show_add_holding", None)
+                        st.rerun()
+                    else:
+                        st.error(msg)
+
     st.caption("⚠️ 투자 결정은 본인 책임입니다. 이 앱의 정보는 참고용이며 투자 권유가 아닙니다.")
 
 
