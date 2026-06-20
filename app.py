@@ -2409,35 +2409,35 @@ def render_holdings_detail():
     h_avs = auto_tp["avg_vs_stop"]
     h_rr  = abs(h_tu / h_sd) if h_sd else 0
 
-    st.markdown(f"""<div class="hdr">
-      <div style="width:100%;display:flex;align-items:center;gap:12px;">
+    # 내 보유 현황
+    pnl_bar_pct = min(abs(pnl_pct)*2, 100)
+    pnl_bar_clr = "#E24B4A" if pnl_pct>=0 else "#185FA5"
+    pnl_10k = int(pnl_amt/10000)
+    st.markdown(f"""
+    <div style="margin:0 16px 12px; border:0.5px solid #E5E5EA; border-radius:16px; overflow:hidden; background:#fff;">
+      <!-- 헤더 -->
+      <div style="padding:14px 20px 12px; display:flex; align-items:center; gap:12px; border-bottom:0.5px solid #E5E5EA;">
         <div style="flex:1;">
           <div class="hdr-title">{name}</div>
           <div style="font-size:11px;color:#8E8E93;">{code}</div>
         </div>
         <span class="badge {hdg_bdg_cls}">{'수익' if pnl_pct>=0 else '손실'} {pnl_sign}{pnl_pct:.2f}%</span>
       </div>
-    </div>""", unsafe_allow_html=True)
-
-    st.markdown(f"""<div class="price-section">
-      <div class="current-price">{_fp(cur)}</div>
-      <div style="display:flex;gap:8px;margin-top:4px;">
-        <span class="{chg_cls}" style="font-size:14px;font-weight:600;">{'▲' if chg_pct>=0 else '▼'} {abs(chg):,.0f}원</span>
-        <span class="{chg_cls}" style="font-size:14px;font-weight:600;">({abs(chg_pct):.2f}%)</span>
+      <!-- 현재가 -->
+      <div style="padding:16px 20px; border-bottom:0.5px solid #E5E5EA;">
+        <div class="current-price">{_fp(cur)}</div>
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          <span class="{chg_cls}" style="font-size:14px;font-weight:600;">{'▲' if chg_pct>=0 else '▼'} {abs(chg):,.0f}원</span>
+          <span class="{chg_cls}" style="font-size:14px;font-weight:600;">({abs(chg_pct):.2f}%)</span>
+        </div>
+        <div class="price-meta">
+          <div class="pm-item">고가 <span>{_fp(pd2.get('high'))}</span></div>
+          <div class="pm-item">저가 <span>{_fp(pd2.get('low'))}</span></div>
+          <div class="pm-item">거래량 <span>{pd2.get('volume',0):,}</span></div>
+        </div>
       </div>
-      <div class="price-meta">
-        <div class="pm-item">고가 <span>{_fp(pd2.get('high'))}</span></div>
-        <div class="pm-item">저가 <span>{_fp(pd2.get('low'))}</span></div>
-        <div class="pm-item">거래량 <span>{pd2.get('volume',0):,}</span></div>
-      </div>
-    </div>""", unsafe_allow_html=True)
-
-    # 내 보유 현황
-    pnl_bar_pct = min(abs(pnl_pct)*2, 100)
-    pnl_bar_clr = "#E24B4A" if pnl_pct>=0 else "#185FA5"
-    pnl_10k = int(pnl_amt/10000)
-    st.markdown(f"""<div style="margin:12px 16px 0;">
-      <div class="card">
+      <!-- 내 보유 현황 -->
+      <div style="padding:14px 16px;">
         <div style="font-size:11px;font-weight:600;color:#8E8E93;margin-bottom:10px;display:flex;align-items:center;gap:5px;">
           <i class="ti ti-briefcase" style="font-size:12px;color:#5B5BD6;"></i>내 보유 현황
         </div>
