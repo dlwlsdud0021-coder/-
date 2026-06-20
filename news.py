@@ -57,6 +57,8 @@ def _call_gemini(prompt: str, cache_key: str) -> str:
         return result
     except Exception as e:
         import traceback
+        print(f"[Gemini ERROR] {e}")
+        traceback.print_exc()
         _gemini_cache[cache_key + "_err"] = str(e)
         return ""
 
@@ -143,20 +145,33 @@ CATEGORY_NAMES = list(CATEGORY_CONFIG.keys())
 # ─────────────────────────────────────────────────────────
 
 POSITIVE_KEYWORDS = [
-    "급등", "상승", "호재", "흑자", "실적개선", "수주", "증가",
-    "기대감", "돌파", "신고가", "외국인 매수", "기관 매수",
-    "목표가 상향", "개선", "회복", "강세", "반등", "청신호",
-    "순매수", "호조", "수익", "이익", "성공", "승인", "수출 증가",
+    # 주가 직접 상승 신호
+    "급등", "상한가", "신고가", "주가 상승", "증시 상승", "주식 상승",
+    # 실적/사업 호조
+    "호재", "흑자", "실적개선", "실적 호조", "영업이익 증가", "매출 증가",
+    "수주", "기술수출", "기대감", "돌파", "청신호",
+    # 수급 긍정
+    "외국인 매수", "기관 매수", "목표가 상향", "강세", "반등", "호조",
+    "순매수", "성공", "승인", "수출 증가",
+    # 통화정책 완화
     "금리 인하", "기준금리 인하", "완화", "양적완화",
 ]
 
 NEGATIVE_KEYWORDS = [
-    "급락", "하락", "악재", "적자", "실적부진", "감소", "취소", "손실",
-    "불안", "매도", "하회", "신저가", "외국인 매도", "기관 매도",
-    "목표가 하향", "경고", "부정", "악화", "위기",
+    # 주가 직접 하락 신호
+    "급락", "하락", "하한가", "신저가", "주가 하락", "증시 하락",
+    # 실적/사업 부진
+    "악재", "적자", "실적부진", "실적 부진", "영업손실", "감소", "취소", "손실",
+    "불안", "매도", "하회", "외국인 매도", "기관 매도",
+    "목표가 하향", "경고", "악화", "위기",
     "약세", "붕괴", "순매도", "부진", "우려", "침체",
     "규제", "제재", "벌금", "소송", "불확실", "리스크", "충격",
-    "금리 인상", "기준금리 인상", "긴축", "금리 올", "금리를 올",
+    # 통화정책 긴축
+    "금리 인상", "기준금리 인상", "긴축", "금리 올릴", "금리를 올",
+    # 매파/긴축 추가 표현
+    "매파", "인상 전망", "올릴 것", "올릴 가능성", "꺾일", "꺾이",
+    "상승세 꺾", "경기 둔화", "수요 둔화", "경기침체 우려", "부담 가중",
+    "압박", "둔화 우려", "상승 꺾",
 ]
 
 # 주식 관련 키워드 (비주식 뉴스 필터링용)
@@ -193,7 +208,8 @@ def classify_sentiment(text: str) -> dict:
     neg = sum(1 for k in NEGATIVE_KEYWORDS if k in text)
     score = pos - neg
 
-    if pos > 0 and neg > 0:
+    # score 절댓값이 크면 혼재라도 우세한 방향으로 판정 (금리인상 기사가 mixed 오판 방지)
+    if pos > 0 and neg > 0 and abs(score) <= 2:
         return {"sentiment": "mixed",    "label": "혼조", "badge_type": "warn",    "score": score}
     elif score >= 2:
         return {"sentiment": "positive", "label": "긍정", "badge_type": "buy",     "score": score}
@@ -859,36 +875,34 @@ def generate_ai_summary(title, summary, sentiment, category):
         "글로벌": "글로벌 시장", "전체": "국내 증시",
     }.get(category, category)
 
-    # 섹션 1: 무슨 뉴스?
-    if co_str and num_str:
-        what = (f"{co_str}와 관련해 {num_str} 규모의 이슈가 발생했습니다. "
-                f"이 소식은 {sector_kr} 섹터 전반에 영향을 줄 수 있는 뉴스입니다. "
-                f"{'긍정적인 내용으로 주가 상승 압력으로 작용할 가능성이 있습니다.' if sentiment == 'positive' else '부정적인 내용으로 관련주 하락 가능성에 주의가 필요합니다.' if sentiment == 'negative' else '방향성이 엇갈려 장 초반 주가 반응을 먼저 확인하는 것이 좋습니다.'}")
+    # 섹션 1: 무슨 뉴스? — 실제 기사 내용 우선 반영
+    # 고정 텍스트 1차 사용시 기사 내용과 반대가 될 위험이 있음
+    sent_label = {
+        "positive": f"{sector_kr} 섹터에 긍정적인 신호로 해석됩니다.",
+        "negative": f"{sector_kr} 섹터에 부정적인 신호로 해석됩니다.",
+        "mixed":    "긍정·부정 요소가 혼재되어 있어 시장 반응을 먼저 확인하는 것이 좋습니다.",
+        "neutral":  "시장에 직접적 영향이 제한적일 수 있습니다.",
+    }.get(sentiment, "")
+
+    if article_body and len(article_body) > 60:
+        snippet = article_body[:220].rstrip()
+        if len(article_body) > 220:
+            last_end = max(snippet.rfind(". "), snippet.rfind("다."), snippet.rfind("요."), snippet.rfind("다 "))
+            if last_end > 80:
+                snippet = snippet[:last_end + 1]
+        what = snippet + " " + sent_label
     elif co_str:
         sent_desc = {
-            "positive": f"{co_str}에 긍정적인 뉴스가 나왔습니다. 실적 개선, 수주 계약, 신제품 출시 등 주가 상승의 직접적 트리거가 될 수 있는 내용을 담고 있습니다.",
-            "negative": f"{co_str}에 부정적인 뉴스가 나왔습니다. 실적 부진, 계약 취소, 규제 이슈 등 주가 하락 압력으로 작용할 수 있는 내용입니다.",
-            "mixed":    f"{co_str} 관련 뉴스로 긍정·부정 요소가 함께 포함되어 있습니다. 어느 쪽이 더 크게 작용하는지 시장 반응을 지켜봐야 합니다.",
-            "neutral":  f"{co_str} 관련 참고사항 성격의 뉴스입니다. 당장 주가에 큰 변동을 줄 가능성은 낮지만 중장기 방향성에 영향을 줄 수 있습니다.",
+            "positive": f"{co_str}에 긍정적인 뉴스가 나왔습니다. 주가 상승의 직접적 트리거가 될 수 있습니다.",
+            "negative": f"{co_str}에 부정적인 뉴스가 나왔습니다. 주가 하락 압력으로 작용할 수 있습니다.",
+            "mixed":    f"{co_str} 관련 뉴스로 긍정·부정 요소가 혼재되어 있습니다. 시장 반응을 먼저 확인하세요.",
+            "neutral":  f"{co_str} 관련 참고 뉴스입니다. 중장기 방향성에 영향을 줄 수 있습니다.",
         }
         what = sent_desc.get(sentiment, f"{co_str} 관련 중요 뉴스입니다.")
+        if num_str:
+            what = f"{co_str}와 관련해 {num_str} 규모의 이슈가 발생했습니다. " + what
     else:
-        cat_desc = {
-            ("반도체", "positive"): "반도체·AI 업황에 긍정적인 신호가 나왔습니다. AI 수요 확대, HBM 공급 계약, 엔비디아 실적 호조 등 반도체 섹터 전체를 끌어올릴 수 있는 내용입니다. 삼성전자·SK하이닉스 등 대형주부터 장비·소재 중소형주까지 동반 상승 효과가 나타날 수 있습니다.",
-            ("반도체", "negative"): "반도체 업황에 우려 신호가 나왔습니다. 수요 감소, 재고 증가, 가격 하락 등의 이슈로 삼성전자·SK하이닉스 등 반도체 대형주에 하락 압력이 생길 수 있습니다. 실적 전망 하향 조정이 이어질 가능성도 있습니다.",
-            ("바이오", "positive"): "바이오·제약 섹터에 긍정적인 이벤트가 발생했습니다. 임상 성공, FDA 승인, 글로벌 기술 수출 등 바이오주 급등의 트리거가 될 수 있는 내용입니다. 관련 회사뿐 아니라 비슷한 파이프라인을 가진 회사들도 동반 상승하는 경우가 많습니다.",
-            ("바이오", "negative"): "바이오·제약 섹터에 부정적 뉴스가 나왔습니다. 임상 실패, 허가 반려, 안전성 문제 등은 해당 종목 주가를 단기에 20~50% 급락시킬 수 있는 강력한 악재입니다. 바이오 섹터 전반 투자심리도 위축될 수 있습니다.",
-            ("2차전지", "positive"): "전기차·배터리 섹터에 반등 신호가 나왔습니다. 전기차 판매량 증가, 대형 수주 계약, 원자재 가격 안정 등 배터리 관련주 상승의 계기가 될 수 있는 뉴스입니다. LG에너지솔루션·삼성SDI·에코프로비엠 등 배터리 밸류체인 전체가 수혜를 받을 수 있습니다.",
-            ("2차전지", "negative"): "전기차·배터리 섹터에 우려 뉴스가 나왔습니다. 전기차 캐즘(일시적 수요 정체), 중국 업체 경쟁 심화, 수주 취소 등의 이슈로 배터리 관련주 전반에 매도 압력이 생길 수 있습니다.",
-            ("금융", "positive"): "금리 인하 또는 금융 환경 완화 신호가 나왔습니다. 금리가 내려가면 주식 시장 전반에 좋은데, 특히 성장주(고PER 종목)와 부동산 관련주가 혜택을 받습니다. 외국인 투자자들이 한국 주식을 더 많이 살 가능성도 높아집니다.",
-            ("금융", "negative"): "금리 인상 또는 긴축 우려 신호가 나왔습니다. 금리가 오르면 주식보다 채권이 더 매력적이 되어 주식에서 돈이 빠져나갑니다. 특히 미래 이익을 높게 평가받던 성장주(바이오, 플랫폼, 2차전지 등)가 가장 큰 타격을 받습니다.",
-            ("글로벌", "positive"): "글로벌 시장(미국·중국 등)에서 긍정적인 신호가 나왔습니다. 미국 증시가 오르면 다음 날 한국 증시도 따라 오르는 경향이 강합니다. 외국인 투자자들이 한국 주식을 사들이는 계기가 될 수 있습니다.",
-            ("글로벌", "negative"): "글로벌 시장에서 리스크가 부각됐습니다. 미국 증시 하락, 달러 강세, 지정학 리스크 등이 한국 증시 외국인 매도를 유발할 수 있습니다. 원화 약세(환율 상승)가 동반되면 수입 비중이 높은 기업들도 타격을 받습니다.",
-        }
-        what = cat_desc.get((category, sentiment),
-               cat_desc.get((category, "positive" if pos_hits else "negative" if neg_hits else "positive"),
-               f"{sector_kr} 관련 주요 뉴스입니다. 투자 시 참고하세요."))
-
+        what = f"{title[:50]}... 관련 뉴스입니다. {sent_label}"
     # 섹션 2: 주가 영향
     impact_detail = {
         ("반도체", "positive"): (
@@ -947,7 +961,10 @@ def generate_ai_summary(title, summary, sentiment, category):
             "지정학 리스크(전쟁, 분쟁)는 안전자산 선호를 강화해 금·달러로 돈이 몰리고 신흥국 주식에서 자금이 빠져나갑니다."
         ),
     }
-    impact_key = (category, sentiment if sentiment in ["positive", "negative"] else "positive" if pos_hits else "negative" if neg_hits else "positive")
+    # mixed 감성은 보수적으로 negative 기준으로 (금리인상 기사가 positive로 오해되면 안됨)
+    eff_sent_for_impact = (sentiment if sentiment in ["positive", "negative"]
+                           else "negative" if neg_hits else "positive" if pos_hits else "neutral")
+    impact_key = (category, eff_sent_for_impact)
     impact = impact_detail.get(impact_key,
              impact_detail.get((category, "positive"), "시장 반응을 주의 깊게 관찰하세요."))
 
@@ -1370,7 +1387,13 @@ def generate_strategy(sentiment, category, title="", summary=""):
             return d[k2]
         return list(d.values())[0] if d else ""
 
-    eff_sent = sentiment if sentiment in ["positive", "negative"] else "negative" if sentiment == "mixed" else "positive"
+    _ts = title + " " + (summary or "")
+    _neg_h = [kw for kw in NEGATIVE_KEYWORDS if kw in _ts]
+    _pos_h = [kw for kw in POSITIVE_KEYWORDS if kw in _ts]
+    eff_sent = (sentiment if sentiment in ["positive", "negative"]
+                else "negative" if (sentiment == "mixed" or _neg_h)
+                else "positive" if _pos_h
+                else "positive")
     mood_text  = _get(MOOD,  category, eff_sent)
     trade_text = _get(TRADE, category, eff_sent)
     risk_text  = _get(RISK,  category, eff_sent)
