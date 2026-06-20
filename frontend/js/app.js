@@ -180,7 +180,7 @@ function renderHome(d, el) {
   const phase = d.market_phase || 'close';
   const phaseLabel = { pre:'장 시작 전', open:'장중', close:'장 마감', weekend:'주말' }[phase] || '장 마감';
 
-  const analysis = d.analysis || [];
+  const analysis = Array.isArray(d.analysis) ? d.analysis : [];
   const forecast = d.forecast || {};
 
   const heroTitle = kpPct >= 1.5 ? '강한 상승장' : kpPct >= 0.3 ? '상승장' : kpPct <= -1.5 ? '하락장' : kpPct <= -0.3 ? '약세장' : '보합장';
@@ -203,8 +203,8 @@ function renderHome(d, el) {
 
   const fDir = forecast.direction || (kpPct >= 0 ? '상승' : '하락');
   const fConf = forecast.confidence || 55;
-  const fBasis = forecast.basis || [];
-  const fPoints = forecast.points || [];
+  const fBasis = Array.isArray(forecast.basis) ? forecast.basis : (forecast.basis ? [forecast.basis] : []);
+  const fPoints = Array.isArray(forecast.points) ? forecast.points : (forecast.points ? [forecast.points] : []);
 
   let basisHtml = (fBasis.slice(0,2)).map(b => `<div class="forecast-item">${b}</div>`).join('');
   let pointsHtml = (fPoints.slice(0,2)).map(p => `<div class="forecast-item">${p}</div>`).join('');
