@@ -268,9 +268,10 @@ body { background: #F5F5F7; color: #1A1A2E; }
 .login-sub { font-size:13px; color:#8E8E93; text-align:center; margin-bottom:28px; }
 /* 보유 카드 액션 버튼 */
 div[data-testid="stHorizontalBlock"]:has(.hld-nav-wrap) { gap:4px !important; margin-top:-2px !important; }
-.hld-nav-wrap button { background:#F8F8FA !important; border:0.5px solid #E5E5EA !important; border-top:none !important;
-  border-radius:0 0 14px 14px !important; font-size:13px !important; color:#5B5BD6 !important;
-  padding:6px 0 !important; min-height:34px !important; }
+.hld-nav-wrap { margin-top:-1px; }
+.hld-nav-wrap button { background:#fff !important; border:0.5px solid #E5E5EA !important; border-top:0.5px solid #F0F0F5 !important;
+  border-radius:0 0 16px 16px !important; font-size:13px !important; color:#5B5BD6 !important;
+  padding:8px 0 !important; min-height:38px !important; }
 .hld-del-wrap button { background:#EAF3DE !important; border:0.5px solid #E5E5EA !important; border-top:none !important;
   border-radius:0 0 14px 0 !important; font-size:15px !important; color:#27500A !important;
   padding:6px 0 !important; min-height:34px !important; }
@@ -1986,17 +1987,19 @@ def render_holdings():
     # ── 필터 탭 (st.tabs 스타일) ──
     tab_all, tab_profit, tab_loss, tab_sell = st.tabs(["전체", "수익", "손실", "매도신호"])
 
-    def _render_sections(sections, pfx):
+    def _render_sections(sections, pfx, show_empty_msg=False):
+        has_any = any(items for _, items in sections)
         for lbl, items in sections:
             if not items:
-                st.info("해당하는 종목이 없습니다.")
+                if show_empty_msg and not has_any:
+                    st.info("해당하는 종목이 없습니다.")
                 continue
             st.markdown(f'<div class="section"><div class="sec-lbl">{lbl}</div></div>', unsafe_allow_html=True)
             for e in items:
                 _holding_card(e, pfx)
 
     with tab_all:
-        _render_sections([("수익 중인 종목", profit), ("손실 중인 종목", loss)], "a")
+        _render_sections([("수익 중인 종목", profit), ("손실 중인 종목", loss)], "a", show_empty_msg=False)
         with st.expander("➕ 종목 추가"):
             with st.form("ahf", clear_on_submit=True):
                 c1, c2 = st.columns(2)
@@ -2015,11 +2018,11 @@ def render_holdings():
                         if ok: st.success(msg); st.rerun()
                         else: st.error(msg)
     with tab_profit:
-        _render_sections([("수익 중인 종목", profit)], "p")
+        _render_sections([("수익 중인 종목", profit)], "p", show_empty_msg=True)
     with tab_loss:
-        _render_sections([("손실 중인 종목", loss)], "l")
+        _render_sections([("손실 중인 종목", loss)], "l", show_empty_msg=True)
     with tab_sell:
-        _render_sections([("매도신호 종목", sell_signal)], "s")
+        _render_sections([("매도신호 종목", sell_signal)], "s", show_empty_msg=True)
 
 
 def _holding_card(e, pfx="a"):
