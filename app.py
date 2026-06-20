@@ -1644,15 +1644,6 @@ def render_news():
       <div style="color:#8E8E93;font-size:20px;"><i class="ti ti-chart-bar"></i></div>
     </div>""", unsafe_allow_html=True)
 
-    # ── 키워드 검색 (기존 유지) ──
-    query = st.text_input("🔍 종목명·키워드 검색", placeholder="예: 삼성전자, 반도체, AI", label_visibility="collapsed")
-    if query.strip():
-        with st.spinner("뉴스 검색 중..."):
-            news_list = fetch_stock_news(query.strip(), max_items=15)
-        st.markdown(f'<div class="section"><div class="sec-title"><i class="ti ti-search" style="font-size:15px;color:#5B5BD6;"></i>"{query}" 검색 결과 ({len(news_list)}건)</div></div>', unsafe_allow_html=True)
-        _render_news_cards(news_list)
-        return
-
     # ── TOP10 — 10분 세션 캐시 ──
     now_ts = time.time()
     if ("top10_news" not in st.session_state or
@@ -1667,42 +1658,46 @@ def render_news():
 
     top10 = st.session_state.top10_news
 
-    # ── 새로고침 버튼 ──
-    if st.button("🔄 TOP10 새로고침", key="news_refresh", use_container_width=False):
-        st.session_state.pop("top10_news", None)
-        st.session_state.pop("top10_ts",   None)
-        st.rerun()
+    # ── 감성 요약 바 (검색창 자리에 배치) ──
+    if top10:
+        summ  = summarize_sentiment(top10)
+        total = len(top10)
+        pos_pct = round(summ["positive_count"] / total * 100) if total else 0
+        neg_pct = round(summ["negative_count"] / total * 100) if total else 0
+        neu_pct = max(0, 100 - pos_pct - neg_pct)
+        overall_map = {"positive": ("긍정 우세", "#30D158"), "negative": ("부정 우세", "#E24B4A"),
+                       "mixed": ("혼조", "#FF9F0A"), "neutral": ("중립", "#8E8E93")}
+        ov_lbl, ov_clr = overall_map.get(summ["overall"], ("중립", "#8E8E93"))
+        st.markdown(f"""<div class="section"><div class="card" style="padding:12px 16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div style="font-size:12px;font-weight:600;color:#3C3C43;">TOP10 감성 분포</div>
+            <span style="font-size:11px;font-weight:700;color:{ov_clr};">{ov_lbl}</span>
+          </div>
+          <div style="display:flex;height:6px;border-radius:3px;overflow:hidden;gap:2px;">
+            <div style="width:{pos_pct}%;background:#30D158;border-radius:3px 0 0 3px;"></div>
+            <div style="width:{neg_pct}%;background:#E24B4A;"></div>
+            <div style="width:{neu_pct}%;background:#E5E5EA;border-radius:0 3px 3px 0;"></div>
+          </div>
+          <div style="display:flex;gap:12px;margin-top:6px;">
+            <span style="font-size:10px;color:#30D158;">● 긍정 {summ['positive_count']}건</span>
+            <span style="font-size:10px;color:#E24B4A;">● 부정 {summ['negative_count']}건</span>
+            <span style="font-size:10px;color:#FF9F0A;">● 혼조 {summ['mixed_count']}건</span>
+            <span style="font-size:10px;color:#8E8E93;">● 중립 {summ['neutral_count']}건</span>
+          </div>
+        </div></div>""", unsafe_allow_html=True)
+
+    # ── 키워드 검색 ──
+    query = st.text_input("🔍 종목명·키워드 검색", label_visibility="collapsed")
+    if query.strip():
+        with st.spinner("뉴스 검색 중..."):
+            news_list = fetch_stock_news(query.strip(), max_items=15)
+        st.markdown(f'<div class="section"><div class="sec-title"><i class="ti ti-search" style="font-size:15px;color:#5B5BD6;"></i>"{query}" 검색 결과 ({len(news_list)}건)</div></div>', unsafe_allow_html=True)
+        _render_news_cards(news_list)
+        return
 
     if not top10:
         st.info("뉴스를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.")
         return
-
-    # ── 감성 요약 바 (TOP10 기준) ──
-    summ  = summarize_sentiment(top10)
-    total = len(top10)
-    pos_pct = round(summ["positive_count"] / total * 100) if total else 0
-    neg_pct = round(summ["negative_count"] / total * 100) if total else 0
-    neu_pct = max(0, 100 - pos_pct - neg_pct)
-    overall_map = {"positive": ("긍정 우세", "#30D158"), "negative": ("부정 우세", "#E24B4A"),
-                   "mixed": ("혼조", "#FF9F0A"), "neutral": ("중립", "#8E8E93")}
-    ov_lbl, ov_clr = overall_map.get(summ["overall"], ("중립", "#8E8E93"))
-    st.markdown(f"""<div class="section"><div class="card" style="padding:12px 16px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <div style="font-size:12px;font-weight:600;color:#3C3C43;">TOP10 감성 분포</div>
-        <span style="font-size:11px;font-weight:700;color:{ov_clr};">{ov_lbl}</span>
-      </div>
-      <div style="display:flex;height:6px;border-radius:3px;overflow:hidden;gap:2px;">
-        <div style="width:{pos_pct}%;background:#30D158;border-radius:3px 0 0 3px;"></div>
-        <div style="width:{neg_pct}%;background:#E24B4A;"></div>
-        <div style="width:{neu_pct}%;background:#E5E5EA;border-radius:0 3px 3px 0;"></div>
-      </div>
-      <div style="display:flex;gap:12px;margin-top:6px;">
-        <span style="font-size:10px;color:#30D158;">● 긍정 {summ['positive_count']}건</span>
-        <span style="font-size:10px;color:#E24B4A;">● 부정 {summ['negative_count']}건</span>
-        <span style="font-size:10px;color:#FF9F0A;">● 혼조 {summ['mixed_count']}건</span>
-        <span style="font-size:10px;color:#8E8E93;">● 중립 {summ['neutral_count']}건</span>
-      </div>
-    </div></div>""", unsafe_allow_html=True)
 
     # ── 2탭: 뉴스+분석 통합 / 전략 ──
     tab1, tab2 = st.tabs(["📰 뉴스 & 분석", "⚡ 투자 전략"])
@@ -1712,6 +1707,13 @@ def render_news():
     with tab2:
         st.markdown('<div class="section"><div class="sec-title"><i class="ti ti-bulb" style="font-size:15px;color:#F0A500;"></i>투자 대응 전략</div></div>', unsafe_allow_html=True)
         _render_strategy_tab(top10)
+
+    # ── 새로고침 버튼 (맨 아래) ──
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("🔄 TOP10 새로고침", key="news_refresh", use_container_width=True):
+        st.session_state.pop("top10_news", None)
+        st.session_state.pop("top10_ts",   None)
+        st.rerun()
 
 
 def _rank_badge(rank: int, score: float) -> str:
