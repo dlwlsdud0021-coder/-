@@ -1,0 +1,22 @@
+{
+  "name": "포켓주식",
+  "short_name": "포켓주식",
+  "description": "내 손안의 주식 대시보드",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#5B5BD6",
+  "theme_color": "#5B5BD6",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/app/static/icon-512.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/app/static/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

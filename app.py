@@ -33,8 +33,18 @@ from database import (create_user, verify_user, get_username,
     get_recent_predictions, get_prediction_accuracy)
 
 # ─────────────────────────────────────────────────────────
-st.set_page_config(page_title="주식 대시보드", page_icon="📈",
+st.set_page_config(page_title="포켓주식", page_icon="📈",
                    layout="centered", initial_sidebar_state="collapsed")
+
+st.markdown("""
+<link rel="manifest" href="/app/static/manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="포켓주식">
+<meta name="theme-color" content="#5B5BD6">
+<link rel="apple-touch-icon" href="/app/static/icon-512.png">
+""", unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────
 # CSS (원본 HTML 디자인 토큰 완전 복원)
@@ -549,7 +559,7 @@ def _make_forecast(kp_pct, sp_pct):
 # ─────────────────────────────────────────────────────────
 def render_login():
     st.markdown('<div class="login-wrap">', unsafe_allow_html=True)
-    st.markdown('<div class="login-title">📈 주식 대시보드</div>', unsafe_allow_html=True)
+    st.markdown('<div class="login-title">📈 포켓주식</div>', unsafe_allow_html=True)
     st.markdown('<div class="login-sub">로그인하여 나만의 포트폴리오를 관리하세요</div>', unsafe_allow_html=True)
     c1, c2 = st.columns(2)
     with c1:
