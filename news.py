@@ -1559,18 +1559,44 @@ def fetch_category_news(category: str, max_items: int = 15) -> list:
     return [_classify_item(it) for it in raw[:max_items]]
 
 
+def _stock_brief_fallback(title: str, sentiment: str) -> str:
+    """Gemini 실패 시 키워드 기반 1줄 요약."""
+    t = title.lower()
+    if sentiment == "positive":
+        if any(k in t for k in ["실적", "영업이익", "매출"]):
+            return "실적 호조 신호 — 단기 상승 모멘텀 기대"
+        if any(k in t for k in ["수주", "계약", "협력"]):
+            return "신규 사업 확대 — 중기 성장 기대감 긍정적"
+        if any(k in t for k in ["목표주가", "상향", "매수"]):
+            return "애널리스트 긍정 평가 — 단기 수급 개선 가능"
+        return "호재성 뉴스 — 단기 주가 상승 가능성, 비중 유지"
+    elif sentiment == "negative":
+        if any(k in t for k in ["적자", "손실", "하락"]):
+            return "실적 악화 우려 — 손절선 점검 후 비중 축소 고려"
+        if any(k in t for k in ["소송", "제재", "조사"]):
+            return "리스크 이슈 — 추가 하락 가능, 관망 권장"
+        if any(k in t for k in ["공급", "경쟁", "과잉"]):
+            return "업황 부담 — 저점 확인 후 분할 매수 검토"
+        return "악재성 뉴스 — 추가 하락 가능, 손절선 점검 필요"
+    elif sentiment == "mixed":
+        return "복합 신호 — 추가 정보 확인 후 대응, 단기 관망"
+    else:
+        return "중립 뉴스 — 주가 영향 제한적, 보유 유지"
+
+
 def _generate_stock_brief(title: str, sentiment: str, stock_name: str) -> str:
-    """뉴스 제목 → 투자자 관점 1줄 요약. Gemini 캐시 활용."""
+    """뉴스 제목 → 투자자 관점 1줄 요약. Gemini 우선, 실패 시 키워드 폴백."""
     cache_key = hashlib.md5(("brief:" + title[:80]).encode()).hexdigest()
     sent_kor = {"positive": "호재", "negative": "악재", "mixed": "혼조", "neutral": "중립"}.get(sentiment, "중립")
     prompt = (
         f"다음은 '{stock_name}' 관련 뉴스 제목입니다: \"{title}\"\n"
         f"감성: {sent_kor}\n\n"
-        f"주식 투자자 입장에서 이 뉴스의 의미와 대응 방향을 20자 이내 1문장으로 요약하세요. "
-        f"예시: '실적 기대감으로 단기 상승 가능, 눌림목 매수 고려' / '공급 과잉 우려로 주가 하락 가능, 관망 권장'\n"
+        f"주식 투자자 입장에서 이 뉴스의 의미와 대응 방향을 25자 이내 1문장으로 요약하세요. "
+        f"예시: '실적 기대감으로 단기 상승 가능, 눌림목 매수 고려'\n"
         f"문장만 출력하세요."
     )
-    return _call_gemini(prompt, cache_key)
+    result = _call_gemini(prompt, cache_key)
+    return result if result else _stock_brief_fallback(title, sentiment)
 
 
 def fetch_stock_news(stock_name: str, max_items: int = 10) -> list:
