@@ -65,11 +65,11 @@ body { background: #F5F5F7; color: #1A1A2E; }
 .idx-val { font-size:18px; font-weight:700; letter-spacing:-0.5px; }
 .idx-chg { font-size:11px; margin-top:3px; font-weight:500; }
 /* 섹션 */
-.section { margin:0 16px 12px; }
-.sec-title { font-size:14px; font-weight:600; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+.section { margin:0 0 12px; }
+.sec-title { font-size:14px; font-weight:600; margin:0 16px 10px; display:flex; align-items:center; gap:6px; }
 .sec-lbl { font-size:11px; font-weight:600; color:#8E8E93; margin-bottom:6px; padding-left:2px; }
 /* 카드 */
-.card { background:#fff; border-radius:16px; padding:14px 16px; border:0.5px solid #E5E5EA; margin-bottom:8px; }
+.card { background:#fff; border-radius:16px; padding:14px 16px; border:0.5px solid #E5E5EA; margin:0 16px 8px; }
 /* 분석 아이템 */
 .analysis-item { padding:10px 0; border-bottom:0.5px solid #F0F0F5; }
 .analysis-item:last-child { border-bottom:none; padding-bottom:0; }
@@ -80,7 +80,7 @@ body { background: #F5F5F7; color: #1A1A2E; }
 .analysis-text strong { color:#1A1A2E; font-weight:600; }
 .warn-text { font-size:11px; color:#A32D2D; margin-top:4px; display:flex; gap:4px; line-height:1.5; }
 /* 예측 카드 */
-.forecast-card { background:#fff; border-radius:16px; padding:16px; border:0.5px solid #E5E5EA; }
+.forecast-card { background:#fff; border-radius:16px; padding:16px; border:0.5px solid #E5E5EA; margin:0 16px 8px; }
 .forecast-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
 .forecast-title { font-size:14px; font-weight:600; display:flex; align-items:center; gap:6px; }
 .confidence-badge { background:#EEEDFE; color:#3C3489; font-size:11px; padding:3px 8px; border-radius:6px; font-weight:500; }
@@ -123,7 +123,7 @@ body { background: #F5F5F7; color: #1A1A2E; }
 /* 색상 */
 .up { color:#E24B4A; } .down { color:#185FA5; }
 /* 뉴스 카드 */
-.news-card { background:#fff; border-radius:16px; padding:14px 16px; border:0.5px solid #E5E5EA; margin-bottom:8px; }
+.news-card { background:#fff; border-radius:16px; padding:14px 16px; border:0.5px solid #E5E5EA; margin:0 16px 8px; }
 .news-card.important { border-left:3px solid #5B5BD6; border-radius:0 16px 16px 16px; }
 .news-card.negative { border-left:3px solid #185FA5; border-radius:0 16px 16px 16px; }
 .news-card-top { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
@@ -198,7 +198,7 @@ body { background: #F5F5F7; color: #1A1A2E; }
 /* 카드 하단 */
 .card-bottom { display:flex; justify-content:space-between; align-items:center; padding-top:8px; border-top:0.5px solid #F0F0F5; margin-top:8px; }
 /* 스캐너 종목 카드 */
-.stk-card { background:#fff; border-radius:16px; padding:14px 16px; margin-bottom:8px; border:0.5px solid #E5E5EA; }
+.stk-card { background:#fff; border-radius:16px; padding:14px 16px; margin:0 16px 8px; border:0.5px solid #E5E5EA; }
 .stk-card.high { border-left:3px solid #5B5BD6; border-radius:0 16px 16px 16px; }
 .stk-card.mid  { border-left:3px solid #BA7517; border-radius:0 16px 16px 16px; }
 .rank-num { font-size:13px; font-weight:700; color:#C7C7CC; min-width:18px; }
@@ -257,7 +257,7 @@ body { background: #F5F5F7; color: #1A1A2E; }
 .day-chip { font-size:10px; padding:2px 6px; border-radius:5px; }
 .chip-buy { background:#FCEBEB; color:#A32D2D; }
 .chip-sell { background:#E6F1FB; color:#0C447C; }
-.warn-box { background:#FCEBEB; border-radius:14px; padding:14px 16px; margin-bottom:8px; }
+.warn-box { background:#FCEBEB; border-radius:14px; padding:14px 16px; margin:0 16px 8px; }
 .warn-title { font-size:13px; font-weight:600; color:#791F1F; margin-bottom:6px; display:flex; align-items:center; gap:6px; }
 .warn-box .warn-text { font-size:11px; color:#A32D2D; line-height:1.6; }
 .advice-box { background:#EEEDFE; border-radius:14px; padding:14px 16px; margin-bottom:8px; }
@@ -1094,7 +1094,7 @@ def render_supply_detail(inv_df: "pd.DataFrame"):
         advice = (f"외국인 25일 누적 {_jo(f_cumul)}, 기관 {_jo(i_cumul)}예요. "
                   f"수급 방향이 명확하지 않은 구간이에요. 동반 매수일({both_b}일) 추이를 확인하세요.")
 
-    st.markdown(f"""<div class="advice-box" style="margin:0 0 12px;">
+    st.markdown(f"""<div class="advice-box" style="margin:0 16px 12px;">
       <div class="advice-title"><i class="ti ti-bulb" style="font-size:15px;"></i>시스템 판단</div>
       <div class="advice-text">{advice}</div>
     </div>""", unsafe_allow_html=True)
@@ -2396,7 +2396,7 @@ def render_holdings_detail():
     pnl_bar_clr = "#E24B4A" if pnl_pct>=0 else "#185FA5"
     pnl_10k = int(pnl_amt/10000)
     st.markdown(f"""
-    <div style="margin:0 0 12px; border:0.5px solid #E5E5EA; border-radius:16px; overflow:hidden; background:#fff;">
+    <div style="margin:0 16px 12px; border:0.5px solid #E5E5EA; border-radius:16px; overflow:hidden; background:#fff;">
       <!-- 헤더 -->
       <div style="padding:16px 20px 14px; display:flex; align-items:center; gap:12px; border-bottom:0.5px solid #E5E5EA;">
         <div style="flex:1;">
@@ -2563,7 +2563,7 @@ def render_holdings_detail():
         boll_interp = f"볼린저밴드 <b>중간 구간</b>에 있어요. 터널 안에서 방향을 탐색하는 중이에요. 상단 또는 하단 돌파 방향을 지켜보세요."
         boll_icon = "🟡"
 
-    st.markdown(f"""<div style="background:#EEEDFE;border-radius:16px;padding:16px 18px;margin:0 0 12px 0;">
+    st.markdown(f"""<div style="background:#EEEDFE;border-radius:16px;padding:16px 18px;margin:0 16px 12px;">
       <div style="font-size:12px;font-weight:700;color:#3C3489;margin-bottom:12px;display:flex;align-items:center;gap:6px;">
         <i class="ti ti-microscope" style="font-size:14px;"></i> 지금 이 숫자가 의미하는 것
       </div>
@@ -2669,7 +2669,7 @@ def render_holdings_detail():
                 f'<span style="color:#5B5BD6;font-weight:600;">·</span> {line}</div>'
                 for line in impact_items
             )
-            st.markdown(f"""<div class="card" style="margin:0 0 10px 0;">
+            st.markdown(f"""<div class="card" style="margin:0 16px 10px;">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                 <span style="font-size:10px;background:#EEEDFE;color:#3C3489;padding:2px 8px;border-radius:6px;font-weight:500;">{d['report_type']}</span>
                 <span style="font-size:10px;color:#8E8E93;">{d['date']}</span>
@@ -2689,7 +2689,7 @@ def render_holdings_detail():
               </div>
             </div>""", unsafe_allow_html=True)
     else:
-        st.markdown("""<div style="margin:0 0 8px 0;background:#F8F8FA;border-radius:12px;padding:14px 16px;text-align:center;">
+        st.markdown("""<div style="margin:0 16px 8px;background:#F8F8FA;border-radius:12px;padding:14px 16px;text-align:center;">
           <div style="font-size:12px;color:#8E8E93;">최근 30일 공시가 없습니다.</div>
         </div>""", unsafe_allow_html=True)
 
@@ -2832,7 +2832,7 @@ def render_watchlist_detail():
     # ── 헤더 + 현재가 통합 카드 ──
     chg_arrow = "▲" if chg_pct >= 0 else "▼"
     st.markdown(
-        f'<div style="margin:0 0 12px; border:0.5px solid #E5E5EA; border-radius:16px; overflow:hidden; background:#fff;">'
+        f'<div style="margin:0 16px 12px; border:0.5px solid #E5E5EA; border-radius:16px; overflow:hidden; background:#fff;">'
         f'  <div style="padding:16px 20px 14px; display:flex; align-items:center; gap:12px; border-bottom:0.5px solid #E5E5EA;">'
         f'    <div style="flex:1;"><div class="hdr-title">{name}</div>'
         f'      <div style="font-size:11px;color:#8E8E93;">{code}</div></div>'
@@ -3046,7 +3046,7 @@ def render_watchlist_detail():
         boll_interp = "볼린저 중간 구간이에요. 방향을 탐색 중으로, 상단·하단 돌파 방향을 확인 후 진입하는 게 좋아요."
         boll_icon = "🟡"
 
-    st.markdown(f"""<div style="background:#EEEDFE;border-radius:16px;padding:16px 18px;margin:0 0 12px 0;">
+    st.markdown(f"""<div style="background:#EEEDFE;border-radius:16px;padding:16px 18px;margin:0 16px 12px;">
       <div style="font-size:12px;font-weight:700;color:#3C3489;margin-bottom:12px;display:flex;align-items:center;gap:6px;">
         <i class="ti ti-microscope" style="font-size:14px;"></i> 지금 사기 좋은 자리인가요?
       </div>
@@ -3115,7 +3115,7 @@ def render_watchlist_detail():
                 f'<span style="color:#5B5BD6;font-weight:600;">·</span> {line}</div>'
                 for line in impact_items
             )
-            st.markdown(f"""<div class="card" style="margin:0 0 10px 0;">
+            st.markdown(f"""<div class="card" style="margin:0 16px 10px;">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                 <span style="font-size:10px;background:#EEEDFE;color:#3C3489;padding:2px 8px;border-radius:6px;font-weight:500;">{d['report_type']}</span>
                 <span style="font-size:10px;color:#8E8E93;">{d['date']}</span>
@@ -3311,7 +3311,7 @@ def render_scanner_detail():
             f'</div>'
             for icon, title, desc in sig_explanations
         )
-        st.markdown(f"""<div style="background:#EEEDFE;border-radius:16px;padding:16px 18px;margin:0 0 12px 0;">
+        st.markdown(f"""<div style="background:#EEEDFE;border-radius:16px;padding:16px 18px;margin:0 16px 12px;">
           <div style="font-size:12px;font-weight:700;color:#3C3489;margin-bottom:10px;display:flex;align-items:center;gap:6px;">
             <i class="ti ti-microscope" style="font-size:14px;"></i> 각 신호가 의미하는 것
           </div>
