@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>포켓주식</title>
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="포켓주식">
+<meta name="theme-color" content="#5B5BD6">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icons/icon-512.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; min-height: 100vh; }
+
+/* ── 화면 전환 ── */
+.screen { display: none; padding-bottom: 80px; min-height: 100vh; }
+.screen.active { display: block; }
+
+/* ── 공통 ── */
+.header { background: #fff; padding: 14px 20px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 0.5px solid #E5E5EA; position: sticky; top: 0; z-index: 5; }
+.header-title { font-size: 16px; font-weight: 600; }
+.header-sub { font-size: 11px; color: #8E8E93; margin-top: 2px; }
+.header-icons { display: flex; gap: 12px; color: #8E8E93; font-size: 20px; }
+.header-icons i { cursor: pointer; }
+.section { margin: 0 16px 12px; }
+.sec-label { font-size: 11px; font-weight: 600; color: #8E8E93; margin-bottom: 6px; padding-left: 2px; }
+.sec-title { font-size: 14px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+.card { background: #fff; border-radius: 16px; padding: 14px 16px; border: 0.5px solid #E5E5EA; margin-bottom: 8px; }
+.card.clickable { cursor: pointer; }
+.badge { font-size: 10px; padding: 3px 8px; border-radius: 6px; font-weight: 500; }
+.badge-ok { background: #EEEDFE; color: #3C3489; }
+.badge-buy { background: #EAF3DE; color: #27500A; }
+.badge-sell { background: #FCEBEB; color: #791F1F; }
+.badge-warn { background: #FAEEDA; color: #633806; }
+.badge-neutral { background: #F0F0F5; color: #6B6B8A; }
+.badge-pos { background: #EAF3DE; color: #27500A; }
+.badge-neg { background: #FCEBEB; color: #791F1F; }
+.badge-mix { background: #FAEEDA; color: #633806; }
+.up { color: #E24B4A; }
+.down { color: #185FA5; }
+.warn-box { background: #FCEBEB; border-radius: 10px; padding: 8px 12px; font-size: 11px; color: #A32D2D; line-height: 1.5; display: flex; gap: 6px; margin-top: 10px; }
+.tabs { display: flex; padding: 10px 16px; gap: 6px; }
+.tab { padding: 5px 14px; border-radius: 16px; font-size: 11px; font-weight: 500; border: none; cursor: pointer; }
+.tab.active { background: #5B5BD6; color: #fff; }
+.tab.inactive { background: #fff; color: #6B6B8A; border: 0.5px solid #E5E5EA; }
+
+/* ── 하단 네비 ── */
+.bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 430px; background: #fff; border-top: 0.5px solid #E5E5EA; display: flex; padding: 10px 0 max(16px, env(safe-area-inset-bottom)); z-index: 10; }
+.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; color: #C7C7CC; font-size: 10px; cursor: pointer; border: none; background: none; }
+.nav-item.active { color: #5B5BD6; }
+.nav-item i { font-size: 22px; }
+
+/* ── 로그인 ── */
+.login-wrap { padding: 60px 24px 40px; }
+.login-logo { text-align: center; margin-bottom: 32px; }
+.login-logo img { width: 80px; height: 80px; border-radius: 20px; }
+.login-title { font-size: 22px; font-weight: 700; margin-top: 14px; }
+.login-sub { font-size: 13px; color: #8E8E93; margin-top: 4px; }
+.login-form { display: flex; flex-direction: column; gap: 12px; }
+.input-group { display: flex; flex-direction: column; gap: 5px; }
+.input-label { font-size: 12px; font-weight: 500; color: #6B6B8A; }
+.input-field { padding: 12px 14px; border: 1px solid #E5E5EA; border-radius: 12px; font-size: 14px; background: #fff; outline: none; transition: border 0.2s; }
+.input-field:focus { border-color: #5B5BD6; }
+.btn-primary { background: #5B5BD6; color: #fff; border: none; border-radius: 12px; padding: 14px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 8px; }
+.btn-secondary { background: #F0F0F5; color: #1A1A2E; border: none; border-radius: 12px; padding: 12px; font-size: 13px; font-weight: 500; cursor: pointer; }
+.btn-danger { background: #FCEBEB; color: #791F1F; border: none; border-radius: 12px; padding: 14px; font-size: 15px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 8px; }
+.login-toggle { text-align: center; margin-top: 16px; font-size: 13px; color: #8E8E93; }
+.login-toggle a { color: #5B5BD6; cursor: pointer; font-weight: 500; }
+.error-msg { font-size: 12px; color: #E24B4A; text-align: center; margin-top: 4px; min-height: 18px; }
+
+/* ── 홈 ── */
+.hero { margin: 12px 16px; background: #5B5BD6; border-radius: 20px; padding: 18px 20px; color: #fff; }
+.hero-badge { display: inline-flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.18); border-radius: 20px; padding: 4px 10px; font-size: 11px; margin-bottom: 10px; }
+.hero-status { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+.hero-desc { font-size: 11px; color: rgba(255,255,255,0.8); line-height: 1.5; }
+.hero-tip { margin-top: 10px; background: rgba(255,255,255,0.12); border-radius: 10px; padding: 8px 12px; font-size: 11px; color: rgba(255,255,255,0.9); display: flex; align-items: flex-start; gap: 6px; }
+.index-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 16px 12px; }
+.index-card { background: #fff; border-radius: 14px; padding: 14px; border: 0.5px solid #E5E5EA; }
+.index-card.up-border { border-top: 3px solid #E24B4A; }
+.index-card.down-border { border-top: 3px solid #185FA5; }
+.index-name { font-size: 11px; color: #8E8E93; margin-bottom: 4px; font-weight: 500; }
+.index-val { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
+.index-change { font-size: 11px; margin-top: 3px; font-weight: 500; }
+.analysis-item { padding: 10px 0; border-bottom: 0.5px solid #F0F0F5; }
+.analysis-item:last-child { border-bottom: none; padding-bottom: 0; }
+.analysis-label { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dot-blue { background: #5B5BD6; }
+.dot-green { background: #3B6D11; }
+.dot-orange { background: #854F0B; }
+.analysis-text { font-size: 11px; color: #6B6B8A; line-height: 1.6; }
+.analysis-text strong { color: #1A1A2E; font-weight: 600; }
+.warn-text { font-size: 11px; color: #A32D2D; margin-top: 4px; display: flex; gap: 4px; line-height: 1.5; }
+.forecast-card { background: #fff; border-radius: 16px; padding: 16px; border: 0.5px solid #E5E5EA; }
+.forecast-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.forecast-title { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.confidence-badge { background: #EEEDFE; color: #3C3489; font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 500; }
+.progress-bg { height: 5px; background: #F0F0F5; border-radius: 3px; margin-bottom: 12px; }
+.progress-fill { height: 5px; border-radius: 3px; background: #5B5BD6; }
+.forecast-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.forecast-col-title { font-size: 11px; color: #8E8E93; font-weight: 500; margin-bottom: 6px; display: flex; align-items: center; gap: 4px; }
+.forecast-item { font-size: 11px; color: #3B3B5C; line-height: 1.6; padding-left: 8px; position: relative; margin-bottom: 4px; }
+.forecast-item::before { content: '·'; position: absolute; left: 0; color: #5B5BD6; }
+.expand-btn { display: flex; align-items: center; justify-content: space-between; background: #fff; border-radius: 14px; padding: 14px 16px; border: 0.5px solid #E5E5EA; cursor: pointer; margin-bottom: 8px; }
+.expand-left { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; }
+.expand-icon { width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 16px; background: #EEEDFE; color: #5B5BD6; }
+
+/* ── 뉴스 ── */
+.filter-row { display: flex; padding: 10px 16px; gap: 6px; overflow-x: auto; scrollbar-width: none; background: #fff; border-bottom: 0.5px solid #E5E5EA; }
+.filter-row::-webkit-scrollbar { display: none; }
+.filter-btn { padding: 5px 14px; border-radius: 16px; font-size: 11px; font-weight: 500; white-space: nowrap; border: none; cursor: pointer; }
+.filter-btn.active { background: #5B5BD6; color: #fff; }
+.filter-btn.inactive { background: #F0F0F5; color: #6B6B8A; }
+.news-card { background: #fff; border-radius: 16px; padding: 14px 16px; border: 0.5px solid #E5E5EA; margin-bottom: 8px; }
+.news-card.important { border-left: 3px solid #5B5BD6; border-radius: 0 16px 16px 16px; }
+.news-card.negative { border-left: 3px solid #185FA5; border-radius: 0 16px 16px 16px; }
+.news-card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.news-source { font-size: 10px; color: #8E8E93; margin-left: auto; }
+.news-title { font-size: 13px; font-weight: 600; line-height: 1.5; margin-bottom: 6px; }
+.news-brief { font-size: 11px; color: #5B5BD6; line-height: 1.5; margin-top: 6px; }
+.news-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+.news-time { font-size: 10px; color: #C7C7CC; }
+.related-stocks { display: flex; gap: 5px; }
+.stock-chip { font-size: 10px; background: #EEEDFE; color: #3C3489; padding: 2px 8px; border-radius: 5px; font-weight: 500; }
+.more-btn { display: flex; align-items: center; justify-content: center; gap: 6px; background: #fff; border-radius: 12px; padding: 12px; border: 0.5px solid #E5E5EA; margin: 0 16px 8px; font-size: 12px; color: #5B5BD6; font-weight: 500; cursor: pointer; }
+
+/* ── 보유/관심종목 공통 ── */
+.total-strip { background: #fff; padding: 14px 20px; border-bottom: 0.5px solid #E5E5EA; display: flex; justify-content: space-between; align-items: center; }
+.total-label { font-size: 11px; color: #8E8E93; margin-bottom: 3px; }
+.total-amount { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+.total-pnl-label { font-size: 10px; color: #8E8E93; margin-bottom: 3px; text-align: right; }
+.total-pnl { font-size: 16px; font-weight: 700; }
+.card-top { display: flex; align-items: center; gap: 10px; }
+.stock-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.icon-purple { background: #EEEDFE; color: #3C3489; }
+.icon-blue { background: #E6F1FB; color: #0C447C; }
+.icon-red { background: #FCEBEB; color: #791F1F; }
+.icon-amber { background: #FAEEDA; color: #633806; }
+.icon-green { background: #EAF3DE; color: #27500A; }
+.icon-gray { background: #F1EFE8; color: #444441; }
+.stock-name { font-size: 13px; font-weight: 600; }
+.stock-sub { font-size: 10px; color: #8E8E93; margin-top: 1px; }
+.stock-right { text-align: right; margin-left: auto; }
+.stock-price { font-size: 13px; font-weight: 600; }
+.stock-change { font-size: 11px; font-weight: 500; margin-top: 2px; }
+.mini-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 10px; }
+.mini-item { background: #F8F8FA; border-radius: 8px; padding: 7px 10px; }
+.mini-label { font-size: 9px; color: #8E8E93; margin-bottom: 2px; }
+.mini-val { font-size: 12px; font-weight: 600; }
+.pnl-bar-wrap { height: 4px; background: #F0F0F5; border-radius: 2px; margin-top: 10px; overflow: hidden; }
+.pnl-bar { height: 4px; border-radius: 2px; }
+.card-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 0.5px solid #F0F0F5; }
+.signal-badges { display: flex; gap: 5px; flex-wrap: wrap; }
+.support-mini { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.sup-chip { font-size: 10px; color: #6B6B8A; background: #F0F0F5; padding: 2px 8px; border-radius: 5px; }
+.rsi-mini { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+.rsi-label { font-size: 10px; color: #8E8E93; min-width: 44px; }
+.rsi-bar { flex: 1; height: 3px; background: #F0F0F5; border-radius: 2px; overflow: hidden; }
+.rsi-fill { height: 3px; border-radius: 2px; }
+.rsi-val { font-size: 10px; font-weight: 600; min-width: 28px; text-align: right; }
+.watch-reason { font-size: 10px; padding: 3px 8px; border-radius: 5px; margin-top: 6px; display: inline-block; }
+.reason-buy { background: #EEEDFE; color: #534AB7; }
+.reason-sell { background: #FCEBEB; color: #791F1F; }
+.target-row { display: flex; align-items: center; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 0.5px solid #F0F0F5; flex-wrap: wrap; }
+.target-label { font-size: 10px; color: #8E8E93; }
+.target-val { font-size: 11px; font-weight: 600; color: #3C3489; }
+.target-dist { font-size: 10px; color: #3C3489; }
+
+/* ── 종목 추가 폼 ── */
+.add-form { background: #fff; border-radius: 16px; padding: 16px; border: 0.5px solid #E5E5EA; margin: 0 16px 12px; }
+.add-form h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+.search-wrap { position: relative; }
+.search-results { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #E5E5EA; border-radius: 10px; z-index: 20; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+.search-result-item { padding: 10px 14px; cursor: pointer; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
+.search-result-item:hover { background: #F5F5F7; }
+.search-result-item span { font-size: 11px; color: #8E8E93; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.form-actions { display: flex; gap: 8px; margin-top: 12px; }
+
+/* ── 상세 화면 ── */
+.detail-header { background: #fff; padding: 14px 20px 0; }
+.back-btn { display: flex; align-items: center; gap: 6px; color: #5B5BD6; font-size: 13px; font-weight: 500; cursor: pointer; margin-bottom: 10px; border: none; background: none; }
+.detail-hero { background: #5B5BD6; border-radius: 0 0 20px 20px; padding: 16px 20px 20px; color: #fff; }
+.detail-name { font-size: 18px; font-weight: 700; }
+.detail-price { font-size: 28px; font-weight: 700; margin: 4px 0; }
+.detail-meta { font-size: 12px; opacity: 0.8; }
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+.detail-item { background: rgba(255,255,255,0.15); border-radius: 10px; padding: 10px 12px; }
+.detail-item-label { font-size: 10px; opacity: 0.75; margin-bottom: 3px; }
+.detail-item-val { font-size: 14px; font-weight: 600; }
+
+/* ── 로딩 ── */
+.loading { display: flex; justify-content: center; align-items: center; padding: 40px; color: #8E8E93; font-size: 13px; gap: 8px; }
+.spinner { width: 18px; height: 18px; border: 2px solid #E5E5EA; border-top: 2px solid #5B5BD6; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.empty-state { text-align: center; padding: 40px 20px; color: #8E8E93; font-size: 13px; }
+.empty-state i { font-size: 36px; display: block; margin-bottom: 10px; color: #C7C7CC; }
+
+/* ── 매집 스캐너 ── */
+.scanner-card { background: #fff; border-radius: 16px; padding: 14px 16px; border: 0.5px solid #E5E5EA; margin-bottom: 8px; cursor: pointer; }
+.scanner-rank { font-size: 11px; font-weight: 700; color: #5B5BD6; margin-bottom: 6px; }
+.scanner-name { font-size: 14px; font-weight: 700; }
+.scanner-code { font-size: 11px; color: #8E8E93; }
+.scanner-signals { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+.scanner-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
+.metric-item { background: #F8F8FA; border-radius: 8px; padding: 6px 8px; text-align: center; }
+.metric-label { font-size: 9px; color: #8E8E93; }
+.metric-val { font-size: 12px; font-weight: 600; margin-top: 1px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     로그인 화면
+════════════════════════════════════════════════════════ -->
+<div id="screen-login" class="screen active">
+  <div class="login-wrap">
+    <div class="login-logo">
+      <img src="/icons/icon-512.png" alt="포켓주식">
+      <div class="login-title">포켓주식</div>
+      <div class="login-sub">내 손안의 주식 대시보드</div>
+    </div>
+    <div class="login-form">
+      <div class="input-group">
+        <div class="input-label">아이디</div>
+        <input id="login-username" class="input-field" type="text" placeholder="아이디 입력" autocomplete="username">
+      </div>
+      <div class="input-group">
+        <div class="input-label">비밀번호</div>
+        <input id="login-password" class="input-field" type="password" placeholder="비밀번호 입력" autocomplete="current-password">
+      </div>
+      <div id="login-error" class="error-msg"></div>
+      <button class="btn-primary" onclick="doLogin()">로그인</button>
+      <button class="btn-secondary" onclick="showRegister()">회원가입</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     회원가입 화면
+════════════════════════════════════════════════════════ -->
+<div id="screen-register" class="screen">
+  <div class="login-wrap">
+    <div class="login-logo">
+      <img src="/icons/icon-512.png" alt="포켓주식">
+      <div class="login-title">회원가입</div>
+      <div class="login-sub">포켓주식에 오신 걸 환영해요</div>
+    </div>
+    <div class="login-form">
+      <div class="input-group">
+        <div class="input-label">아이디</div>
+        <input id="reg-username" class="input-field" type="text" placeholder="2자 이상" autocomplete="username">
+      </div>
+      <div class="input-group">
+        <div class="input-label">비밀번호</div>
+        <input id="reg-password" class="input-field" type="password" placeholder="4자 이상" autocomplete="new-password">
+      </div>
+      <div id="reg-error" class="error-msg"></div>
+      <button class="btn-primary" onclick="doRegister()">가입하기</button>
+      <button class="btn-secondary" onclick="showScreen('login')">로그인으로 돌아가기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     홈 탭
+════════════════════════════════════════════════════════ -->
+<div id="screen-home" class="screen">
+  <div class="header">
+    <div>
+      <div class="header-title">오늘의 시장</div>
+      <div class="header-sub" id="home-date">불러오는 중...</div>
+    </div>
+    <div class="header-icons">
+      <i class="ti ti-bell"></i>
+      <i class="ti ti-refresh" onclick="loadHome(true)"></i>
+    </div>
+  </div>
+  <div id="home-content">
+    <div class="loading"><div class="spinner"></div> 시장 분석 중...</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     뉴스 탭
+════════════════════════════════════════════════════════ -->
+<div id="screen-news" class="screen">
+  <div class="header">
+    <div>
+      <div class="header-title">오늘의 시장 뉴스</div>
+      <div class="header-sub">AI 분석 포함</div>
+    </div>
+    <div class="header-icons">
+      <i class="ti ti-refresh" onclick="loadNews(true)"></i>
+    </div>
+  </div>
+  <div class="filter-row" id="news-filter-row">
+    <button class="filter-btn active" onclick="filterNews('전체', this)">전체</button>
+    <button class="filter-btn inactive" onclick="filterNews('긍정', this)">긍정</button>
+    <button class="filter-btn inactive" onclick="filterNews('부정', this)">부정</button>
+    <button class="filter-btn inactive" onclick="filterNews('혼조', this)">혼조</button>
+  </div>
+  <div id="news-content">
+    <div class="loading"><div class="spinner"></div> 뉴스 불러오는 중...</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     보유종목 탭
+════════════════════════════════════════════════════════ -->
+<div id="screen-holdings" class="screen">
+  <div class="header">
+    <div>
+      <div class="header-title">보유종목 관리</div>
+      <div class="header-sub" id="holdings-date">불러오는 중...</div>
+    </div>
+    <div class="header-icons">
+      <i class="ti ti-plus" onclick="toggleAddHolding()"></i>
+      <i class="ti ti-refresh" onclick="loadHoldings(true)"></i>
+    </div>
+  </div>
+  <div id="holding-add-form" style="display:none;">
+    <div class="add-form">
+      <h3>종목 추가</h3>
+      <div class="search-wrap">
+        <input id="h-search" class="input-field" type="text" placeholder="종목명 검색 (예: 삼성전자)" oninput="searchStock('h')" autocomplete="off">
+        <div id="h-search-results" class="search-results" style="display:none;"></div>
+      </div>
+      <input id="h-code" type="hidden">
+      <div class="form-row">
+        <div class="input-group">
+          <div class="input-label">평단가 (원)</div>
+          <input id="h-price" class="input-field" type="number" placeholder="0">
+        </div>
+        <div class="input-group">
+          <div class="input-label">수량 (주)</div>
+          <input id="h-qty" class="input-field" type="number" placeholder="0">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-primary" style="flex:1;" onclick="addHolding()">추가</button>
+        <button class="btn-secondary" style="flex:0.5;" onclick="toggleAddHolding()">취소</button>
+      </div>
+    </div>
+  </div>
+  <div id="holdings-total" class="total-strip" style="display:none;"></div>
+  <div class="tabs">
+    <button class="tab active" onclick="filterHoldings('전체', this)">전체</button>
+    <button class="tab inactive" onclick="filterHoldings('수익', this)">수익</button>
+    <button class="tab inactive" onclick="filterHoldings('손실', this)">손실</button>
+  </div>
+  <div id="holdings-content">
+    <div class="loading"><div class="spinner"></div> 불러오는 중...</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     보유종목 상세
+════════════════════════════════════════════════════════ -->
+<div id="screen-holding-detail" class="screen">
+  <div class="detail-header">
+    <button class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left"></i> 보유종목</button>
+  </div>
+  <div id="holding-detail-content">
+    <div class="loading"><div class="spinner"></div> 분석 중...</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     관심종목 탭
+════════════════════════════════════════════════════════ -->
+<div id="screen-watchlist" class="screen">
+  <div class="header">
+    <div>
+      <div class="header-title">관심종목 모니터링</div>
+      <div class="header-sub">매수 타이밍 · 추격금지 신호</div>
+    </div>
+    <div class="header-icons">
+      <i class="ti ti-plus" onclick="toggleAddWatchlist()"></i>
+      <i class="ti ti-refresh" onclick="loadWatchlist(true)"></i>
+    </div>
+  </div>
+  <div id="watchlist-add-form" style="display:none;">
+    <div class="add-form">
+      <h3>관심종목 추가</h3>
+      <div class="search-wrap">
+        <input id="w-search" class="input-field" type="text" placeholder="종목명 검색 (예: 삼성전자)" oninput="searchStock('w')" autocomplete="off">
+        <div id="w-search-results" class="search-results" style="display:none;"></div>
+      </div>
+      <input id="w-code" type="hidden">
+      <div class="form-row">
+        <div class="input-group">
+          <div class="input-label">목표가 (선택)</div>
+          <input id="w-target" class="input-field" type="number" placeholder="0">
+        </div>
+        <div class="input-group">
+          <div class="input-label">손절가 (선택)</div>
+          <input id="w-stop" class="input-field" type="number" placeholder="0">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-primary" style="flex:1;" onclick="addWatchlist()">추가</button>
+        <button class="btn-secondary" style="flex:0.5;" onclick="toggleAddWatchlist()">취소</button>
+      </div>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="filterWatchlist('전체', this)">전체</button>
+    <button class="tab inactive" onclick="filterWatchlist('매수검토', this)">매수검토</button>
+    <button class="tab inactive" onclick="filterWatchlist('추격금지', this)">추격금지</button>
+  </div>
+  <div id="watchlist-content">
+    <div class="loading"><div class="spinner"></div> 불러오는 중...</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     관심종목 상세
+════════════════════════════════════════════════════════ -->
+<div id="screen-watchlist-detail" class="screen">
+  <div class="detail-header">
+    <button class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left"></i> 관심종목</button>
+  </div>
+  <div id="watchlist-detail-content">
+    <div class="loading"><div class="spinner"></div> 분석 중...</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     매집 스캐너 탭
+════════════════════════════════════════════════════════ -->
+<div id="screen-scanner" class="screen">
+  <div class="header">
+    <div>
+      <div class="header-title">매집 스캐너</div>
+      <div class="header-sub">외국인·기관 동시 매수 포착</div>
+    </div>
+    <div class="header-icons">
+      <i class="ti ti-refresh" onclick="loadScanner(true)"></i>
+    </div>
+  </div>
+  <div id="scanner-content">
+    <div class="loading"><div class="spinner"></div> 스캔 중...</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     하단 네비게이션
+════════════════════════════════════════════════════════ -->
+<nav class="bottom-nav" id="bottom-nav" style="display:none;">
+  <button class="nav-item active" id="nav-home" onclick="switchTab('home')">
+    <i class="ti ti-home"></i><span>홈</span>
+  </button>
+  <button class="nav-item" id="nav-news" onclick="switchTab('news')">
+    <i class="ti ti-news"></i><span>뉴스</span>
+  </button>
+  <button class="nav-item" id="nav-holdings" onclick="switchTab('holdings')">
+    <i class="ti ti-briefcase"></i><span>보유</span>
+  </button>
+  <button class="nav-item" id="nav-watchlist" onclick="switchTab('watchlist')">
+    <i class="ti ti-star"></i><span>관심</span>
+  </button>
+  <button class="nav-item" id="nav-scanner" onclick="switchTab('scanner')">
+    <i class="ti ti-chart-bar"></i><span>매집</span>
+  </button>
+</nav>
+
+<script src="/js/app.js"></script>
+</body>
+</html>

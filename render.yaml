@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: pocket-stock
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: NAVER_CLIENT_ID
+        sync: false
+      - key: NAVER_CLIENT_SECRET
+        sync: false
+      - key: KIS_APP_KEY
+        sync: false
+      - key: KIS_APP_SECRET
+        sync: false
+      - key: KIS_CANO
+        sync: false
+      - key: KIS_ACNT_PRDT_CD
+        sync: false
+      - key: KIS_BASE_URL
+        sync: false
+      - key: DART_API_KEY
+        sync: false
+      - key: JWT_SECRET
+        sync: false
