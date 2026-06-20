@@ -367,7 +367,7 @@ function renderNews() {
   const html = news.map((n, i) => {
     const bdg = n.sentiment === 'positive' ? 'badge-pos' : n.sentiment === 'negative' ? 'badge-neg' : 'badge-mix';
     const lbl = n.label || (n.sentiment === 'positive' ? '긍정' : n.sentiment === 'negative' ? '부정' : '혼조');
-    const borderClass = n.sentiment === 'positive' ? 'important' : n.sentiment === 'negative' ? 'negative' : '';
+    const borderClass = n.sentiment === 'positive' ? 'positive' : n.sentiment === 'negative' ? 'negative' : 'mixed';
     const briefHtml = n.brief ? `<div class="news-brief">💡 ${n.brief}</div>` : '';
     const hasDetail = !!(n.ai_summary || n.strategy || n.summary);
     const chevron = hasDetail ? `<i class="ti ti-chevron-right" style="color:#C7C7CC;font-size:18px;flex-shrink:0;"></i>` : '';
