@@ -27,6 +27,24 @@ except ImportError:
 _GEMINI_KEY = os.getenv("GEMINI_API_KEY", "")
 _gemini_model = None
 
+# ─── Supabase 영구 캐시 ───────────────────────────────────
+def _db_cache_get(key: str) -> str:
+    """Supabase news_cache 테이블에서 결과 조회."""
+    try:
+        from database import _db
+        row = _db().table("news_cache").select("result").eq("cache_key", key).maybe_single().execute()
+        return row.data["result"] if row.data else ""
+    except Exception:
+        return ""
+
+def _db_cache_set(key: str, value: str):
+    """Supabase news_cache 테이블에 결과 저장 (upsert)."""
+    try:
+        from database import _db
+        _db().table("news_cache").upsert({"cache_key": key, "result": value}).execute()
+    except Exception:
+        pass
+
 def _get_gemini():
     global _gemini_model
     if _gemini_model is None and _GEMINI_KEY:
@@ -44,9 +62,16 @@ def _get_gemini():
 _gemini_cache: dict[str, str] = {}
 
 def _call_gemini(prompt: str, cache_key: str, retry: int = 1) -> str:
-    """Gemini 호출. 캐시 히트 시 재사용. rate limit 시 1회 재시도. 실패 시 빈 문자열."""
+    """Gemini 호출. 메모리→DB→Gemini API 순으로 캐시 확인. rate limit 시 1회 재시도."""
+    # 1순위: 메모리 캐시
     if cache_key in _gemini_cache:
         return _gemini_cache[cache_key]
+    # 2순위: Supabase DB 캐시 (서버 재시작 후에도 유지)
+    db_result = _db_cache_get(cache_key)
+    if db_result:
+        _gemini_cache[cache_key] = db_result
+        return db_result
+    # 3순위: Gemini API 호출
     model = _get_gemini()
     if not model:
         return ""
@@ -61,6 +86,7 @@ def _call_gemini(prompt: str, cache_key: str, retry: int = 1) -> str:
                 return ""
             result = resp.text.strip()
             _gemini_cache[cache_key] = result
+            _db_cache_set(cache_key, result)  # Supabase에 영구 저장
             return result
         except Exception as e:
             err_str = str(e)
