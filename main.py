@@ -23,6 +23,7 @@ from market_data import (get_index_data, get_us_indices, search_stock_by_name,
 from news import fetch_market_news, fetch_stock_news, enrich_top10_summaries, rank_by_importance
 from home_analysis import analyze_us_impact, generate_forecast, calc_ma_status, market_phase, is_market_open
 from analysis import analyze_stock, watchlist_timing
+from database import get_recent_predictions, get_prediction_accuracy
 
 # ─────────────────────────────────────────────────────────
 # JWT 설정
@@ -178,6 +179,31 @@ def home_data():
         }
     except Exception as e:
         return {"error": str(e), "indices": {}, "analysis": [], "forecast": {}, "investor": [], "market_phase": "close", "is_open": False}
+
+# ─────────────────────────────────────────────────────────
+# 예측 상세 API (예측 히스토리 포함)
+# ─────────────────────────────────────────────────────────
+@app.get("/api/forecast/detail")
+def forecast_detail():
+    try:
+        idx = get_index_data()
+        us_raw = get_us_indices()
+        try:
+            kp_hist = get_index_ohlcv_history("1001", days=120)
+            ma = calc_ma_status(kp_hist)
+        except Exception:
+            kp_hist = None
+            ma = {}
+        forecast = generate_forecast(us_raw, idx, ma)
+        preds = get_recent_predictions(limit=7)
+        stats = get_prediction_accuracy()
+        return {
+            "forecast": forecast,
+            "history": preds,
+            "stats": stats,
+        }
+    except Exception as e:
+        return {"error": str(e), "forecast": {}, "history": [], "stats": {}}
 
 # ─────────────────────────────────────────────────────────
 # 지수 상세 API (KOSPI / KOSDAQ)
