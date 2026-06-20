@@ -1986,23 +1986,23 @@ def render_holdings():
     # ── 필터 탭 (st.tabs 스타일) ──
     tab_all, tab_profit, tab_loss, tab_sell = st.tabs(["전체", "수익", "손실", "매도신호"])
 
-    def _render_sections(sections):
+    def _render_sections(sections, pfx):
         for lbl, items in sections:
             if not items:
                 st.info("해당하는 종목이 없습니다.")
                 continue
             st.markdown(f'<div class="section"><div class="sec-lbl">{lbl}</div></div>', unsafe_allow_html=True)
             for e in items:
-                _holding_card(e)
+                _holding_card(e, pfx)
 
     with tab_all:
-        _render_sections([("수익 중인 종목", profit), ("손실 중인 종목", loss)])
+        _render_sections([("수익 중인 종목", profit), ("손실 중인 종목", loss)], "a")
     with tab_profit:
-        _render_sections([("수익 중인 종목", profit)])
+        _render_sections([("수익 중인 종목", profit)], "p")
     with tab_loss:
-        _render_sections([("손실 중인 종목", loss)])
+        _render_sections([("손실 중인 종목", loss)], "l")
     with tab_sell:
-        _render_sections([("매도신호 종목", sell_signal)])
+        _render_sections([("매도신호 종목", sell_signal)], "s")
 
     # ── 종목 추가 (탭 바깥 맨 아래) ──
     with st.expander("➕ 종목 추가"):
@@ -2024,7 +2024,7 @@ def render_holdings():
                     else: st.error(msg)
 
 
-def _holding_card(e):
+def _holding_card(e, pfx="a"):
     h, a = e, e["analysis"]
     pnl_pct = a.get("pnl_pct", 0) or 0
     pnl_amt = a.get("pnl_amount", 0) or 0
@@ -2086,7 +2086,7 @@ def _holding_card(e):
     col_nav, col_del = st.columns([6, 1])
     with col_nav:
         st.markdown('<div class="hld-nav-wrap">', unsafe_allow_html=True)
-        if st.button("상세분석 보기  ›", key=f"h_{h['code']}", use_container_width=True):
+        if st.button("상세분석 보기  ›", key=f"h_{pfx}_{h['code']}", use_container_width=True):
             st.session_state.page = "holdings_detail"
             st.session_state.detail_code = h["code"]
             st.session_state.detail_name = h["name"]
@@ -2096,7 +2096,7 @@ def _holding_card(e):
         st.markdown('</div>', unsafe_allow_html=True)
     with col_del:
         st.markdown('<div class="hld-del-wrap">', unsafe_allow_html=True)
-        if st.button("✕", key=f"hdel_{h['code']}", use_container_width=True):
+        if st.button("✕", key=f"hdel_{pfx}_{h['code']}", use_container_width=True):
             st.session_state[f"confirm_del_{h['code']}"] = True
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -2105,12 +2105,12 @@ def _holding_card(e):
         st.warning(f"**'{h['name']}'** 종목을 보유 목록에서 삭제하시겠습니까?")
         cc1, cc2 = st.columns(2)
         with cc1:
-            if st.button("확인", key=f"hdel_ok_{h['code']}", type="primary", use_container_width=True):
+            if st.button("확인", key=f"hdel_ok_{pfx}_{h['code']}", type="primary", use_container_width=True):
                 delete_holding(st.session_state.user_id, h["code"])
                 st.session_state.pop(f"confirm_del_{h['code']}", None)
                 st.rerun()
         with cc2:
-            if st.button("취소", key=f"hdel_cancel_{h['code']}", use_container_width=True):
+            if st.button("취소", key=f"hdel_cancel_{pfx}_{h['code']}", use_container_width=True):
                 st.session_state.pop(f"confirm_del_{h['code']}", None)
                 st.rerun()
     st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
