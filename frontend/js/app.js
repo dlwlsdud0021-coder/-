@@ -392,7 +392,14 @@ function renderNews() {
     return;
   }
 
-  const catIconMap = {'반도체': '💻', '바이오': '🧬', '2차전지': '🔋', '금융': '🏦', '글로벌': '🌐', '전체': '📈'};
+  const catLabelMap = {
+    '반도체': '💻 반도체·AI 업종 관련',
+    '바이오': '🧬 바이오·제약 업종 관련',
+    '2차전지': '🔋 2차전지·배터리 업종 관련',
+    '금융': '🏦 금융·증권 업종 관련',
+    '글로벌': '🌐 글로벌 시장 관련',
+    '전체': '📈 전체 시장 관련',
+  };
   const briefStrategyMap = {
     'positive': '장 초반 관련 종목 주가 반응을 먼저 확인하고, 상승 추세가 이어지면 분할 매수 진입을 고려하세요.',
     'negative': '장 초반 주가 반응을 보고, 추가 하락이 예상되면 손절 또는 비중 축소를 검토하세요.',
@@ -400,31 +407,64 @@ function renderNews() {
     'neutral':  '직접적 영향이 제한적일 수 있어 시장 전반 흐름을 참고하며 포트폴리오를 점검하세요.',
   };
 
+  // 상대 시간 계산 ("2시간 전", "3일 전" 등)
+  function relTime(pub) {
+    if (!pub) return '';
+    try {
+      const now = Date.now();
+      // "06/15" 또는 "2026.06.15" 또는 ISO 형식 처리
+      let d;
+      if (/^\d{2}\/\d{2}$/.test(pub)) {
+        const y = new Date().getFullYear();
+        d = new Date(`${y}-${pub.replace('/','-')}`);
+      } else {
+        d = new Date(pub.replace(/\./g, '-'));
+      }
+      if (isNaN(d)) return pub;
+      const diff = now - d.getTime();
+      const mins = Math.floor(diff / 60000);
+      if (mins < 60) return `${mins}분 전`;
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24) return `${hrs}시간 전`;
+      const days = Math.floor(hrs / 24);
+      if (days < 7) return `${days}일 전`;
+      return pub;
+    } catch { return pub; }
+  }
+
   const html = news.map((n, i) => {
     const bdg = n.sentiment === 'positive' ? 'badge-pos' : n.sentiment === 'negative' ? 'badge-neg' : 'badge-mix';
     const lbl = n.label || (n.sentiment === 'positive' ? '긍정' : n.sentiment === 'negative' ? '부정' : '혼조');
     const borderClass = n.sentiment === 'positive' ? 'positive' : n.sentiment === 'negative' ? 'negative' : 'mixed';
-    const catIcon = catIconMap[n.category] || '📊';
-    const catLabel = (n.category && n.category !== '전체') ? `${catIcon} ${n.category} 업종 관련` : '📈 전체 시장 관련';
+    const catLabel = catLabelMap[n.category] || '📈 전체 시장 관련';
+    const timeStr = relTime(n.published);
+    const sourceStr = [n.source, n.published ? n.published.slice(0,5) : ''].filter(Boolean).join(' · ');
 
     // 카드 본문: brief > summary 앞부분
     const summaryText = n.brief || (n.summary ? n.summary.slice(0, 130) + (n.summary.length > 130 ? '...' : '') : '');
 
-    // ai_summary에서 "📋 이 뉴스는?" 이후 텍스트만 추출
+    // ai_summary에서 "📋 이 뉴스는?" 이후 텍스트 추출 (<b> 태그 포함 패턴)
     let aiText = '';
     if (n.ai_summary) {
-      const m = n.ai_summary.match(/📋 이 뉴스는\?<br>([\s\S]+)$/);
+      // 패턴: <b>📋 이 뉴스는?</b><br>텍스트
+      const m = n.ai_summary.match(/이 뉴스는\?<\/b><br>([\s\S]+)$/) ||
+                n.ai_summary.match(/이 뉴스는\?<br>([\s\S]+)$/);
       if (m) {
         aiText = m[1].trim();
       } else {
-        aiText = n.ai_summary.replace(/<[^>]+>/g, '').replace(/🔍 감지된 키워드/g, '').replace(/📋 이 뉴스는\?/g, '').trim();
+        // HTML 태그 제거 후 텍스트만
+        aiText = n.ai_summary
+          .replace(/<[^>]+>/g, '')
+          .replace(/🔍\s*감지된 키워드/g, '')
+          .replace(/📋\s*이 뉴스는\?/g, '')
+          .trim();
       }
     }
 
-    // 키워드 배지 (kw_section 부분)
+    // 키워드 배지 섹션 (kw_section - <span> 배지들)
     let kwHtml = '';
     if (n.ai_summary) {
-      const kwMatch = n.ai_summary.match(/^([\s\S]*?)(?=<b>📋|$)/);
+      const kwMatch = n.ai_summary.match(/^([\s\S]*?)(?=<b>📋|📋)/);
       if (kwMatch && kwMatch[1].includes('<span')) kwHtml = kwMatch[1].trim();
     }
 
@@ -434,39 +474,40 @@ function renderNews() {
     const stocks = Array.isArray(n.related_stocks) ? n.related_stocks : [];
     const stocksHtml = stocks.slice(0, 3).map(s => {
       const nm = typeof s === 'object' ? (s.name || '') : s;
-      return `<span class="badge badge-ok" style="font-size:10px;">${nm}</span>`;
+      return `<span style="padding:3px 10px;border-radius:20px;background:#F0F0F5;color:#3C3C43;font-size:11px;font-weight:500;">${nm}</span>`;
     }).join('');
 
-    const linkHtml = n.link ? `<a href="${n.link}" target="_blank" rel="noopener" style="font-size:11px;color:#5B5BD6;text-decoration:none;flex-shrink:0;">원문 →</a>` : '';
-
-    return `<div class="news-card ${borderClass}">
-      <!-- 헤더: 감성 배지 + 출처·날짜 -->
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+    return `<div class="news-card ${borderClass}" style="margin-bottom:12px;">
+      <!-- 헤더: 감성 배지 + 출처 -->
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
         <span class="badge ${bdg}">${lbl}</span>
-        <span style="font-size:11px;color:#8E8E9A;margin-left:auto;">${n.source||''}${n.published ? ' · ' + n.published : ''}</span>
+        <span style="font-size:11px;color:#8E8E9A;margin-left:auto;">${sourceStr}</span>
       </div>
-      <!-- 제목 -->
-      <div class="news-title" style="margin-bottom:6px;">${n.title||''}</div>
+      <!-- 제목: 줄바꿈 허용 -->
+      <div style="font-size:15px;font-weight:700;color:#1C1C1E;line-height:1.5;margin-bottom:8px;">${n.title||''}</div>
       <!-- 기사 요약 -->
-      ${summaryText ? `<div style="font-size:12px;color:#8E8E9A;line-height:1.6;margin-bottom:10px;">${summaryText}</div>` : ''}
+      ${summaryText ? `<div style="font-size:12px;color:#8E8E9A;line-height:1.65;margin-bottom:10px;">${summaryText}</div>` : ''}
       <!-- AI 분석 -->
-      ${aiText ? `<div style="border-top:1px solid #F0F0F5;padding-top:10px;margin-bottom:8px;">
-        <div style="display:flex;align-items:center;gap:4px;margin-bottom:6px;">
-          <i class="ti ti-sparkles" style="font-size:12px;color:#5B5BD6;"></i>
-          <span style="font-size:11px;font-weight:700;color:#5B5BD6;">AI 분석</span>
+      ${aiText ? `<div style="border-top:1px solid #F0F0F5;padding-top:12px;">
+        <div style="display:flex;align-items:center;gap:5px;margin-bottom:8px;">
+          <i class="ti ti-sparkles" style="font-size:13px;color:#5B5BD6;"></i>
+          <span style="font-size:12px;font-weight:700;color:#5B5BD6;">AI 분석</span>
         </div>
-        <div style="font-size:11px;color:#8E8E9A;margin-bottom:6px;">${catLabel}</div>
-        ${kwHtml ? `<div style="margin-bottom:6px;">${kwHtml}</div>` : ''}
-        <div style="font-size:12px;color:#3C3C43;line-height:1.7;margin-bottom:8px;">${aiText}</div>
-        <div style="background:#F8F8FA;border-radius:10px;padding:8px 10px;">
-          <div style="font-size:11px;font-weight:700;color:#27500A;margin-bottom:3px;">☀️ 대응 전략</div>
-          <div style="font-size:12px;color:#3C3C43;line-height:1.6;">${briefStrategy}</div>
+        <div style="font-size:11px;color:#8E8E9A;font-weight:600;margin-bottom:6px;">${catLabel}</div>
+        ${kwHtml ? `<div style="margin-bottom:6px;line-height:2;">${kwHtml}</div>` : ''}
+        <div style="font-size:13px;color:#3C3C43;line-height:1.7;margin-bottom:10px;">${aiText}</div>
+        <div style="margin-bottom:10px;">
+          <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
+            <span style="font-size:13px;">☀️</span>
+            <span style="font-size:12px;font-weight:700;color:#3C3C43;">대응 전략</span>
+          </div>
+          <div style="font-size:13px;color:#3C3C43;line-height:1.65;">${briefStrategy}</div>
         </div>
       </div>` : ''}
-      <!-- 푸터: 원문 링크 + 관련 종목 -->
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;flex-wrap:wrap;">
-        ${linkHtml}
-        <div style="display:flex;gap:4px;flex-wrap:wrap;">${stocksHtml}</div>
+      <!-- 푸터: 시간 + 관련 종목 -->
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;${aiText?'':'margin-top:8px;'}">
+        <span style="font-size:11px;color:#C7C7CC;">${timeStr}</span>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;">${stocksHtml}</div>
       </div>
     </div>`;
   }).join('');
