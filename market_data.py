@@ -291,11 +291,27 @@ def _dummy_index():
 # ─────────────────────────────────────────────────────────
 @st.cache_data(ttl=60)
 def get_us_indices() -> dict:
-    # FDR로 미국 지수 (전일 종가 기준, 장중엔 당일 데이터)
+    # 1순위: yfinance fast_info (가장 빠르고 안정적)
+    try:
+        import yfinance as yf
+        result = {}
+        for name, sym in [("S&P500", "^GSPC"), ("나스닥", "^IXIC"), ("다우", "^DJI")]:
+            fi = yf.Ticker(sym).fast_info
+            cur  = fi.last_price
+            prev = fi.previous_close
+            if cur and prev and cur > 0:
+                result[name] = {"current": round(cur, 2), "change_pct": round((cur - prev) / prev * 100, 2)}
+            else:
+                result[name] = {"current": 0, "change_pct": 0}
+        if any(v["current"] > 0 for v in result.values()):
+            return result
+    except Exception as e:
+        _logger.warning(f"[미국지수] yfinance 실패: {e}")
+
+    # 2순위: FDR
     if FDR_OK:
         try:
-            from datetime import timezone, timedelta
-            start = (datetime.now(timezone(timedelta(hours=9))) - timedelta(days=10)).strftime("%Y-%m-%d")
+            start = (datetime.now() - timedelta(days=10)).strftime("%Y-%m-%d")
             result = {}
             for name, sym in [("S&P500", "US500"), ("나스닥", "IXIC"), ("다우", "DJI")]:
                 df = fdr.DataReader(sym, start)
@@ -312,23 +328,9 @@ def get_us_indices() -> dict:
         except Exception as e:
             _logger.warning(f"[미국지수] FDR 실패: {e}")
 
-    # 폴백: yfinance
-    try:
-        import yfinance as yf
-        result = {}
-        for name, sym in [("S&P500", "^GSPC"), ("나스닥", "^IXIC"), ("다우", "^DJI")]:
-            hist = yf.Ticker(sym).history(period="5d", interval="1d")
-            if len(hist) < 2:
-                result[name] = {"current": 0, "change_pct": 0}
-                continue
-            cur  = float(hist["Close"].iloc[-1])
-            prev = float(hist["Close"].iloc[-2])
-            result[name] = {"current": round(cur, 2), "change_pct": round((cur - prev) / prev * 100, 2)}
-        return result
-    except:
-        return {"S&P500": {"current": 0, "change_pct": 0},
-                "나스닥":  {"current": 0, "change_pct": 0},
-                "다우":    {"current": 0, "change_pct": 0}}
+    return {"S&P500": {"current": 0, "change_pct": 0},
+            "나스닥":  {"current": 0, "change_pct": 0},
+            "다우":    {"current": 0, "change_pct": 0}}
 
 
 # ─────────────────────────────────────────────────────────
@@ -577,33 +579,56 @@ def get_kospi_investor(days: int = 25) -> pd.DataFrame:
 # ─────────────────────────────────────────────────────────
 # 스캐너: 시가총액 상위 종목 목록
 # ─────────────────────────────────────────────────────────
-@st.cache_data(ttl=3600)  # 1시간 캐시 (자주 안 바뀜)
+@st.cache_data(ttl=3600)
 def get_top_stocks(n: int = 200) -> list:
     """
     시가총액 상위 N개 종목 리스트
-    Returns: [{"code": ..., "name": ..., "market": ..., "market_cap": ...}, ...]
+    1순위: pykrx (한국 IP), 2순위: FDR (Streamlit Cloud)
     """
-    if not PYKRX_OK:
-        return []
-    try:
-        tdate = _last_trading_date()
-        result = []
-        for market in ["KOSPI", "KOSDAQ"]:
-            df = krx.get_market_cap_by_ticker(tdate, market=market)
-            if df is None or df.empty:
-                continue
-            df = df.sort_values("시가총액", ascending=False).head(n // 2)
-            for code, row in df.iterrows():
-                result.append({
-                    "code": str(code),
-                    "name": krx.get_market_ticker_name(str(code)),
-                    "market": market,
-                    "market_cap": int(row["시가총액"]),
-                })
-        result.sort(key=lambda x: x["market_cap"], reverse=True)
-        return result[:n]
-    except:
-        return []
+    # 1순위: pykrx
+    if PYKRX_OK:
+        try:
+            tdate = _last_trading_date()
+            result = []
+            for market in ["KOSPI", "KOSDAQ"]:
+                df = krx.get_market_cap_by_ticker(tdate, market=market)
+                if df is None or df.empty:
+                    continue
+                df = df.sort_values("시가총액", ascending=False).head(n // 2)
+                for code, row in df.iterrows():
+                    result.append({
+                        "code": str(code),
+                        "name": krx.get_market_ticker_name(str(code)),
+                        "market": market,
+                        "market_cap": int(row["시가총액"]),
+                    })
+            if result:
+                result.sort(key=lambda x: x["market_cap"], reverse=True)
+                return result[:n]
+        except:
+            pass
+
+    # 2순위: FDR (Streamlit Cloud에서도 동작)
+    if FDR_OK:
+        try:
+            listing = fdr.StockListing("KRX")
+            if listing is None or listing.empty:
+                return []
+            # 시가총액 컬럼 찾기
+            cap_col = next((c for c in listing.columns if "cap" in c.lower() or "시가총액" in c), None)
+            if cap_col:
+                listing = listing.sort_values(cap_col, ascending=False)
+            result = []
+            for _, row in listing.head(n).iterrows():
+                code = str(row.get("Code", row.get("Symbol", ""))).zfill(6)
+                name = str(row.get("Name", code))
+                market = str(row.get("Market", "KOSPI"))
+                result.append({"code": code, "name": name, "market": market, "market_cap": 0})
+            return result
+        except Exception as e:
+            _logger.warning(f"[종목목록] FDR 실패: {e}")
+
+    return []
 
 
 # ─────────────────────────────────────────────────────────
