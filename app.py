@@ -395,18 +395,6 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"],
 /* 탭 active 색상만 */
 [data-baseweb="tab-highlight"] { background: #5B5BD6 !important; }
 [aria-selected="true"][data-baseweb="tab"] { color: #5B5BD6 !important; }
-/* Streamlit 기본 여백 제거 */
-[data-testid="stVerticalBlock"] {
-  gap: 0 !important;
-  padding: 0 !important;
-}
-[data-testid="element-container"] {
-  padding: 0 !important;
-  margin: 0 !important;
-}
-.stMarkdown, [data-testid="stMarkdownContainer"] {
-  padding: 0 !important;
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -667,7 +655,7 @@ def render_home():
     dw_pct = us.get("다우", {}).get("change_pct", 0)
     def _us_chg(v): return f"{'▲' if v>=0 else '▼'} {abs(v):.2f}%"
     def _us_clr(v): return "#E24B4A" if v >= 0 else "#185FA5"
-    st.markdown(f"""<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:0 16px 12px;">
+    st.markdown(f"""<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:0 0 12px;">
       <div style="background:#fff;border-radius:12px;padding:10px 12px;border:0.5px solid #E5E5EA;">
         <div style="font-size:10px;color:#8E8E93;margin-bottom:2px;">S&P500</div>
         <div style="font-size:13px;font-weight:700;">{us.get('S&P500',{}).get('current',0):,.0f}</div>
@@ -923,7 +911,7 @@ def render_supply_detail(inv_df: "pd.DataFrame"):
         card3_lbl = "매수 우위일"
         card3_val = f'<div style="font-size:15px;font-weight:700;color:#E24B4A;">{buy_days}일</div>'
 
-    st.markdown(f"""<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:0 16px 12px;">
+    st.markdown(f"""<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:0 0 12px;">
       <div style="background:#fff;border-radius:12px;padding:10px 12px;border:0.5px solid #E5E5EA;text-align:center;">
         <div style="font-size:10px;color:#8E8E93;margin-bottom:3px;">{card1_lbl}</div>{card1_val}
       </div>
@@ -995,7 +983,7 @@ def render_supply_detail(inv_df: "pd.DataFrame"):
 
     icon_bg = "#5B5BD6" if streak >= 3 else "#BA7517" if streak > 0 else "#E24B4A"
     icon_nm = "ti-flame" if streak >= 3 else "ti-minus" if streak == 0 else "ti-trending-up"
-    st.markdown(f"""<div style="background:#EEEDFE;border-radius:12px;padding:12px 14px;margin:0 16px 12px;display:flex;align-items:center;gap:12px;">
+    st.markdown(f"""<div style="background:#EEEDFE;border-radius:12px;padding:12px 14px;margin:0 0 12px;display:flex;align-items:center;gap:12px;">
       <div style="width:36px;height:36px;background:{icon_bg};border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;flex-shrink:0;">
         <i class="ti {icon_nm}"></i>
       </div>
@@ -2712,7 +2700,7 @@ def render_holdings_detail():
         for n in news:
             sent = n.get("sentiment","neutral")
             bdg_t = {"positive":"pos","negative":"neg","mixed":"mix"}.get(sent,"neu")
-            st.markdown(f"""<div style="margin:0 16px;"><div class="news-card">
+            st.markdown(f"""<div><div class="news-card">
               <div class="news-card-top"><span class="badge badge-{bdg_t}">{n.get('label','중립')}</span>
                 <span class="news-source">{n.get('source','')} · {n.get('published','')}</span></div>
               <div class="news-title">{n['title']}</div>
@@ -3150,7 +3138,7 @@ def render_watchlist_detail():
         for n in news:
             sent = n.get("sentiment", "neutral")
             bdg_t = {"positive":"pos","negative":"neg","mixed":"mix"}.get(sent, "neu")
-            st.markdown(f"""<div style="margin:0 16px;"><div class="news-card">
+            st.markdown(f"""<div><div class="news-card">
               <div class="news-card-top"><span class="badge badge-{bdg_t}">{n.get('label','중립')}</span>
                 <span class="news-source">{n.get('source','')} · {n.get('published','')}</span></div>
               <div class="news-title">{n['title']}</div>
@@ -3502,7 +3490,7 @@ def render_scanner_detail():
         for n in news:
             sent = n.get("sentiment", "neutral")
             bdg_t = {"positive": "pos", "negative": "neg", "mixed": "mix"}.get(sent, "neu")
-            st.markdown(f"""<div style="margin:0 16px;"><div class="news-card">
+            st.markdown(f"""<div><div class="news-card">
               <div class="news-card-top"><span class="badge badge-{bdg_t}">{n.get('label','중립')}</span>
                 <span class="news-source">{n.get('source','')} · {n.get('published','')}</span></div>
               <div class="news-title">{n['title']}</div>
