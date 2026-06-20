@@ -578,6 +578,20 @@ def holding_detail(code: str, user=Depends(get_current_user)):
                 })
         analysis["inv_list"] = inv_list
 
+        # 차트용 OHLCV 데이터 (최근 60일)
+        ohlcv_data = []
+        if ohlcv is not None and not ohlcv.empty:
+            for dt, row in ohlcv.tail(60).iterrows():
+                ohlcv_data.append({
+                    "date": str(dt)[:10],
+                    "open":  int(row.get("open",  row.get("시가",  0))),
+                    "high":  int(row.get("high",  row.get("고가",  0))),
+                    "low":   int(row.get("low",   row.get("저가",  0))),
+                    "close": int(row.get("close", row.get("종가",  0))),
+                    "volume":int(row.get("volume",row.get("거래량",0))),
+                })
+        analysis["ohlcv"] = ohlcv_data
+
         news = fetch_stock_news(code, h["name"])
         analysis["news"] = news[:3]
     except Exception as e:

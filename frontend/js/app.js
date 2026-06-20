@@ -1314,8 +1314,14 @@ async function loadHoldingDetail(code, name) {
   try {
     const d = await api('GET', `/api/holdings/${code}/detail`);
     renderHoldingDetail(d, el);
+    // 차트는 DOM 삽입 후 그려야 함
+    const a = d.analysis || {};
+    const t = a.targets || {};
+    setTimeout(() => drawPriceChart(
+      a.ohlcv, d.holding?.avg_price, t.target_price, t.stop_price
+    ), 50);
   } catch(e) {
-    el.innerHTML = `<div class="loading">분석 데이터를 불러오지 못했습니다</div>`;
+    el.innerHTML = `<div class="loading">분석 데이터를 불러오지 못했습니다<br><small>${e.message||''}</small></div>`;
   }
 }
 
@@ -1452,26 +1458,71 @@ function renderHoldingDetail(d, el) {
     </div>`;
   }).join('');
 
+  // 바닥 지지선 배지 (현재위/근접/주요지지)
+  const supBadge = (dist) => {
+    if (dist >= 0)  return `<span style="font-size:10px;padding:2px 7px;border-radius:5px;background:#EAF3DE;color:#27500A;">현재위</span>`;
+    if (dist >= -5) return `<span style="font-size:10px;padding:2px 7px;border-radius:5px;background:#FAEEDA;color:#633806;">근접</span>`;
+    return             `<span style="font-size:10px;padding:2px 7px;border-radius:5px;background:#EEEDFE;color:#3C3489;">주요지지</span>`;
+  };
+
+  let supRowsNew = '';
+  if (ma20Val) {
+    const d = (curPrice - ma20Val) / ma20Val * 100;
+    supRowsNew += `<div class="sup-row"><span class="sup-label">20일선</span><div class="sup-right"><span class="sup-price">${fmtNum(Math.round(ma20Val))}원</span><span class="sup-dist ${d>=0?'up':'down'}">${d>=0?'+':''}${d.toFixed(1)}%</span>${supBadge(d)}</div></div>`;
+  }
+  if (boll.lower) {
+    const d = (curPrice - boll.lower) / boll.lower * 100;
+    supRowsNew += `<div class="sup-row"><span class="sup-label">볼린저 하단</span><div class="sup-right"><span class="sup-price">${fmtNum(Math.round(boll.lower))}원</span><span class="sup-dist ${d>=0?'up':'down'}">${d>=0?'+':''}${d.toFixed(1)}%</span>${supBadge(d)}</div></div>`;
+  }
+  if (ma60Val) {
+    const d = (curPrice - ma60Val) / ma60Val * 100;
+    supRowsNew += `<div class="sup-row"><span class="sup-label">60일선</span><div class="sup-right"><span class="sup-price">${fmtNum(Math.round(ma60Val))}원</span><span class="sup-dist ${d>=0?'up':'down'}">${d>=0?'+':''}${d.toFixed(1)}%</span>${supBadge(d)}</div></div>`;
+  }
+
+  const pnlBarW = Math.min(Math.abs(pnlPct) * 2, 100);
+  const pnlBarColor = pnlPct >= 0 ? '#E24B4A' : '#185FA5';
+
   el.innerHTML = `
     <!-- 히어로 -->
     <div class="detail-hero">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-        <div class="detail-name">${h.name}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
+        <div>
+          <div class="detail-name">${h.name}</div>
+          <div style="font-size:11px;opacity:0.6;margin-top:1px;">${h.code}</div>
+        </div>
         <span class="badge ${pnlCls==='up'?'badge-buy':'badge-sell'}">${pnlCls==='up'?'수익':'손실'} ${pnlPct>=0?'+':''}${pnlPct.toFixed(2)}%</span>
       </div>
-      <div class="detail-price">${fmtNum(curPrice)}원</div>
+      <div class="detail-price" style="margin-top:8px;">${fmtNum(curPrice)}원</div>
       <div style="font-size:13px;margin-top:2px;opacity:0.85;">
-        <span class="${chgPct>=0?'up':'down'}" style="color:#fff;">${chgPct>=0?'▲':'▼'} ${Math.abs(chg).toLocaleString()}원 (${Math.abs(chgPct).toFixed(2)}%)</span>
+        <span style="color:#fff;">${chgPct>=0?'▲':'▼'} ${Math.abs(chg).toLocaleString()}원 (${Math.abs(chgPct).toFixed(2)}%)</span>
       </div>
       ${a.cur_high || a.cur_low ? `<div style="font-size:11px;opacity:0.7;margin-top:6px;">
         고가 ${fmtNum(a.cur_high||0)} · 저가 ${fmtNum(a.cur_low||0)} · 거래량 ${(a.cur_volume||0).toLocaleString()}
       </div>` : ''}
-      <div class="detail-grid" style="margin-top:12px;">
-        <div class="detail-item"><div class="detail-item-label">평단가</div><div class="detail-item-val">${fmtNum(h.avg_price)}</div></div>
-        <div class="detail-item"><div class="detail-item-label">보유 수량</div><div class="detail-item-val">${h.qty}주</div></div>
-        <div class="detail-item"><div class="detail-item-label">평가손익</div><div class="detail-item-val ${pnlCls}">${pnl>=0?'+':''}${Math.round(pnl/10000)}만원</div></div>
+    </div>
+
+    <!-- 내 보유 현황 -->
+    <div class="section" style="margin-top:12px;">
+      <div class="card">
+        <div style="font-size:11px;font-weight:600;color:#8E8E9A;margin-bottom:10px;">내 보유 현황</div>
+        <div class="detail-grid">
+          <div class="detail-item" style="background:#F8F8FA;"><div class="detail-item-label">평단가</div><div class="detail-item-val">${fmtNum(h.avg_price)}원</div></div>
+          <div class="detail-item" style="background:#F8F8FA;"><div class="detail-item-label">보유 수량</div><div class="detail-item-val">${h.qty}주</div></div>
+          <div class="detail-item" style="background:#F8F8FA;"><div class="detail-item-label">평가손익</div><div class="detail-item-val ${pnlCls}">${pnl>=0?'+':''}${Math.round(pnl/10000)}만원</div></div>
+        </div>
+        <div style="height:4px;background:#F0F0F5;border-radius:2px;margin-top:10px;overflow:hidden;">
+          <div style="height:4px;width:${pnlBarW}%;background:${pnlBarColor};border-radius:2px;"></div>
+        </div>
       </div>
     </div>
+
+    <!-- 가격 차트 -->
+    ${(a.ohlcv||[]).length > 0 ? `<div class="section">
+      <div class="sec-title"><i class="ti ti-chart-candle" style="font-size:15px;color:#5B5BD6;"></i>가격 차트 <span style="font-size:10px;color:#8E8E9A;font-weight:400;">(주황선=평단가)</span></div>
+      <div class="card" style="padding:12px 8px;">
+        <canvas id="price-chart" style="width:100%;height:200px;"></canvas>
+      </div>
+    </div>` : ''}
 
     <!-- 기술 지표 -->
     <div class="section" style="margin-top:12px;">
@@ -1521,9 +1572,9 @@ function renderHoldingDetail(d, el) {
     </div>` : ''}
 
     <!-- 지지선 -->
-    ${supRows ? `<div class="section">
+    ${supRowsNew ? `<div class="section">
       <div class="sec-title"><i class="ti ti-barrier-block" style="font-size:15px;color:#5B5BD6;"></i>바닥 지지선</div>
-      <div class="card">${supRows}</div>
+      <div class="card">${supRowsNew}</div>
     </div>` : ''}
 
     <!-- 수급 -->
@@ -1592,6 +1643,103 @@ function renderHoldingDetail(d, el) {
         <i class="ti ti-trash" style="font-size:16px;"></i> 종목 삭제하기
       </button>
     </div>`;
+}
+
+function drawPriceChart(ohlcv, avgPrice, targetPrice, stopPrice) {
+  const canvas = document.getElementById('price-chart');
+  if (!canvas || !ohlcv || ohlcv.length === 0) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.offsetWidth || 340;
+  const H = 200;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const PAD = { top: 16, right: 12, bottom: 28, left: 52 };
+  const cW = W - PAD.left - PAD.right;
+  const cH = H - PAD.top  - PAD.bottom;
+
+  // 가격 범위
+  const allPrices = ohlcv.flatMap(c => [c.high, c.low]);
+  if (avgPrice)   allPrices.push(avgPrice);
+  if (targetPrice)allPrices.push(targetPrice);
+  if (stopPrice)  allPrices.push(stopPrice);
+  const minP = Math.min(...allPrices) * 0.995;
+  const maxP = Math.max(...allPrices) * 1.005;
+  const scaleY = v => PAD.top + cH - (v - minP) / (maxP - minP) * cH;
+  const n = ohlcv.length;
+  const barW = Math.max(2, Math.floor(cW / n) - 1);
+  const scaleX = i => PAD.left + (i + 0.5) * (cW / n);
+
+  // 배경
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, W, H);
+
+  // Y축 레이블
+  ctx.fillStyle = '#C7C7CC';
+  ctx.font = '9px -apple-system,sans-serif';
+  ctx.textAlign = 'right';
+  const steps = 4;
+  for (let i = 0; i <= steps; i++) {
+    const v = minP + (maxP - minP) * (i / steps);
+    const y = scaleY(v);
+    ctx.fillText((v/10000).toFixed(0) + '만', PAD.left - 4, y + 3);
+    ctx.strokeStyle = '#F0F0F5';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(W - PAD.right, y); ctx.stroke();
+  }
+
+  // 수평선 그리기 함수
+  const drawLine = (price, color, label, dash) => {
+    if (!price) return;
+    const y = scaleY(price);
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.2;
+    if (dash) ctx.setLineDash([4, 3]);
+    ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(W - PAD.right, y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = color;
+    ctx.font = 'bold 9px -apple-system,sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(label, W - PAD.right - 2, y - 2);
+    ctx.restore();
+  };
+
+  // 캔들스틱
+  ohlcv.forEach((c, i) => {
+    const x = scaleX(i);
+    const yH = scaleY(c.high);
+    const yL = scaleY(c.low);
+    const yO = scaleY(c.open);
+    const yC = scaleY(c.close);
+    const isUp = c.close >= c.open;
+    const color = isUp ? '#E24B4A' : '#185FA5';
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, yH); ctx.lineTo(x, yL); ctx.stroke();
+    ctx.fillStyle = color;
+    const top  = Math.min(yO, yC);
+    const body = Math.max(Math.abs(yO - yC), 1);
+    ctx.fillRect(x - barW/2, top, barW, body);
+  });
+
+  // X축 날짜 (첫·중간·마지막)
+  ctx.fillStyle = '#C7C7CC';
+  ctx.font = '9px -apple-system,sans-serif';
+  ctx.textAlign = 'center';
+  [0, Math.floor(n/2), n-1].forEach(i => {
+    const d = ohlcv[i]?.date?.slice(5) || '';
+    ctx.fillText(d, scaleX(i), H - PAD.bottom + 12);
+  });
+
+  // 수평선: 손절가→목표가→평단가 순으로 그려서 평단가가 위에 표시
+  drawLine(stopPrice,   '#E24B4A', '손절가', true);
+  drawLine(targetPrice, '#27500A', '목표가', true);
+  drawLine(avgPrice,    '#FF9F0A', '평단가', false);
 }
 
 async function deleteHolding(code, name) {
@@ -2080,9 +2228,9 @@ function renderWatchlistDetail(d, el, code, name) {
     </div>` : ''}
 
     <!-- 지지선 -->
-    ${supRows ? `<div class="section">
+    ${supRowsNew ? `<div class="section">
       <div class="sec-title"><i class="ti ti-barrier-block" style="font-size:15px;color:#5B5BD6;"></i>바닥 지지선</div>
-      <div class="card">${supRows}</div>
+      <div class="card">${supRowsNew}</div>
     </div>` : ''}
 
     <!-- 수급 -->
