@@ -1536,7 +1536,7 @@ function renderHoldingDetail(d, el) {
   }).join('');
 
   // ── 배지 & verdict ──
-  const badgesHtml = badges.map(b => {
+  const badgesHtml = (badges||[]).filter(b => typeof b === 'string').map(b => {
     const cls = b.includes('매도')||b.includes('과열')||b.includes('손절') ? 'badge-sell' :
                 b.includes('매수')||b.includes('정배열')||b.includes('지지') ? 'badge-buy' :
                 b.includes('주의')||b.includes('경고') ? 'badge-warn' : 'badge-ok';
@@ -2223,7 +2223,7 @@ function renderWatchlistDetail(d, el, code, name) {
   }).join('');
 
   // 배지 & verdict
-  const badgesHtml = badges.map(b => {
+  const badgesHtml = (badges||[]).filter(b => typeof b === 'string').map(b => {
     const cls = b.includes('매도')||b.includes('과열')||b.includes('손절') ? 'badge-sell' :
                 b.includes('매수')||b.includes('정배열')||b.includes('지지') ? 'badge-buy' :
                 b.includes('주의')||b.includes('경고') ? 'badge-warn' : 'badge-ok';
