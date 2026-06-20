@@ -1,4 +1,4 @@
-// ─────────────────────────────────────────────────────────
+﻿// ─────────────────────────────────────────────────────────
 // 포켓주식 앱 JS
 // ─────────────────────────────────────────────────────────
 
@@ -438,38 +438,53 @@ function renderSupplyDetail(d, el) {
   const bothBuy = d.both_buy || 0;
   const bothSell = d.both_sell || 0;
   const sf = d.streak_foreign || 0;
+  const si = d.streak_inst || 0;
   const days = d.days || rows.length;
 
-  // 최대값 (바 차트 스케일)
   const maxAbs = Math.max(...rows.map(r => Math.max(Math.abs(r.foreign), Math.abs(r.inst))), 1);
 
-  // 현재 탭 상태
-  let activeTab = 'foreign';
-
   function buildTabContent(tab) {
+    // 탭별 메타
+    const total = tab === 'inst' ? ti : tf;
+    const streak = tab === 'inst' ? si : sf;
+    const buyDays = tab === 'inst' ? bdi : bdf;
+    const label = tab === 'inst' ? '기관' : tab === 'both' ? '동반' : '외국인';
+
+    // 요약 카드
+    const summaryHtml = tab === 'both'
+      ? `<div class="summary-row">
+          <div class="sum-card"><div class="sum-label">동반 매수일</div><div class="sum-val" style="color:#3C3489;">${bothBuy}일</div></div>
+          <div class="sum-card"><div class="sum-label">동반 매도일</div><div class="sum-val" style="color:#8E8E9A;">${bothSell}일</div></div>
+          <div class="sum-card"><div class="sum-label">전체 기간</div><div class="sum-val" style="color:#3C3C43;">${days}일</div></div>
+        </div>`
+      : `<div class="summary-row">
+          <div class="sum-card"><div class="sum-label">${days}일 순매수</div><div class="sum-val ${total>=0?'up':'down'}">${total>=0?'+':''}${fmtInv(total,unit)}</div></div>
+          <div class="sum-card"><div class="sum-label">연속 ${streak>=0?'매수':'매도'}일</div><div class="sum-val" style="color:#3C3489;">${Math.abs(streak)}일</div></div>
+          <div class="sum-card"><div class="sum-label">매수 우위일</div><div class="sum-val up">${buyDays}일</div></div>
+        </div>`;
+
     // 바 차트
     const barCols = rows.map(r => {
-      const val = tab === 'foreign' ? r.foreign : tab === 'inst' ? r.inst : null;
-      const bothVal = tab === 'both' ? (r.foreign > 0 && r.inst > 0 ? r.foreign : r.foreign < 0 && r.inst < 0 ? r.foreign : 0) : null;
-      const v = tab === 'both' ? (r.foreign > 0 && r.inst > 0 ? 1 : r.foreign < 0 && r.inst < 0 ? -1 : 0) : val;
-      const h = Math.min(Math.abs(val||0) / maxAbs * 90, 90);
-      const isUp = (val||0) >= 0;
-      const label = r.date.slice(5);
+      const val = tab === 'inst' ? r.inst : r.foreign;
+      const h = Math.min(Math.abs(val) / maxAbs * 90, 90);
+      const isUp = val >= 0;
+      const label2 = r.date.slice(5);
       return `<div class="bar-col">
         ${isUp ? `<div class="bar-up" style="height:${h}px;background:rgba(226,75,74,${0.3+h/90*0.5});"></div>` : `<div style="flex:1;"></div>`}
         <div class="zero-line"></div>
         ${!isUp ? `<div class="bar-down" style="height:${h}px;background:rgba(24,95,165,${0.3+h/90*0.4});"></div>` : ''}
-        <div class="bar-label">${label}</div>
+        <div class="bar-label">${label2}</div>
       </div>`;
     });
 
     // 상세 테이블 (최근 8일)
     const tableRows = [...rows].reverse().slice(0, 8).map(r => {
       const fv = r.foreign, iv = r.inst;
+      const activeVal = tab === 'inst' ? iv : fv;
       const fCls = fv >= 0 ? 'up' : 'down';
       const iCls = iv >= 0 ? 'up' : 'down';
-      const barW = Math.min(Math.max(Math.abs(fv) / maxAbs * 80, 5), 80);
-      const barCls = fv >= 0 ? 'bar-buy' : 'bar-sell';
+      const barW = Math.min(Math.max(Math.abs(activeVal) / maxAbs * 80, 5), 80);
+      const barCls = activeVal >= 0 ? 'bar-buy' : 'bar-sell';
       return `<div class="day-row">
         <span class="day-date">${r.date.slice(5)}</span>
         <div class="net-bar-bg"><div class="net-bar ${barCls}" style="width:${barW}%;"></div></div>
@@ -478,32 +493,45 @@ function renderSupplyDetail(d, el) {
       </div>`;
     }).join('');
 
+    // 스트릭 박스 (동반 탭 제외)
+    let streakBox = '';
+    if (tab !== 'both') {
+      if (streak > 2) {
+        streakBox = `<div class="streak-box">
+          <div class="streak-icon"><i class="ti ti-flame" style="font-size:20px;"></i></div>
+          <div><div class="streak-title">${label} ${streak}일 연속 순매수 중</div><div class="streak-sub">누적 ${total>=0?'+':''}${fmtInv(total,unit)} · ${streak>=5?'강한 매집 신호':'지속 관찰 필요'}</div></div>
+        </div>`;
+      } else if (streak < -2) {
+        streakBox = `<div class="streak-box" style="background:#FCEBEB;">
+          <div class="streak-icon" style="background:#E24B4A;"><i class="ti ti-trending-down" style="font-size:20px;"></i></div>
+          <div><div class="streak-title" style="color:#A32D2D;">${label} ${Math.abs(streak)}일 연속 순매도 중</div><div class="streak-sub" style="color:#791F1F;">이탈 흐름 · 주의 필요</div></div>
+        </div>`;
+      }
+    }
+
+    const tableHeader = tab === 'both'
+      ? `<div class="day-header"><span>날짜</span><span>외국인</span><span style="text-align:right;">기관</span><span style="text-align:right;">동반</span></div>`
+      : `<div class="day-header"><span>날짜</span><span>추세</span><span style="text-align:right;">외국인</span><span style="text-align:right;">기관</span></div>`;
+
     return `
+      ${summaryHtml}
       <div class="chart-area">
-        <div class="chart-title"><i class="ti ti-chart-bar" style="font-size:14px;color:#5B5BD6;"></i>일별 ${tab==='foreign'?'외국인':tab==='inst'?'기관':'동반'} 순매수</div>
+        <div class="chart-title"><i class="ti ti-chart-bar" style="font-size:14px;color:#5B5BD6;"></i>일별 ${label} 순매수</div>
         <div class="bar-chart">${barCols.join('')}</div>
         <div class="legend-row">
           <div class="legend-item"><div class="legend-dot" style="background:rgba(226,75,74,0.6);"></div>순매수</div>
           <div class="legend-item"><div class="legend-dot" style="background:rgba(24,95,165,0.4);"></div>순매도</div>
         </div>
       </div>
-      ${sf > 2 ? `<div class="streak-box">
-        <div class="streak-icon"><i class="ti ti-flame" style="font-size:20px;"></i></div>
-        <div><div class="streak-title">외국인 ${sf}일 연속 순매수 중</div><div class="streak-sub">누적 ${tf>=0?'+':''}${fmtInv(tf,unit)} · ${sf>=5?'강한 매집 신호':'지속 관찰 필요'}</div></div>
-      </div>` : sf < -2 ? `<div class="streak-box" style="background:#FCEBEB;">
-        <div class="streak-icon" style="background:#E24B4A;"><i class="ti ti-trending-down" style="font-size:20px;"></i></div>
-        <div><div class="streak-title" style="color:#A32D2D;">외국인 ${Math.abs(sf)}일 연속 순매도 중</div><div class="streak-sub" style="color:#791F1F;">이탈 흐름 · 주의 필요</div></div>
-      </div>` : ''}
+      ${streakBox}
       <div class="section">
         <div class="sec-title"><i class="ti ti-list-details" style="font-size:15px;color:#5B5BD6;"></i>일별 상세 (최근 8일)</div>
         <div class="card">
-          <div class="day-header"><span>날짜</span><span>추세</span><span style="text-align:right;">외국인</span><span style="text-align:right;">기관</span></div>
+          ${tableHeader}
           ${tableRows}
         </div>
       </div>`;
   }
-
-  const today = new Date().toLocaleDateString('ko-KR', {year:'numeric', month:'2-digit', day:'2-digit'}).replace(/\. /g,'.').replace('.','');
 
   el.innerHTML = `
     <div style="padding:14px 16px 10px;background:#fff;border-bottom:0.5px solid #E5E5EA;">
@@ -515,12 +543,6 @@ function renderSupplyDetail(d, el) {
       <button id="tab-foreign" class="tab active" onclick="switchSupplyTab('foreign')">외국인</button>
       <button id="tab-inst" class="tab inactive" onclick="switchSupplyTab('inst')">기관</button>
       <button id="tab-both" class="tab inactive" onclick="switchSupplyTab('both')">동반매수</button>
-    </div>
-
-    <div class="summary-row">
-      <div class="sum-card"><div class="sum-label">${days}일 순매수</div><div class="sum-val ${tf>=0?'up':'down'}">${tf>=0?'+':''}${fmtInv(tf,unit)}</div></div>
-      <div class="sum-card"><div class="sum-label">연속 ${sf>=0?'매수':'매도'}일</div><div class="sum-val" style="color:#3C3489;">${Math.abs(sf)}일</div></div>
-      <div class="sum-card"><div class="sum-label">매수 우위일</div><div class="sum-val up">${bdf}일</div></div>
     </div>
 
     <div id="supply-tab-content">
@@ -543,7 +565,6 @@ function renderSupplyDetail(d, el) {
     </div>` : ''}
     <div style="height:24px;"></div>`;
 
-  // 탭 전환 함수 (전역 등록)
   window.switchSupplyTab = function(tab) {
     ['foreign','inst','both'].forEach(t => {
       const btn = document.getElementById('tab-'+t);
@@ -1787,86 +1808,280 @@ function renderWatchlistDetail(d, el, code, name) {
   const a = d.analysis || {};
   const timing = a.timing || {};
   const curPrice = a.cur_price || a.current_price || 0;
+  const chgPct = a.cur_change_pct || 0;
+  const chg = a.cur_change || 0;
 
-  const rsi = a.rsi ? Math.round(a.rsi) : '-';
-  const gap20 = a.gap20 ? (a.gap20 * 100).toFixed(1) + '%' : '-';
-  const ma20 = a.ma20 ? fmtNum(Math.round(a.ma20)) : '-';
-  const ma60 = a.ma60 ? fmtNum(Math.round(a.ma60)) : '-';
-  const volRatio = a.volume_ratio ? a.volume_ratio.toFixed(1) + 'x' : '-';
-  const foreignNet = a.foreign_net_3d !== undefined ? fmtPnl(a.foreign_net_3d) : '-';
-  const instNet = a.institution_net_3d !== undefined ? fmtPnl(a.institution_net_3d) : '-';
-
+  const rsiVal = a.rsi ? Math.round(a.rsi) : null;
+  const boll = a.bollinger || {};
+  const bollPos = boll.position !== undefined ? boll.position : 0.5;
+  const ma20Val = a.ma20;
+  const ma60Val = a.ma60;
+  const gap20Raw = a.gap20;
+  const gap20 = gap20Raw ? (gap20Raw * 100).toFixed(1) : null;
+  const invList = Array.isArray(a.inv_list) ? a.inv_list : [];
+  const foreignNet = a.foreign_net_3d || 0;
+  const instNet = a.institution_net_3d || 0;
   const badges = Array.isArray(a.badges) ? a.badges : [];
   const verdict = a.verdict || '';
 
-  // 타이밍 배지
-  let timingBadge = '';
-  if (timing.label) {
-    const tc = timing.badge_type === 'buy' ? 'badge-buy' : timing.badge_type === 'sell' ? 'badge-sell' : 'badge-warn';
-    timingBadge = `<span class="badge ${tc}" style="font-size:14px;padding:6px 12px;">${timing.label}</span>`;
-    if (timing.reason) timingBadge += `<div class="analysis-text" style="margin-top:6px;">${timing.reason}</div>`;
+  // RSI 해석
+  const rsiColor = rsiVal >= 70 ? '#E24B4A' : rsiVal <= 30 ? '#185FA5' : rsiVal >= 60 ? '#BA7517' : '#30D158';
+  let rsiInterp = '', rsiIcon = '🟢';
+  if (rsiVal !== null) {
+    if (rsiVal >= 70)      { rsiInterp = `RSI ${rsiVal}으로 <b>과열 구간</b>이에요. 너무 빠르게 올라온 상태예요. 추가 상승보다 숨 고르기 가능성이 높아요.`; rsiIcon='🔴'; }
+    else if (rsiVal <= 30) { rsiInterp = `RSI ${rsiVal}으로 <b>과매도 구간</b>이에요. 너무 많이 떨어진 상태예요. 단기 반등 시도가 나올 수 있어요.`; rsiIcon='🟢'; }
+    else if (rsiVal >= 60) { rsiInterp = `RSI ${rsiVal}으로 <b>정상 범위 상단</b>이에요. 과열도 침체도 아닌 건강한 상승세예요.`; rsiIcon='🟡'; }
+    else if (rsiVal <= 40) { rsiInterp = `RSI ${rsiVal}으로 <b>정상 범위 하단</b>이에요. 힘이 빠지는 구간이지만 아직 위험하진 않아요.`; rsiIcon='🟡'; }
+    else                   { rsiInterp = `RSI ${rsiVal}으로 <b>정상 범위</b>예요. 과열도 침체도 아닌 건강한 상태예요.`; rsiIcon='🟢'; }
   }
 
+  // 이격도 해석
+  const g = gap20 ? parseFloat(gap20) : 100;
+  let gapInterp = '', gapIcon = '🟢';
+  if (g >= 115)     { gapInterp = `이격도 ${g.toFixed(0)}%로 20일 평균보다 <b>${(g-100).toFixed(0)}% 위</b>에 있어요. 용수철처럼 평균으로 되돌아오려는 힘이 강해요.`; gapIcon='⚠️'; }
+  else if (g >= 105){ gapInterp = `이격도 ${g.toFixed(0)}%로 20일 평균보다 <b>${(g-100).toFixed(0)}% 위</b>에 있어요. 약간 올라온 상태지만 아직 과열은 아니에요.`; gapIcon='🟡'; }
+  else if (g <= 85) { gapInterp = `이격도 ${g.toFixed(0)}%로 20일 평균보다 <b>${(100-g).toFixed(0)}% 아래</b>에 있어요. 많이 떨어진 상태로 반등 가능성이 있어요.`; gapIcon='🟢'; }
+  else if (g <= 95) { gapInterp = `이격도 ${g.toFixed(0)}%로 20일 평균보다 <b>${(100-g).toFixed(0)}% 아래</b>에 있어요. 평균선 아래지만 크게 이탈한 건 아니에요.`; gapIcon='🟡'; }
+  else              { gapInterp = `이격도 ${g.toFixed(0)}%로 20일 평균 근처에 있어요. 안정적인 위치예요.`; gapIcon='🟢'; }
+
+  // 볼린저 해석
+  let bollInterp = '', bollIcon = '🟡';
+  if (bollPos >= 0.8)     { bollInterp = '볼린저밴드 <b>상단 근처</b>에요. 주가가 터널 천장에 닿아있어요. 여기서 저항을 받으면 단기 조정이 올 수 있어요.'; bollIcon='⚠️'; }
+  else if (bollPos <= 0.2){ bollInterp = '볼린저밴드 <b>하단 근처</b>예요. 주가가 터널 바닥에 있어요. 여기서 지지를 받으면 반등이 나올 수 있어요.'; bollIcon='🟢'; }
+  else                    { bollInterp = '볼린저밴드 <b>중간 구간</b>에 있어요. 상단 또는 하단 돌파 방향을 지켜보세요.'; bollIcon='🟡'; }
+  const bollLbl = bollPos <= 0.2 ? '하단 근처' : bollPos >= 0.8 ? '상단 근처' : '중간';
+
+  // 기술 지표 배지
+  const rsiBarW = rsiVal || 50;
+  const rsiStatus = rsiVal >= 70 ? '과매수' : rsiVal <= 30 ? '과매도' : '정상';
+  const rsiStatusCls = rsiVal >= 70 || rsiVal <= 30 ? 'badge-sell' : 'badge-buy';
+  const gapStatus = g >= 95 && g <= 115 ? '평균선 근처' : '이격 과대';
+  const gapStatusCls = g >= 95 && g <= 115 ? 'badge-ok' : 'badge-sell';
+  const bollStatusCls = bollPos <= 0.3 ? 'badge-buy' : bollPos >= 0.8 ? 'badge-sell' : 'badge-ok';
+
+  let ma20Row = '', ma60Row = '';
+  if (ma20Val) {
+    const d20 = (curPrice - ma20Val) / ma20Val * 100;
+    const scls = d20 >= 0 ? 'badge-ok' : 'badge-sell';
+    ma20Row = `<div class="ind-row"><span class="ind-label">20일선</span><div class="ind-right"><span class="ind-val">${fmtNum(Math.round(ma20Val))}</span><span class="badge ${scls}" style="font-size:10px;">${d20>=0?'위':'아래'} ${Math.abs(d20).toFixed(1)}%</span></div></div>`;
+  }
+  if (ma60Val) {
+    const d60 = (curPrice - ma60Val) / ma60Val * 100;
+    const scls = d60 >= 0 ? 'badge-ok' : 'badge-sell';
+    ma60Row = `<div class="ind-row"><span class="ind-label">60일선</span><div class="ind-right"><span class="ind-val">${fmtNum(Math.round(ma60Val))}</span><span class="badge ${scls}" style="font-size:10px;">${d60>=0?'위':'아래'} ${Math.abs(d60).toFixed(1)}%</span></div></div>`;
+  }
+
+  // 지지선
+  let supRows = '';
+  if (ma20Val) {
+    const dv = (curPrice - ma20Val) / ma20Val * 100;
+    const cls = dv >= 0 ? 'up' : 'down';
+    supRows += `<div class="sup-row"><span class="sup-label">20일선</span><div class="sup-right"><span class="sup-price">${fmtNum(Math.round(ma20Val))}</span><span class="sup-dist ${cls}">${dv>=0?'+':''}${dv.toFixed(1)}%</span><span class="sup-note">${dv>=0?'현재 위':'이탈'}</span></div></div>`;
+  }
+  if (boll.lower) {
+    const dv = (curPrice - boll.lower) / boll.lower * 100;
+    const cls = dv >= 0 ? 'up' : 'down';
+    supRows += `<div class="sup-row"><span class="sup-label">볼린저 하단</span><div class="sup-right"><span class="sup-price">${fmtNum(Math.round(boll.lower))}</span><span class="sup-dist ${cls}">${dv>=0?'+':''}${dv.toFixed(1)}%</span><span class="sup-note">지지선</span></div></div>`;
+  }
+  if (ma60Val) {
+    const dv = (curPrice - ma60Val) / ma60Val * 100;
+    const cls = dv >= 0 ? 'up' : 'down';
+    supRows += `<div class="sup-row"><span class="sup-label">60일선</span><div class="sup-right"><span class="sup-price">${fmtNum(Math.round(ma60Val))}</span><span class="sup-dist ${cls}">${dv>=0?'+':''}${dv.toFixed(1)}%</span><span class="sup-note">주요 지지</span></div></div>`;
+  }
+
+  // 수급
+  const fMax = Math.max(Math.abs(foreignNet), Math.abs(instNet), 1);
+  const fBarW = Math.min(Math.abs(foreignNet) / fMax * 80, 80);
+  const iBarW = Math.min(Math.abs(instNet) / fMax * 80, 80);
+  const fCls = foreignNet >= 0 ? 'up' : 'down';
+  const iCls = instNet >= 0 ? 'up' : 'down';
+  const fBarCls = foreignNet >= 0 ? 'bar-buy' : 'bar-sell';
+  const iBarCls = instNet >= 0 ? 'bar-buy' : 'bar-sell';
+  const fChips = invList.map(r => {
+    const v = r.foreign; const c = v >= 0 ? 'chip-buy' : 'chip-sell';
+    return `<span class="day-chip ${c}">${v>=0?'+':''}${Math.round(v/1000)}K</span>`;
+  }).join('');
+  const iChips = invList.map(r => {
+    const v = r.inst; const c = v >= 0 ? 'chip-buy' : 'chip-sell';
+    return `<span class="day-chip ${c}">${v>=0?'+':''}${Math.round(v/1000)}K</span>`;
+  }).join('');
+
+  // 배지 & verdict
   const badgesHtml = badges.map(b => {
-    const cls = b.includes('매도') || b.includes('과열') || b.includes('손절') ? 'badge-sell' :
-                b.includes('매수') || b.includes('정배열') || b.includes('지지') ? 'badge-buy' :
-                b.includes('주의') || b.includes('경고') ? 'badge-warn' : 'badge-ok';
+    const cls = b.includes('매도')||b.includes('과열')||b.includes('손절') ? 'badge-sell' :
+                b.includes('매수')||b.includes('정배열')||b.includes('지지') ? 'badge-buy' :
+                b.includes('주의')||b.includes('경고') ? 'badge-warn' : 'badge-ok';
     return `<span class="badge ${cls}">${b}</span>`;
   }).join('');
 
-  const boll = a.bollinger || {};
-  let supportChips = '';
-  if (a.ma20) supportChips += `<div class="sup-chip">20일선 <span>${gap20}</span></div>`;
-  if (a.ma60) supportChips += `<div class="sup-chip">60일선 ${ma60}</div>`;
-  if (boll.lower) supportChips += `<div class="sup-chip">볼하단 ${fmtNum(Math.round(boll.lower))}</div>`;
-
-  // 목표가 달성률
-  let targetHtml = '';
-  if (item.target_price && curPrice) {
-    const targetPct = ((curPrice - item.target_price) / item.target_price * 100);
-    const barW = Math.min(Math.abs(curPrice / item.target_price * 100), 100);
-    targetHtml = `<div class="card" style="margin-bottom:12px;">
-      <div style="font-size:13px;color:#8E8E9A;margin-bottom:6px;">목표가 달성률</div>
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <span style="font-weight:600;">${fmtNum(curPrice)}원</span>
-        <span style="font-size:12px;color:#8E8E9A;">목표 ${fmtNum(item.target_price)}원</span>
+  // 타이밍 판정 섹션
+  let timingHtml = '';
+  if (timing.label) {
+    const tc = timing.badge_type === 'buy' ? 'badge-buy' : timing.badge_type === 'sell' ? 'badge-sell' : 'badge-warn';
+    timingHtml = `<div class="section" style="margin-top:12px;">
+      <div class="sec-title"><i class="ti ti-clock-check" style="font-size:15px;color:#5B5BD6;"></i>매수 타이밍 판정</div>
+      <div class="card">
+        <span class="badge ${tc}" style="font-size:14px;padding:6px 12px;">${timing.label}</span>
+        ${timing.reason ? `<div class="analysis-text" style="margin-top:8px;">${timing.reason}</div>` : ''}
       </div>
-      <div class="pnl-bar-wrap" style="margin-top:8px;"><div class="pnl-bar" style="width:${barW}%;background:#5B5BD6;"></div></div>
-      <div style="font-size:12px;color:${targetPct<=0?'#E24B4A':'#185FA5'};margin-top:4px;">${fmtPct(targetPct)}</div>
     </div>`;
   }
 
-  el.innerHTML = `
-    <div class="detail-hero">
-      <div class="detail-name">${item.name}</div>
-      <div class="detail-price">${fmtNum(curPrice)}원</div>
-      <div class="detail-meta">${item.code}</div>
-      <div class="detail-grid">
-        <div class="detail-item"><div class="detail-item-label">RSI</div><div class="detail-item-val">${rsi}</div></div>
-        <div class="detail-item"><div class="detail-item-label">이격도(20일)</div><div class="detail-item-val">${gap20}</div></div>
-        <div class="detail-item"><div class="detail-item-label">거래량비</div><div class="detail-item-val">${volRatio}</div></div>
-        <div class="detail-item"><div class="detail-item-label">매집점수</div><div class="detail-item-val">${a.score !== undefined ? a.score + '/5' : '-'}</div></div>
-      </div>
-    </div>
-    <div class="section" style="margin-top:12px;">
-      ${timingBadge ? `<div class="card" style="margin-bottom:12px;">${timingBadge}</div>` : ''}
-      ${targetHtml}
+  // 목표가/손절가
+  const tp = item.target_price;
+  const sp2 = item.stop_loss;
+  let priceTargetHtml = '';
+  if (tp && curPrice) {
+    const tDist = ((tp - curPrice) / curPrice * 100).toFixed(1);
+    const sDist = sp2 ? ((sp2 - curPrice) / curPrice * 100).toFixed(1) : null;
+    const rr = sp2 ? Math.abs(tDist / ((sp2 - curPrice) / curPrice * 100)).toFixed(1) : null;
+    const rrCls = rr >= 2 ? '#27500A' : rr >= 1 ? '#BA7517' : '#A32D2D';
+    const rrLbl = rr >= 2 ? '✅ 양호' : rr >= 1 ? '⚠️ 보통' : '❌ 불리';
+    priceTargetHtml = `<div class="section">
+      <div class="sec-title"><i class="ti ti-target" style="font-size:15px;color:#5B5BD6;"></i>목표가 / 손절가</div>
       <div class="card">
-        <div class="mini-grid" style="grid-template-columns:1fr 1fr 1fr;">
-          <div class="mini-item"><div class="mini-label">20일선</div><div class="mini-val">${ma20}</div></div>
-          <div class="mini-item"><div class="mini-label">60일선</div><div class="mini-val">${ma60}</div></div>
-          <div class="mini-item"><div class="mini-label">20일이격</div><div class="mini-val">${gap20}</div></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:12px;">
+          <div>
+            <div style="font-size:10px;color:#8E8E9A;margin-bottom:3px;">내 목표가</div>
+            <div style="font-size:18px;font-weight:700;color:#27500A;">${fmtNum(tp)}</div>
+            <div style="font-size:11px;color:#27500A;">${tDist >= 0 ? '+' : ''}${tDist}%</div>
+          </div>
+          ${sp2 ? `<div style="text-align:right;">
+            <div style="font-size:10px;color:#8E8E9A;margin-bottom:3px;">내 손절가</div>
+            <div style="font-size:18px;font-weight:700;color:#A32D2D;">${fmtNum(sp2)}</div>
+            <div style="font-size:11px;color:#A32D2D;">${sDist}%</div>
+          </div>` : ''}
         </div>
-        <div class="mini-grid" style="grid-template-columns:1fr 1fr;margin-top:6px;">
-          <div class="mini-item"><div class="mini-label">외국인 3일순매수</div><div class="mini-val">${foreignNet}</div></div>
-          <div class="mini-item"><div class="mini-label">기관 3일순매수</div><div class="mini-val">${instNet}</div></div>
+        ${rr ? `<div style="background:#F8F8FA;border-radius:10px;padding:10px 12px;">
+          <div style="font-size:10px;color:#8E8E9A;margin-bottom:4px;">리스크/리워드 비율</div>
+          <div style="font-size:13px;font-weight:600;color:${rrCls};">1 : ${rr} ${rrLbl}</div>
+          <div style="font-size:10px;color:#8E8E9A;margin-top:3px;">손실 1원 대비 수익 ${rr}원 기대 — 2 이상이면 진입 적합</div>
+        </div>` : ''}
+      </div>
+    </div>`;
+  }
+
+  // 뉴스
+  const newsHtml = (a.news||[]).slice(0,3).map(n => {
+    const bdg = n.sentiment === 'positive' ? 'badge-pos' : n.sentiment === 'negative' ? 'badge-neg' : 'badge-mix';
+    const briefHtml = n.brief ? `<div class="news-brief">💡 ${n.brief}</div>` : '';
+    return `<div class="news-card">
+      <div class="news-card-top"><span class="badge ${bdg}">${n.label||'중립'}</span><span class="news-source">${n.source||''} · ${n.published||''}</span></div>
+      <div class="news-title">${n.title||''}</div>${briefHtml}
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <!-- 히어로 -->
+    <div class="detail-hero">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+        <div class="detail-name">${item.name}</div>
+        ${timing.label ? `<span class="badge ${timing.badge_type==='buy'?'badge-buy':timing.badge_type==='sell'?'badge-sell':'badge-warn'}">${timing.label}</span>` : ''}
+      </div>
+      <div class="detail-price">${fmtNum(curPrice)}원</div>
+      <div style="font-size:13px;margin-top:2px;opacity:0.85;">
+        <span class="${chgPct>=0?'up':'down'}" style="color:#fff;">${chgPct>=0?'▲':'▼'} ${Math.abs(chg).toLocaleString()}원 (${Math.abs(chgPct).toFixed(2)}%)</span>
+      </div>
+      ${a.cur_high || a.cur_low ? `<div style="font-size:11px;opacity:0.7;margin-top:6px;">
+        고가 ${fmtNum(a.cur_high||0)} · 저가 ${fmtNum(a.cur_low||0)} · 거래량 ${(a.cur_volume||0).toLocaleString()}
+      </div>` : ''}
+    </div>
+
+    <!-- 타이밍 판정 -->
+    ${timingHtml}
+
+    <!-- 기술 지표 -->
+    <div class="section" style="margin-top:12px;">
+      <div class="sec-title"><i class="ti ti-activity" style="font-size:15px;color:#5B5BD6;"></i>기술적 지표</div>
+      <div class="card">
+        ${rsiVal !== null ? `<div class="ind-row">
+          <span class="ind-label">RSI (14일)</span>
+          <div class="ind-right">
+            <div style="width:80px;height:6px;background:#F0F0F5;border-radius:3px;margin-right:8px;">
+              <div style="width:${rsiBarW}%;height:6px;background:${rsiColor};border-radius:3px;"></div>
+            </div>
+            <span class="ind-val">${rsiVal}</span>
+            <span class="badge ${rsiStatusCls}" style="font-size:10px;margin-left:4px;">${rsiStatus}</span>
+          </div>
+        </div>` : ''}
+        ${gap20 ? `<div class="ind-row">
+          <span class="ind-label">이격도 (20일)</span>
+          <div class="ind-right"><span class="ind-val">${parseFloat(gap20).toFixed(0)}%</span><span class="badge ${gapStatusCls}" style="font-size:10px;margin-left:4px;">${gapStatus}</span></div>
+        </div>` : ''}
+        <div class="ind-row">
+          <span class="ind-label">볼린저밴드</span>
+          <div class="ind-right"><span class="ind-val">${bollLbl}</span><span class="badge ${bollStatusCls}" style="font-size:10px;margin-left:4px;">${bollPos<=0.3?'지지 시도':bollPos>=0.8?'과열':'보통'}</span></div>
         </div>
-        ${supportChips ? `<div class="support-mini" style="margin-top:10px;">${supportChips}</div>` : ''}
-        ${badgesHtml ? `<div class="signal-badges" style="margin-top:10px;">${badgesHtml}</div>` : ''}
-        ${verdict ? `<div class="analysis-text" style="margin-top:10px;padding-top:10px;border-top:0.5px solid #F0F0F5;">${verdict}</div>` : ''}
+        ${ma20Row}${ma60Row}
       </div>
     </div>
+
+    <!-- 지표 해석 -->
+    ${rsiVal !== null ? `<div style="background:#EEEDFE;border-radius:16px;padding:16px 18px;margin:0 16px 12px;">
+      <div style="font-size:12px;font-weight:700;color:#3C3489;margin-bottom:12px;display:flex;align-items:center;gap:6px;">
+        <i class="ti ti-microscope" style="font-size:14px;"></i> 지금 이 숫자가 의미하는 것
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="background:rgba(255,255,255,0.6);border-radius:10px;padding:10px 12px;">
+          <div style="font-size:10px;font-weight:700;color:#534AB7;margin-bottom:4px;">${rsiIcon} RSI (상대강도지수)</div>
+          <div style="font-size:11px;color:#3C3489;line-height:1.6;">${rsiInterp}</div>
+        </div>
+        ${gap20 ? `<div style="background:rgba(255,255,255,0.6);border-radius:10px;padding:10px 12px;">
+          <div style="font-size:10px;font-weight:700;color:#534AB7;margin-bottom:4px;">${gapIcon} 이격도 (20일 평균 기준)</div>
+          <div style="font-size:11px;color:#3C3489;line-height:1.6;">${gapInterp}</div>
+        </div>` : ''}
+        <div style="background:rgba(255,255,255,0.6);border-radius:10px;padding:10px 12px;">
+          <div style="font-size:10px;font-weight:700;color:#534AB7;margin-bottom:4px;">${bollIcon} 볼린저밴드</div>
+          <div style="font-size:11px;color:#3C3489;line-height:1.6;">${bollInterp}</div>
+        </div>
+      </div>
+    </div>` : ''}
+
+    <!-- 지지선 -->
+    ${supRows ? `<div class="section">
+      <div class="sec-title"><i class="ti ti-barrier-block" style="font-size:15px;color:#5B5BD6;"></i>바닥 지지선</div>
+      <div class="card">${supRows}</div>
+    </div>` : ''}
+
+    <!-- 수급 -->
+    <div class="section">
+      <div class="sec-title"><i class="ti ti-users" style="font-size:15px;color:#5B5BD6;"></i>외국인·기관 수급 (5일)</div>
+      <div class="card">
+        <div class="supply-row">
+          <span class="supply-who">외국인</span>
+          <div class="supply-bar-bg"><div class="supply-bar-fill ${fBarCls}" style="width:${fBarW}%;"></div></div>
+          <span class="supply-val ${fCls}">${foreignNet>=0?'+':''}${foreignNet.toLocaleString()}주</span>
+        </div>
+        ${fChips ? `<div class="days-row">${fChips}</div>` : ''}
+        <div class="supply-row">
+          <span class="supply-who">기관</span>
+          <div class="supply-bar-bg"><div class="supply-bar-fill ${iBarCls}" style="width:${iBarW}%;"></div></div>
+          <span class="supply-val ${iCls}">${instNet>=0?'+':''}${instNet.toLocaleString()}주</span>
+        </div>
+        ${iChips ? `<div class="days-row">${iChips}</div>` : ''}
+      </div>
+    </div>
+
+    <!-- 배지/경고 -->
+    ${verdict||badgesHtml ? `<div class="section">
+      ${badgesHtml ? `<div style="padding:0 16px 8px;"><div class="signal-badges">${badgesHtml}</div></div>` : ''}
+      ${verdict ? `<div class="card" style="border-left:3px solid #E24B4A;">
+        <div style="font-size:12px;font-weight:600;color:#E24B4A;margin-bottom:6px;"><i class="ti ti-alert-triangle" style="font-size:13px;"></i> 주의 신호</div>
+        <div style="font-size:13px;color:#3C3C43;line-height:1.6;">${verdict}</div>
+      </div>` : ''}
+    </div>` : ''}
+
+    <!-- 목표가/손절가 -->
+    ${priceTargetHtml}
+
+    <!-- 뉴스 -->
+    ${newsHtml ? `<div class="section">
+      <div class="sec-title"><i class="ti ti-news" style="font-size:15px;color:#5B5BD6;"></i>${item.name} 뉴스</div>
+      ${newsHtml}
+    </div>` : ''}
+
     <div style="padding:0 16px 16px;">
+      <div class="warn-box" style="margin-bottom:10px;"><i class="ti ti-alert-circle" style="font-size:14px;flex-shrink:0;"></i>투자 결정은 본인 책임입니다. 이 정보는 참고용이며 투자 권유가 아닙니다.</div>
       <button class="btn-danger" onclick="deleteWatchlist('${item.code}', '${item.name}')">
         <i class="ti ti-trash" style="font-size:16px;"></i> 관심종목 삭제
       </button>
