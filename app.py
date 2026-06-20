@@ -56,7 +56,7 @@ body { background: #F5F5F7; color: #1A1A2E; }
 .hero-desc { font-size:11px; color:rgba(255,255,255,0.8); line-height:1.5; }
 .hero-tip { margin-top:10px; background:rgba(255,255,255,0.12); border-radius:10px; padding:8px 12px; font-size:11px; color:rgba(255,255,255,0.9); display:flex; align-items:flex-start; gap:6px; }
 /* 지수 카드 */
-.idx-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:0 16px 12px; }
+.idx-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:12px 16px 12px; }
 .idx-card { background:#fff; border-radius:14px; padding:14px; border:0.5px solid #E5E5EA; }
 .idx-card.up-card { border-top:3px solid #E24B4A; }
 .idx-card.down-card { border-top:3px solid #185FA5; }
