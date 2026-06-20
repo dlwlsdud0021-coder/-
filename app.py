@@ -383,10 +383,6 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"],
 }
 .nav-item.active { color: #5B5BD6; }
 .nav-item i { font-size: 22px; }
-/* Streamlit 기본 탭 완전 숨김 */
-[data-testid="stTabs"], [data-testid="stTabsTabList"],
-[data-baseweb="tab-list"], [data-baseweb="tab-highlight"],
-[data-baseweb="tab-border"] { display: none !important; }
 /* 콘텐츠 영역 — 하단 네비에 가리지 않도록 여백 */
 .main .block-container { padding-bottom: 90px !important; }
 </style>
@@ -411,7 +407,7 @@ def _init():
         "detail_code": "", "detail_name": "", "detail_avg": 0.0,
         "detail_qty": 0, "detail_target": 0.0, "detail_stop": 0.0,
         "scanner_results": [], "scanner_ran": False, "login_tab": "login",
-        "active_tab": "홈", "show_supply_detail": False,
+        "show_supply_detail": False,
         "holdings_filter": "all",
         "watchlist_filter": "all",
         "scanner_filter": "all",
@@ -3543,134 +3539,106 @@ if st.session_state.get("show_market_detail"):
     render_market_detail(_idx, _us, _ma_kp, _ma_kd, _kp_hist, _kd_hist)
     st.stop()
 
-# ── 바텀 네비게이션 (session_state 기반 — 로그인 세션 유지) ──
-_TAB_NAMES = ["홈", "뉴스", "보유", "관심", "매집"]
-_TAB_ICONS = ["ti-home", "ti-news", "ti-briefcase", "ti-star", "ti-chart-bar"]
+# ── 원래대로 st.tabs() 사용 — 기능은 그대로, JS로 탭바만 하단 이동 ──
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["홈", "뉴스", "보유", "관심", "매집"])
+with tab1: render_home()
+with tab2: render_news()
+with tab3: render_holdings()
+with tab4: render_watchlist()
+with tab5: render_scanner()
 
-_active_tab = st.session_state.active_tab
-
-# 탭 콘텐츠 렌더링
-if _active_tab == "홈":
-    render_home()
-elif _active_tab == "뉴스":
-    render_news()
-elif _active_tab == "보유":
-    render_holdings()
-elif _active_tab == "관심":
-    render_watchlist()
-elif _active_tab == "매집":
-    render_scanner()
-
-# 숨겨진 Streamlit 버튼 — JS로 클릭 트리거, data-navbtn 속성으로 식별
-_hcols = st.columns(5)
-for _name, _hcol in zip(_TAB_NAMES, _hcols):
-    with _hcol:
-        if st.button(_name, key=f"navbtn_{_name}", use_container_width=True,
-                     type="primary" if _name == _active_tab else "secondary"):
-            st.session_state.active_tab = _name
-            st.rerun()
-
-# JS: body에 직접 네비 삽입, 매 렌더마다 active 업데이트 + Streamlit 버튼 숨김
+# JS: stTabsTabList DOM 요소를 body로 옮겨서 진짜 하단 고정
 import streamlit.components.v1 as _cv1
-_nav_items_js = ", ".join([
-    f'{{"name":"{n}","icon":"{i}","active":{"true" if n==_active_tab else "false"}}}'
-    for n, i in zip(_TAB_NAMES, ["home","news","briefcase","star","chart-bar"])
-])
-_cv1.html(f"""
+_cv1.html("""
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <script>
-(function() {{
-  var TABS = [{_nav_items_js}];
-  var NAV_NAMES = TABS.map(function(t) {{ return t.name; }});
+(function() {
+  var ICONS = ['ti-home','ti-news','ti-briefcase','ti-star','ti-chart-bar'];
 
-  function run() {{
+  function moveTabBar() {
     var p = window.parent.document;
+    var tabList = p.querySelector('[data-testid="stTabsTabList"]');
+    if (!tabList) { setTimeout(moveTabBar, 200); return; }
 
-    // 1) Streamlit 버튼 행 숨기기
-    var allBtns = Array.from(p.querySelectorAll('button'));
-    var navBtns = allBtns.filter(function(b) {{
-      return NAV_NAMES.includes(b.textContent.trim());
-    }});
-    navBtns.forEach(function(b) {{
-      var row = b.closest('[data-testid="stHorizontalBlock"]');
-      if (row) {{
-        row.style.visibility = 'hidden';
-        row.style.height = '0';
-        row.style.overflow = 'hidden';
-        row.style.margin = '0';
-        row.style.padding = '0';
-        // 부모도 height 줄이기
-        var parent = row.parentElement;
-        if (parent) {{
-          parent.style.height = '0';
-          parent.style.overflow = 'hidden';
-          parent.style.margin = '0';
-          parent.style.padding = '0';
-        }}
-      }}
-    }});
+    // 이미 body 직속 자식이면 스킵
+    if (tabList.parentElement === p.body) {
+      applyStyle(p, tabList);
+      return;
+    }
 
-    // 2) 네비 CSS 삽입 (한 번만)
-    if (!p.getElementById('__nav_style__')) {{
-      var style = p.createElement('style');
-      style.id = '__nav_style__';
-      style.textContent = [
-        '#__custom_bottom_nav__ {{',
-        '  position:fixed;bottom:0;left:50%;transform:translateX(-50%);',
-        '  width:380px;max-width:100vw;background:#fff;',
-        '  border-top:0.5px solid #E5E5EA;display:flex;',
-        '  padding:10px 0 16px;z-index:99999;',
-        '  box-shadow:0 -2px 8px rgba(0,0,0,0.04);',
-        '}}',
-        '#__custom_bottom_nav__ .ni {{',
-        '  flex:1;display:flex;flex-direction:column;align-items:center;',
-        '  gap:3px;color:#C7C7CC;font-size:10px;cursor:pointer;',
-        '  border:none;background:none;padding:4px 0;',
-        '  font-family:-apple-system,BlinkMacSystemFont,sans-serif;',
-        '}}',
-        '#__custom_bottom_nav__ .ni.active {{color:#5B5BD6;}}',
-        '#__custom_bottom_nav__ .ni i {{font-size:22px;line-height:1;}}'
-      ].join('');
-      p.head.appendChild(style);
-    }}
+    // body로 이동 (클릭 이벤트 핸들러 유지됨)
+    p.body.appendChild(tabList);
+    applyStyle(p, tabList);
+  }
 
-    // 3) 네비 div — 없으면 생성, 있으면 active 클래스만 업데이트
-    var nav = p.getElementById('__custom_bottom_nav__');
-    if (!nav) {{
-      nav = p.createElement('div');
-      nav.id = '__custom_bottom_nav__';
-      TABS.forEach(function(t) {{
-        var btn = p.createElement('button');
-        btn.className = 'ni' + (t.active ? ' active' : '');
-        btn.dataset.tab = t.name;
-        btn.innerHTML = '<i class="ti ti-' + t.icon + '"></i><span>' + t.name + '</span>';
-        btn.addEventListener('click', function() {{ clickTab(this.dataset.tab); }});
-        nav.appendChild(btn);
-      }});
-      p.body.appendChild(nav);
-    }} else {{
-      // active 클래스 업데이트
-      Array.from(nav.querySelectorAll('.ni')).forEach(function(btn) {{
-        var isActive = TABS.find(function(t) {{ return t.name === btn.dataset.tab && t.active; }});
-        btn.className = 'ni' + (isActive ? ' active' : '');
-      }});
-    }}
-  }}
+  function applyStyle(p, tabList) {
+    // CSS (한 번만)
+    if (!p.getElementById('__nav_style__')) {
+      var s = p.createElement('style');
+      s.id = '__nav_style__';
+      s.textContent = `
+        [data-testid="stTabsTabList"] {
+          position: fixed !important;
+          bottom: 0 !important;
+          left: 50% !important;
+          transform: translateX(-50%) !important;
+          width: 380px !important;
+          max-width: 100vw !important;
+          background: #fff !important;
+          border-top: 0.5px solid #E5E5EA !important;
+          border-bottom: none !important;
+          display: flex !important;
+          padding: 10px 0 16px !important;
+          z-index: 99999 !important;
+          box-shadow: 0 -2px 8px rgba(0,0,0,0.04) !important;
+          gap: 0 !important;
+        }
+        [data-baseweb="tab-highlight"], [data-baseweb="tab-border"] {
+          display: none !important;
+        }
+        [data-baseweb="tab"] {
+          flex: 1 !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 3px !important;
+          padding: 4px 0 !important;
+          color: #C7C7CC !important;
+          border: none !important;
+          background: transparent !important;
+          min-height: 52px !important;
+          margin: 0 !important;
+          font-size: 10px !important;
+        }
+        [data-baseweb="tab"] p {
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          gap: 3px !important;
+          font-size: 10px !important;
+          margin: 0 !important;
+        }
+        [data-baseweb="tab"] p::before {
+          font-family: 'tabler-icons' !important;
+          font-size: 22px !important;
+          line-height: 1 !important;
+          display: block !important;
+        }
+        [data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(1) p::before { content: '\\ea76'; }
+        [data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(2) p::before { content: '\\f0e9'; }
+        [data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(3) p::before { content: '\\ea3b'; }
+        [data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(4) p::before { content: '\\ebeb'; }
+        [data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(5) p::before { content: '\\ed12'; }
+        [aria-selected="true"][data-baseweb="tab"] { color: #5B5BD6 !important; }
+        [aria-selected="true"][data-baseweb="tab"] p::before { color: #5B5BD6 !important; }
+      `;
+      p.head.appendChild(s);
+    }
+  }
 
-  function clickTab(name) {{
-    var p = window.parent.document;
-    var allBtns = Array.from(p.querySelectorAll('button'));
-    for (var i = 0; i < allBtns.length; i++) {{
-      if (allBtns[i].textContent.trim() === name) {{
-        allBtns[i].click();
-        return;
-      }}
-    }}
-  }}
-
-  run();
-  setTimeout(run, 500);
-}})();
+  moveTabBar();
+  setTimeout(moveTabBar, 600);
+})();
 </script>
 """, height=0, scrolling=False)
 
