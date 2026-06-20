@@ -19,7 +19,7 @@ from pydantic import BaseModel
 import database as db
 from market_data import (get_index_data, get_us_indices, search_stock_by_name,
     get_all_tickers, get_top_stocks, get_ohlcv, get_investor_trading, get_current_price)
-from news import fetch_market_news, fetch_stock_news
+from news import fetch_market_news, fetch_stock_news, enrich_top10_summaries, rank_by_importance
 from home_analysis import analyze_us_impact, generate_forecast, calc_ma_status, market_phase, is_market_open
 from analysis import analyze_stock, watchlist_timing
 
@@ -173,7 +173,12 @@ def market_data():
 @app.get("/api/news")
 def market_news():
     try:
-        return {"news": fetch_market_news()}
+        raw = fetch_market_news(max_items=15)
+        ranked = rank_by_importance(raw)
+        enriched = enrich_top10_summaries(ranked[:10])
+        # 나머지는 ai_summary 없이 기본만
+        rest = ranked[10:]
+        return {"news": enriched + rest}
     except Exception as e:
         return {"news": [], "error": str(e)}
 

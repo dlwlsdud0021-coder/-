@@ -38,7 +38,7 @@ function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + id).classList.add('active');
   const nav = document.getElementById('bottom-nav');
-  const noNav = ['login', 'register', 'holding-detail', 'watchlist-detail'];
+  const noNav = ['login', 'register', 'holding-detail', 'watchlist-detail', 'news-detail'];
   nav.style.display = noNav.includes(id) ? 'none' : 'flex';
 }
 
@@ -314,21 +314,100 @@ function renderNews() {
     el.innerHTML = '<div class="empty-state"><i class="ti ti-news"></i>뉴스가 없습니다</div>';
     return;
   }
-  const html = news.map(n => {
+  const html = news.map((n, i) => {
     const bdg = n.sentiment === 'positive' ? 'badge-pos' : n.sentiment === 'negative' ? 'badge-neg' : 'badge-mix';
     const lbl = n.label || (n.sentiment === 'positive' ? '긍정' : n.sentiment === 'negative' ? '부정' : '혼조');
     const borderClass = n.sentiment === 'positive' ? 'important' : n.sentiment === 'negative' ? 'negative' : '';
     const briefHtml = n.brief ? `<div class="news-brief">💡 ${n.brief}</div>` : '';
-    return `<div class="news-card ${borderClass}">
+    const hasDetail = !!(n.ai_summary || n.strategy || n.summary);
+    const chevron = hasDetail ? `<i class="ti ti-chevron-right" style="color:#C7C7CC;font-size:18px;flex-shrink:0;"></i>` : '';
+    return `<div class="news-card ${borderClass} ${hasDetail?'clickable':''}" ${hasDetail?`onclick="openNewsDetail(${i})"`:''}>
       <div class="news-card-top">
         <span class="badge ${bdg}">${lbl}</span>
         <span class="news-source">${n.source||''} · ${n.published||''}</span>
+        ${chevron}
       </div>
       <div class="news-title">${n.title||''}</div>
       ${briefHtml}
     </div>`;
   }).join('');
   el.innerHTML = `<div class="section" style="margin-top:12px;">${html}</div>`;
+}
+
+// ─────────────────────────────────────────────────────────
+// 뉴스 상세
+// ─────────────────────────────────────────────────────────
+function openNewsDetail(idx) {
+  const n = _allNews[idx];
+  if (!n) return;
+  _currentTab = 'news'; // goBack()이 뉴스탭으로 돌아오도록
+  showScreen('news-detail');
+  renderNewsDetail(n);
+}
+
+function renderNewsDetail(n) {
+  const el = document.getElementById('news-detail-content');
+  const bdg = n.sentiment === 'positive' ? 'badge-pos' : n.sentiment === 'negative' ? 'badge-neg' : 'badge-mix';
+  const lbl = n.label || (n.sentiment === 'positive' ? '긍정' : n.sentiment === 'negative' ? '부정' : '혼조');
+
+  // 카테고리 칩
+  const catChip = n.category ? `<span class="badge badge-ok" style="font-size:11px;">${n.category}</span>` : '';
+
+  // 관련 종목
+  const stocks = Array.isArray(n.related_stocks) ? n.related_stocks : [];
+  const stocksHtml = stocks.length ? `
+    <div style="margin-bottom:16px;">
+      <div style="font-size:12px;color:#8E8E9A;margin-bottom:6px;">관련 종목</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        ${stocks.map(s => `<span class="badge badge-ok">${s}</span>`).join('')}
+      </div>
+    </div>` : '';
+
+  // 원문 요약
+  const summaryHtml = n.summary ? `
+    <div class="card" style="margin-bottom:12px;">
+      <div style="font-size:12px;color:#8E8E9A;margin-bottom:6px;display:flex;align-items:center;gap:4px;">
+        <i class="ti ti-file-text" style="font-size:13px;"></i> 내용
+      </div>
+      <div style="font-size:14px;color:#3C3C43;line-height:1.6;">${n.summary}</div>
+    </div>` : '';
+
+  // AI 분석 (무슨 뉴스 / 영향 / 대응)
+  const aiHtml = n.ai_summary ? `
+    <div class="card" style="margin-bottom:12px;background:linear-gradient(135deg,#F5F4FF 0%,#fff 100%);border:1px solid #E8E7FF;">
+      <div style="font-size:14px;line-height:1.8;color:#3C3C43;">${n.ai_summary}</div>
+    </div>` : '';
+
+  // 투자 전략 (strategy)
+  const strategyHtml = n.strategy ? `
+    <div class="card" style="margin-bottom:12px;background:linear-gradient(135deg,#FFF8EC 0%,#fff 100%);border:1px solid #FFE0A0;">
+      <div style="font-size:13px;font-weight:700;color:#FF9F0A;margin-bottom:8px;display:flex;align-items:center;gap:4px;">
+        <i class="ti ti-target" style="font-size:15px;"></i> 투자 전략
+      </div>
+      <div style="font-size:14px;line-height:1.8;color:#3C3C43;">${n.strategy}</div>
+    </div>` : '';
+
+  // 외부 링크
+  const linkHtml = n.link ? `
+    <a href="${n.link}" target="_blank" rel="noopener" style="display:block;text-align:center;padding:12px;border:1px solid #E5E5EA;border-radius:12px;color:#5B5BD6;font-size:14px;font-weight:600;text-decoration:none;margin-bottom:12px;">
+      <i class="ti ti-external-link" style="font-size:15px;"></i> 원문 기사 보기
+    </a>` : '';
+
+  el.innerHTML = `
+    <div style="padding:16px 16px 0;">
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;">
+        <span class="badge ${bdg}">${lbl}</span>
+        ${catChip}
+        <span style="font-size:11px;color:#8E8E9A;margin-left:auto;">${n.source||''} · ${n.published||''}</span>
+      </div>
+      <div style="font-size:17px;font-weight:700;color:#1C1C1E;line-height:1.5;margin-bottom:12px;">${n.title||''}</div>
+      ${n.brief ? `<div class="news-brief" style="margin-bottom:16px;">💡 ${n.brief}</div>` : ''}
+      ${stocksHtml}
+      ${summaryHtml}
+      ${aiHtml}
+      ${strategyHtml}
+      ${linkHtml}
+    </div>`;
 }
 
 // ─────────────────────────────────────────────────────────
