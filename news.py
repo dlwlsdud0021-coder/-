@@ -787,54 +787,58 @@ def _extract_term(text: str, term: str) -> str:
 
 
 def generate_ai_summary(title, summary, sentiment, category):
-    cache_key = hashlib.md5(("summary3:" + title[:80]).encode()).hexdigest()
+    cache_key = hashlib.md5(("summary4:" + title[:80]).encode()).hexdigest()
     article_body = summary[:800] if summary else ""
     sentiment_kor = {"positive": "긍정", "negative": "부정", "mixed": "혼재", "neutral": "중립"}.get(sentiment, "중립")
     category_label = {
-        "반도체": "반도체", "바이오": "바이오제약", "2차전지": "2차전지배터리",
-        "금융": "금융증권", "글로벌": "글로벌시장", "전체": "증시전반",
+        "반도체": "반도체·AI", "바이오": "바이오·제약", "2차전지": "2차전지·배터리",
+        "금융": "금융·증권", "글로벌": "글로벌 시장", "전체": "국내 증시",
     }.get(category, category)
 
-    # 기사 본문이 없으면 제목만으로 분석
     body_part = f"기사 본문: {article_body}\n" if article_body else ""
     prompt = (
-        "당신은 한국 주식 초보 투자자를 위한 전문 뉴스 분석가입니다.\n"
-        "아래 기사를 읽고 초보자도 이해할 수 있는 상세한 분석을 작성하세요.\n\n"
+        "당신은 한국 주식 초보 투자자를 위한 뉴스 분석 전문가입니다.\n"
+        "아래 기사를 분석해서 반드시 3개 섹션을 작성하세요.\n"
+        "각 섹션 앞에 대괄호 태그를 반드시 그대로 출력하세요.\n\n"
         "기사 제목: " + title + "\n"
         + body_part +
-        "감성: " + sentiment_kor + " / 섹터: " + category_label + "\n\n"
-        "반드시 아래 형식으로 3개 섹션을 모두 작성하세요. "
-        "각 섹션 앞에 대괄호 태그를 반드시 출력하고, 각 섹션은 3~4문장 이상 작성하세요.\n\n"
-        "[무슨뉴스]\n"
-        "이 뉴스의 핵심 내용을 쉽게 설명. 어떤 기업·기관이 어떤 행동을 했고 그 배경이 무엇인지 포함.\n\n"
-        "[주가영향]\n"
-        "어떤 종목에 어떤 방향으로 영향을 주는지 구체적으로 설명. "
-        "직접 영향받는 종목과 간접 영향받는 종목을 구분해서 인과관계를 쉽게 설명.\n\n"
-        "[대응방법]\n"
-        "▶ 단기(1~2주): 보유자/미보유자 각각 행동 지침. 손절가는 -X%, 1차 목표가는 +X% 형식으로 명시.\n"
-        "▶ 중기(1~3개월): 중장기 영향과 비중 조절 기준, 핵심 리스크 요인.\n"
+        "감성: " + sentiment_kor + " / 분야: " + category_label + "\n\n"
+        "[핵심요약]\n"
+        "이 뉴스가 무슨 내용인지 3~4줄로 정확하게 요약하세요.\n"
+        "- 누가(기업명/기관명), 무엇을 했는지, 왜 이 뉴스가 중요한지 포함\n"
+        "- 숫자(금액, 비율, 날짜)가 있으면 반드시 언급\n"
+        "- 전문용어는 괄호로 쉽게 설명 (예: QE(양적완화))\n\n"
+        "[영향종목]\n"
+        "이 뉴스로 영향받는 주식 종목을 아래 형식으로 작성하세요.\n"
+        "▲ 수혜 종목: 종목명 — 이유 (1~2줄)\n"
+        "▼ 피해 종목: 종목명 — 이유 (1~2줄)\n"
+        "종목을 특정하기 어려우면 '반도체 ETF', 'KODEX 200' 같은 ETF로 대체 가능\n\n"
+        "[투자전략]\n"
+        "초보자도 바로 실행할 수 있는 전략 3줄로 작성하세요.\n"
+        "형식: 번호. [상황] → [행동] 이유\n"
+        "예시:\n"
+        "1. 관련 종목 보유 중이라면 → 목표가 +8~10% 설정 후 분할 매도, 손절선 -5% 이탈 시 즉시 정리\n"
+        "2. 아직 미보유라면 → 지금 바로 사지 말고 눌림목(2~3% 조정) 확인 후 분할 진입\n"
+        "3. 중장기 관점이라면 → 이번 뉴스의 핵심 조건(예: 금리 인하 확정)이 실제로 이뤄지는지 확인 후 결정\n"
     )
     raw = _call_gemini(prompt, cache_key)
     if raw:
         def _ext(tag, text):
             m = re.search(r"\[" + tag + r"\]\s*([\s\S]*?)(?=\[|$)", text)
             return m.group(1).strip() if m else ""
-        what   = _ext("무슨뉴스", raw)
-        impact = _ext("주가영향", raw)
-        action = _ext("대응방법", raw)
-        if what and impact and action:
+        summary_txt = _ext("핵심요약", raw)
+        impact_txt  = _ext("영향종목", raw)
+        strat_txt   = _ext("투자전략", raw)
+        if summary_txt and impact_txt and strat_txt:
             return (
-                "<b>📋 무슨 뉴스인가요?</b><br>" + what.replace("\n", "<br>") + "<br><br>"
-                "<b>📊 주가에 어떤 영향이 있나요?</b><br>" + impact.replace("\n", "<br>") + "<br><br>"
-                "<b>💬 어떻게 대응하면 좋을까요?</b><br>"
-                "<span style='color:#5B5BD6;font-weight:600;'>▶ 단기(1~2주)</span><br>"
-                + _extract_term(action, "단기").replace("\n", "<br>") + "<br><br>"
-                "<span style='color:#FF9F0A;font-weight:600;'>▶ 중기(1~3개월)</span><br>"
-                + _extract_term(action, "중기").replace("\n", "<br>")
+                summary_txt.replace("\n", "<br>") + "<br><br>"
+                "<b>📌 영향받는 종목</b><br>"
+                + impact_txt.replace("\n", "<br>") + "<br><br>"
+                "<b>💡 투자 전략</b><br>"
+                + strat_txt.replace("\n", "<br>")
             )
-        # 태그 파싱 실패해도 raw 텍스트 그대로 활용
         if len(raw) > 80:
-            return "<b>📋 AI 분석</b><br>" + raw.replace("\n", "<br>")
+            return raw.replace("\n", "<br>")
 
     # Rule-based 폴백 (Gemini 실패시)
     text = title + " " + summary

@@ -1033,37 +1033,32 @@ function renderNewsDetailBase(n, el) {
 }
 
 function buildNewsAnalysisHtml(n) {
-  // 관련 종목 — {name, ticker} 객체 또는 문자열 모두 처리
+  if (!n.ai_summary) return '';
+
+  // 관련 종목 칩
   const stocks = Array.isArray(n.related_stocks) ? n.related_stocks : [];
   const stocksHtml = stocks.length ? `
-    <div style="padding:0 16px 12px;">
-      <div style="font-size:11px;color:#8E8E9A;margin-bottom:6px;">관련 종목</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+    <div style="padding:0 16px 10px;">
+      <div style="font-size:10px;color:#8E8E9A;margin-bottom:5px;">관련 종목</div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;">
         ${stocks.map(s => {
-          const name = typeof s === 'object' ? (s.name||'') : s;
-          const ticker = typeof s === 'object' ? (s.ticker||'') : '';
-          return `<span class="badge badge-ok">${name}${ticker?` <span style="font-size:9px;opacity:0.7;">${ticker}</span>`:''}</span>`;
+          const nm = typeof s === 'object' ? (s.name||'') : s;
+          const tk = typeof s === 'object' ? (s.ticker||'') : '';
+          return `<span class="badge badge-ok" style="font-size:11px;">${nm}${tk?` <span style="opacity:0.6;font-size:9px;">${tk}</span>`:''}</span>`;
         }).join('')}
       </div>
     </div>` : '';
 
-  const aiHtml = n.ai_summary ? `
-    <div style="padding:0 16px 12px;">
-      <div style="font-size:12px;font-weight:700;color:#3C3489;margin-bottom:8px;display:flex;align-items:center;gap:5px;">
-        <i class="ti ti-brain" style="font-size:14px;color:#5B5BD6;"></i> AI 심층 분석
+  return `${stocksHtml}
+    <div style="padding:0 16px 20px;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+        <i class="ti ti-brain" style="font-size:15px;color:#5B5BD6;"></i>
+        <span style="font-size:13px;font-weight:700;color:#1C1C1E;">AI 분석</span>
       </div>
-      <div style="background:linear-gradient(135deg,#F5F4FF 0%,#fff 100%);border:1px solid #E8E7FF;border-radius:14px;padding:14px 16px;font-size:13px;line-height:1.9;color:#3C3C43;">${n.ai_summary}</div>
-    </div>` : '';
-
-  const stratHtml = n.strategy ? `
-    <div style="padding:0 16px 16px;">
-      <div style="font-size:12px;font-weight:700;color:#BA6E00;margin-bottom:8px;display:flex;align-items:center;gap:5px;">
-        <i class="ti ti-target" style="font-size:14px;color:#F0A500;"></i> 투자 전략
+      <div style="background:#F5F4FF;border:1px solid #E0DEFF;border-radius:14px;padding:16px;font-size:13px;line-height:1.9;color:#1C1C1E;">
+        ${n.ai_summary}
       </div>
-      <div style="background:linear-gradient(135deg,#FFF8EC 0%,#fff 100%);border:1px solid #FFE0A0;border-radius:14px;padding:14px 16px;font-size:13px;line-height:1.9;color:#3C3C43;">${n.strategy}</div>
-    </div>` : '';
-
-  return `${stocksHtml}${aiHtml}${stratHtml}`;
+    </div>`;
 }
 
 // ─────────────────────────────────────────────────────────
