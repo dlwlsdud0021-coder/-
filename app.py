@@ -395,6 +395,18 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"],
 /* 탭 active 색상만 */
 [data-baseweb="tab-highlight"] { background: #5B5BD6 !important; }
 [aria-selected="true"][data-baseweb="tab"] { color: #5B5BD6 !important; }
+/* Streamlit 기본 여백 제거 */
+[data-testid="stVerticalBlock"] {
+  gap: 0 !important;
+  padding: 0 !important;
+}
+[data-testid="element-container"] {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+.stMarkdown, [data-testid="stMarkdownContainer"] {
+  padding: 0 !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
