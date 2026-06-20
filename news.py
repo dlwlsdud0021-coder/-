@@ -787,7 +787,7 @@ def _extract_term(text: str, term: str) -> str:
 
 
 def generate_ai_summary(title, summary, sentiment, category):
-    cache_key = hashlib.md5(("summary:" + title[:80]).encode()).hexdigest()
+    cache_key = hashlib.md5(("summary3:" + title[:80]).encode()).hexdigest()
     article_body = summary[:800] if summary else ""
     sentiment_kor = {"positive": "긍정", "negative": "부정", "mixed": "혼재", "neutral": "중립"}.get(sentiment, "중립")
     category_label = {
@@ -795,49 +795,46 @@ def generate_ai_summary(title, summary, sentiment, category):
         "금융": "금융증권", "글로벌": "글로벌시장", "전체": "증시전반",
     }.get(category, category)
 
-    if article_body:
-        prompt = (
-            "당신은 한국 주식 초보 투자자를 위한 전문 뉴스 분석가입니다.\n"
-            "아래 기사를 읽고 초보자가 이해할 수 있으면서도 실질적으로 도움이 되는 상세한 분석을 제공하세요.\n\n"
-            "기사 제목: " + title + "\n"
-            "기사 본문: " + article_body + "\n"
-            "감성: " + sentiment_kor + " / 섹터: " + category_label + "\n\n"
-            "반드시 아래 3개 섹션을 모두 작성하세요. 각 섹션은 3~4문장 이상, 구체적 수치와 종목명 포함:\n\n"
-            "[무슨뉴스]\n"
-            "이 뉴스의 핵심 내용을 전문용어 없이 쉽게 설명. 어떤 기업/기관이 어떤 행동을 했고 그 배경이 무엇인지 포함.\n\n"
-            "[주가영향]\n"
-            "이 뉴스가 어떤 종목에 어떤 방향으로 영향을 주는지 구체적으로 설명. "
-            "왜 그런 영향이 생기는지 인과관계를 쉽게 설명. 직접 영향받는 종목과 간접 영향받는 종목도 구분.\n\n"
-            "[대응방법]\n"
-            "단기(1~2주)와 중기(1~3개월)를 명확히 구분해서 작성하세요.\n"
-            "▶ 단기(1~2주): 보유자/미보유자 각각에 대한 행동 지침. "
-            "손절가는 반드시 '현재가 기준 -X%' 형식으로 명시 (예: -5%, 즉 매수가 대비 약 X,000원 하락 시). "
-            "1차 목표가도 +X% 형식으로 표기.\n"
-            "▶ 중기(1~3개월): 이 뉴스가 중장기 주가에 미칠 영향. "
-            "어떤 조건(수치, 이벤트)이 충족되면 비중을 늘리거나 줄일지 기준 제시. "
-            "중기 목표가(+X%)와 핵심 리스크 요인도 포함.\n\n"
-            "주의: 태그([무슨뉴스] 등)는 출력하지 마세요."
-        )
-        raw = _call_gemini(prompt, cache_key)
-        if raw:
-            def _ext(tag, text):
-                m = re.search(r"\[" + tag + r"\]\s*([\s\S]*?)(?=\[|$)", text)
-                return m.group(1).strip() if m else ""
-            what   = _ext("무슨뉴스", raw)
-            impact = _ext("주가영향", raw)
-            action = _ext("대응방법", raw)
-            if what and impact and action:
-                return (
-                    "<b>📋 무슨 뉴스인가요?</b><br>" + what + "<br><br>"
-                    "<b>📊 주가에 어떤 영향이 있나요?</b><br>" + impact + "<br><br>"
-                    "<b>💬 어떻게 대응하면 좋을까요?</b><br>"
-                    "<span style='color:#5B5BD6;font-weight:600;'>▶ 단기(1~2주)</span><br>"
-                    + _extract_term(action, "단기") + "<br><br>"
-                    "<span style='color:#FF9F0A;font-weight:600;'>▶ 중기(1~3개월)</span><br>"
-                    + _extract_term(action, "중기")
-                )
-            if len(raw) > 80:
-                return "<b>📋 AI 분석</b><br>" + raw
+    # 기사 본문이 없으면 제목만으로 분석
+    body_part = f"기사 본문: {article_body}\n" if article_body else ""
+    prompt = (
+        "당신은 한국 주식 초보 투자자를 위한 전문 뉴스 분석가입니다.\n"
+        "아래 기사를 읽고 초보자도 이해할 수 있는 상세한 분석을 작성하세요.\n\n"
+        "기사 제목: " + title + "\n"
+        + body_part +
+        "감성: " + sentiment_kor + " / 섹터: " + category_label + "\n\n"
+        "반드시 아래 형식으로 3개 섹션을 모두 작성하세요. "
+        "각 섹션 앞에 대괄호 태그를 반드시 출력하고, 각 섹션은 3~4문장 이상 작성하세요.\n\n"
+        "[무슨뉴스]\n"
+        "이 뉴스의 핵심 내용을 쉽게 설명. 어떤 기업·기관이 어떤 행동을 했고 그 배경이 무엇인지 포함.\n\n"
+        "[주가영향]\n"
+        "어떤 종목에 어떤 방향으로 영향을 주는지 구체적으로 설명. "
+        "직접 영향받는 종목과 간접 영향받는 종목을 구분해서 인과관계를 쉽게 설명.\n\n"
+        "[대응방법]\n"
+        "▶ 단기(1~2주): 보유자/미보유자 각각 행동 지침. 손절가는 -X%, 1차 목표가는 +X% 형식으로 명시.\n"
+        "▶ 중기(1~3개월): 중장기 영향과 비중 조절 기준, 핵심 리스크 요인.\n"
+    )
+    raw = _call_gemini(prompt, cache_key)
+    if raw:
+        def _ext(tag, text):
+            m = re.search(r"\[" + tag + r"\]\s*([\s\S]*?)(?=\[|$)", text)
+            return m.group(1).strip() if m else ""
+        what   = _ext("무슨뉴스", raw)
+        impact = _ext("주가영향", raw)
+        action = _ext("대응방법", raw)
+        if what and impact and action:
+            return (
+                "<b>📋 무슨 뉴스인가요?</b><br>" + what.replace("\n", "<br>") + "<br><br>"
+                "<b>📊 주가에 어떤 영향이 있나요?</b><br>" + impact.replace("\n", "<br>") + "<br><br>"
+                "<b>💬 어떻게 대응하면 좋을까요?</b><br>"
+                "<span style='color:#5B5BD6;font-weight:600;'>▶ 단기(1~2주)</span><br>"
+                + _extract_term(action, "단기").replace("\n", "<br>") + "<br><br>"
+                "<span style='color:#FF9F0A;font-weight:600;'>▶ 중기(1~3개월)</span><br>"
+                + _extract_term(action, "중기").replace("\n", "<br>")
+            )
+        # 태그 파싱 실패해도 raw 텍스트 그대로 활용
+        if len(raw) > 80:
+            return "<b>📋 AI 분석</b><br>" + raw.replace("\n", "<br>")
 
     # Rule-based 폴백 (Gemini 실패시)
     text = title + " " + summary
@@ -1032,7 +1029,7 @@ def generate_ai_summary(title, summary, sentiment, category):
 
 def generate_strategy(sentiment, category, title="", summary=""):
     chip = {"positive": "chip-buy", "negative": "chip-sell", "mixed": "chip-warn"}.get(sentiment, "chip-neu")
-    cache_key = hashlib.md5(("strategy2:" + title[:80] + ":" + sentiment + ":" + category).encode()).hexdigest()
+    cache_key = hashlib.md5(("strategy3:" + title[:80] + ":" + sentiment + ":" + category).encode()).hexdigest()
     article_body = summary[:600] if summary else ""
     sentiment_kor = {"positive": "긍정", "negative": "부정", "mixed": "혼재", "neutral": "중립"}.get(sentiment, "중립")
     category_label = {
@@ -1040,58 +1037,53 @@ def generate_strategy(sentiment, category, title="", summary=""):
         "금융": "금융증권", "글로벌": "글로벌시장", "전체": "국내증시",
     }.get(category, category)
 
-    if article_body:
-        prompt = (
-            "당신은 한국 주식 초보 투자자를 위한 전문 투자 전략가입니다.\n"
-            "아래 뉴스를 바탕으로 구체적이고 실행 가능한 투자 전략을 작성하세요.\n\n"
-            "기사 제목: " + title + "\n"
-            "기사 내용: " + article_body + "\n"
-            "감성: " + sentiment_kor + " / 섹터: " + category_label + "\n\n"
-            "아래 4개 섹션을 반드시 모두 작성. 각 섹션은 최소 3~5문장, 구체적 수치 포함:\n\n"
-            "[시장분위기]\n"
-            "지금 이 섹터/시장 분위기가 어떤 상태인지 초보자가 이해할 수 있게 설명. "
-            "강세/약세 판단 근거, 현재 투자자들의 심리 상태 포함.\n\n"
-            "[매매방법]\n"
-            "단기(1~2주)와 중기(1~3개월)를 명확히 구분해 작성하세요.\n"
-            "▶ 단기(1~2주): 보유자/미보유자 각각의 행동 지침. "
-            "손절가는 반드시 '-X%' 형식으로 명시 (예: 매수가 대비 -5%, 즉 100,000원 매수 시 95,000원 이탈 시 손절). "
-            "1차 목표가(+X%)와 분할 매수 비율(1차 몇%, 2차 몇%)도 포함.\n"
-            "▶ 중기(1~3개월): 추세 전환 조건과 비중 확대 시점. "
-            "중기 목표가(+X%)와 포지션 청산 기준 수치 포함.\n\n"
-            "[돈지키는법]\n"
-            "리스크 관리 방법. 포트폴리오에서 이 섹터 비중 제한 (몇% 이내), "
-            "손절 기준을 '-몇%' 숫자로 명확하게 제시, 최악 시나리오와 그때 해야 할 행동 포함.\n\n"
-            "[체크포인트]\n"
-            "앞으로 주가 방향을 결정할 핵심 이벤트/지표 3~4가지 목록. "
-            "각 이벤트가 어떻게 나오면 매수/매도 신호인지 설명. 단기/중기 각각 어떤 지표를 봐야 하는지 포함.\n\n"
-            "주의: 태그([시장분위기] 등)는 출력하지 마세요."
-        )
-        raw = _call_gemini(prompt, cache_key)
-        if raw:
-            def _ext(tag, text):
-                m = re.search(r"\[" + tag + r"\]\s*([\s\S]*?)(?=\[|$)", text)
-                return m.group(1).strip() if m else ""
-            mood   = _ext("시장분위기", raw)
-            trade  = _ext("매매방법", raw)
-            risk   = _ext("돈지키는법", raw)
-            check  = _ext("체크포인트", raw)
-            if mood and trade and risk and check:
-                # 단기/중기 분리 렌더링
-                short_trade = _extract_term(trade, "단기")
-                mid_trade   = _extract_term(trade, "중기")
-                trade_html  = (
-                    "<span style='color:#5B5BD6;font-weight:600;'>▶ 단기(1~2주)</span><br>" + short_trade
-                    + "<br><br><span style='color:#FF9F0A;font-weight:600;'>▶ 중기(1~3개월)</span><br>" + mid_trade
-                ) if short_trade != trade else trade  # 분리 실패 시 원문 그대로
-                html = (
-                    "<b>🌡️ 지금 시장 분위기는?</b><br>" + mood + "<br><br>"
-                    "<b>💰 어떻게 사고팔까요?</b><br>" + trade_html + "<br><br>"
-                    "<b>🛡️ 내 돈 지키는 법</b><br>" + risk + "<br><br>"
-                    "<b>📌 앞으로 체크할 것들</b><br>" + check
-                )
-                return html, chip
-            if len(raw) > 80:
-                return "<b>📍 AI 투자 전략</b><br>" + raw, chip
+    body_part2 = f"기사 내용: {article_body}\n" if article_body else ""
+    prompt = (
+        "당신은 한국 주식 초보 투자자를 위한 전문 투자 전략가입니다.\n"
+        "아래 뉴스를 바탕으로 구체적이고 실행 가능한 투자 전략을 작성하세요.\n\n"
+        "기사 제목: " + title + "\n"
+        + body_part2 +
+        "감성: " + sentiment_kor + " / 섹터: " + category_label + "\n\n"
+        "반드시 아래 형식으로 4개 섹션을 모두 작성하세요. "
+        "각 섹션 앞에 대괄호 태그를 반드시 출력하고, 각 섹션은 최소 3~5문장, 구체적 수치 포함:\n\n"
+        "[시장분위기]\n"
+        "지금 이 섹터/시장 분위기가 어떤 상태인지 초보자가 이해할 수 있게 설명. "
+        "강세/약세 판단 근거, 현재 투자자들의 심리 상태 포함.\n\n"
+        "[매매방법]\n"
+        "▶ 단기(1~2주): 보유자/미보유자 각각의 행동 지침. "
+        "손절가는 '-X%' 형식으로 명시. 1차 목표가는 '+X%' 형식으로 표기.\n"
+        "▶ 중기(1~3개월): 추세 전환 조건과 비중 확대 시점. "
+        "중기 목표가(+X%)와 포지션 청산 기준 수치 포함.\n\n"
+        "[돈지키는법]\n"
+        "리스크 관리 방법. 포트폴리오 비중 제한, 손절 기준 '-몇%'로 명확히 제시, 최악 시나리오 포함.\n\n"
+        "[체크포인트]\n"
+        "앞으로 주가 방향을 결정할 핵심 이벤트/지표 3~4가지. 각 이벤트가 어떻게 나오면 매수/매도 신호인지 설명.\n"
+    )
+    raw = _call_gemini(prompt, cache_key)
+    if raw:
+        def _ext(tag, text):
+            m = re.search(r"\[" + tag + r"\]\s*([\s\S]*?)(?=\[|$)", text)
+            return m.group(1).strip() if m else ""
+        mood   = _ext("시장분위기", raw)
+        trade  = _ext("매매방법", raw)
+        risk   = _ext("돈지키는법", raw)
+        check  = _ext("체크포인트", raw)
+        if mood and trade and risk and check:
+            short_trade = _extract_term(trade, "단기")
+            mid_trade   = _extract_term(trade, "중기")
+            trade_html  = (
+                "<span style='color:#5B5BD6;font-weight:600;'>▶ 단기(1~2주)</span><br>" + short_trade.replace("\n","<br>")
+                + "<br><br><span style='color:#FF9F0A;font-weight:600;'>▶ 중기(1~3개월)</span><br>" + mid_trade.replace("\n","<br>")
+            ) if short_trade and short_trade != trade else trade.replace("\n","<br>")
+            html = (
+                "<b>🌡️ 지금 시장 분위기는?</b><br>" + mood.replace("\n","<br>") + "<br><br>"
+                "<b>💰 어떻게 사고팔까요?</b><br>" + trade_html + "<br><br>"
+                "<b>🛡️ 내 돈 지키는 법</b><br>" + risk.replace("\n","<br>") + "<br><br>"
+                "<b>📌 앞으로 체크할 것들</b><br>" + check.replace("\n","<br>")
+            )
+            return html, chip
+        if len(raw) > 80:
+            return "<b>📍 AI 투자 전략</b><br>" + raw.replace("\n","<br>"), chip
 
     # ─── Rule-based 폴백 (Gemini 실패시) ─────────────────────────────
     MOOD = {
