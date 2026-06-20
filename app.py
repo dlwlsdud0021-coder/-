@@ -2702,12 +2702,15 @@ def render_holdings_detail():
             bdg_t = {"positive":"pos","negative":"neg","mixed":"mix"}.get(sent,"neu")
             brief = n.get("brief", "")
             brief_html = f'<div style="font-size:11px;color:#5B5BD6;margin-top:6px;line-height:1.5;">💡 {brief}</div>' if brief else ""
-            st.markdown(f"""<div><div class="news-card">
-              <div class="news-card-top"><span class="badge badge-{bdg_t}">{n.get('label','중립')}</span>
-                <span class="news-source">{n.get('source','')} · {n.get('published','')}</span></div>
-              <div class="news-title">{n['title']}</div>
-              {brief_html}
-            </div></div>""", unsafe_allow_html=True)
+            st.markdown(
+                f'<div><div class="news-card">'
+                f'<div class="news-card-top"><span class="badge badge-{bdg_t}">{n.get("label","중립")}</span>'
+                f'<span class="news-source">{n.get("source","")} · {n.get("published","")}</span></div>'
+                f'<div class="news-title">{n["title"]}</div>'
+                + brief_html +
+                '</div></div>',
+                unsafe_allow_html=True
+            )
 
     st.caption("⚠️ 투자 결정은 본인 책임입니다. 이 앱의 정보는 참고용이며 투자 권유가 아닙니다.")
 
@@ -3143,12 +3146,15 @@ def render_watchlist_detail():
             bdg_t = {"positive":"pos","negative":"neg","mixed":"mix"}.get(sent, "neu")
             brief = n.get("brief", "")
             brief_html = f'<div style="font-size:11px;color:#5B5BD6;margin-top:6px;line-height:1.5;">💡 {brief}</div>' if brief else ""
-            st.markdown(f"""<div><div class="news-card">
-              <div class="news-card-top"><span class="badge badge-{bdg_t}">{n.get('label','중립')}</span>
-                <span class="news-source">{n.get('source','')} · {n.get('published','')}</span></div>
-              <div class="news-title">{n['title']}</div>
-              {brief_html}
-            </div></div>""", unsafe_allow_html=True)
+            st.markdown(
+                f'<div><div class="news-card">'
+                f'<div class="news-card-top"><span class="badge badge-{bdg_t}">{n.get("label","중립")}</span>'
+                f'<span class="news-source">{n.get("source","")} · {n.get("published","")}</span></div>'
+                f'<div class="news-title">{n["title"]}</div>'
+                + brief_html +
+                '</div></div>',
+                unsafe_allow_html=True
+            )
 
     # ── 종목 삭제 ──
     if st.button("🗑️ 종목 삭제하기", key="wd_del_btn", use_container_width=True):
@@ -3498,12 +3504,15 @@ def render_scanner_detail():
             bdg_t = {"positive": "pos", "negative": "neg", "mixed": "mix"}.get(sent, "neu")
             brief = n.get("brief", "")
             brief_html = f'<div style="font-size:11px;color:#5B5BD6;margin-top:6px;line-height:1.5;">💡 {brief}</div>' if brief else ""
-            st.markdown(f"""<div><div class="news-card">
-              <div class="news-card-top"><span class="badge badge-{bdg_t}">{n.get('label','중립')}</span>
-                <span class="news-source">{n.get('source','')} · {n.get('published','')}</span></div>
-              <div class="news-title">{n['title']}</div>
-              {brief_html}
-            </div></div>""", unsafe_allow_html=True)
+            st.markdown(
+                f'<div><div class="news-card">'
+                f'<div class="news-card-top"><span class="badge badge-{bdg_t}">{n.get("label","중립")}</span>'
+                f'<span class="news-source">{n.get("source","")} · {n.get("published","")}</span></div>'
+                f'<div class="news-title">{n["title"]}</div>'
+                + brief_html +
+                '</div></div>',
+                unsafe_allow_html=True
+            )
 
     st.caption("⚠️ 투자 결정은 본인 책임입니다. 이 앱의 정보는 참고용이며 투자 권유가 아닙니다.")
 
