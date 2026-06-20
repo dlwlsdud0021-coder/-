@@ -267,11 +267,14 @@ body { background: #F5F5F7; color: #1A1A2E; }
 .login-title { font-size:24px; font-weight:700; text-align:center; margin-bottom:6px; color:#5B5BD6; }
 .login-sub { font-size:13px; color:#8E8E93; text-align:center; margin-bottom:28px; }
 /* 보유 카드 액션 버튼 */
-div[data-testid="stHorizontalBlock"]:has(.hld-nav-wrap) { gap:4px !important; margin-top:-2px !important; }
-.hld-nav-wrap { margin-top:-1px; }
-.hld-nav-wrap button { background:#fff !important; border:0.5px solid #E5E5EA !important; border-top:0.5px solid #F0F0F5 !important;
-  border-radius:0 0 16px 16px !important; font-size:13px !important; color:#5B5BD6 !important;
-  padding:8px 0 !important; min-height:38px !important; }
+/* stk-card 바로 다음 Streamlit 버튼 블록 — 카드 하단에 붙이기 */
+[data-testid="stVerticalBlockSeparatorBlock"]:has(.stk-card) + [data-testid="stVerticalBlockSeparatorBlock"] {
+  margin-top: -2px !important; }
+[data-testid="stVerticalBlockSeparatorBlock"]:has(.stk-card) + [data-testid="stVerticalBlockSeparatorBlock"] button {
+  background: #fff !important; border: 0.5px solid #E5E5EA !important;
+  border-top: 0.5px solid #F0F0F5 !important; border-radius: 0 0 16px 16px !important;
+  color: #5B5BD6 !important; font-size: 13px !important;
+  padding: 8px 0 !important; min-height: 38px !important; }
 .hld-del-wrap button { background:#EAF3DE !important; border:0.5px solid #E5E5EA !important; border-top:none !important;
   border-radius:0 0 14px 0 !important; font-size:15px !important; color:#27500A !important;
   padding:6px 0 !important; min-height:34px !important; }
@@ -2083,7 +2086,6 @@ def _holding_card(e, pfx="a"):
       </div>
     </div>""", unsafe_allow_html=True)
 
-    st.markdown('<div class="hld-nav-wrap">', unsafe_allow_html=True)
     if st.button("상세분석 보기  ›", key=f"h_{pfx}_{h['code']}", use_container_width=True):
         st.session_state.page = "holdings_detail"
         st.session_state.detail_code = h["code"]
@@ -2091,7 +2093,6 @@ def _holding_card(e, pfx="a"):
         st.session_state.detail_avg  = h["avg_price"]
         st.session_state.detail_qty  = h["qty"]
         st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
     st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
 
