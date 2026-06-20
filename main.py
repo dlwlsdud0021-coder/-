@@ -136,25 +136,48 @@ def home_data():
             "nasdaq": nd.get("current", 0),
             "nasdaq_change_pct": nd.get("change_pct", 0),
         }
-        # 원래 형식 그대로 전달 (analyze_us_impact, generate_forecast가 기대하는 형식)
-        analysis_raw = analyze_us_impact(us_raw, idx, {})
-        # analysis_raw = [(dot_class, label, html_text), ...] 형식
+        # KOSPI 이동평균선 계산 (분석 품질 향상용)
+        try:
+            kp_hist = get_index_ohlcv_history("1001", days=120)
+            ma = calc_ma_status(kp_hist)
+        except Exception:
+            kp_hist = None
+            ma = {}
+
+        # 외국인/기관 수급 최근 5일
+        investor = []
+        try:
+            inv_df = get_kospi_investor(days=10)
+            if inv_df is not None and not inv_df.empty:
+                for dt, row in inv_df.tail(5).iterrows():
+                    investor.append({
+                        "date": str(dt)[:10],
+                        "foreign": int(row.get("외국인", 0)),
+                        "inst": int(row.get("기관", 0)),
+                        "individual": int(row.get("개인", 0)) if "개인" in row else 0,
+                    })
+        except Exception:
+            pass
+
+        # MA 포함해서 analyze_us_impact 호출 → Gemini 상세 분석 가능
+        analysis_raw = analyze_us_impact(us_raw, idx, ma, kp_hist)
         analysis = []
         for item in (analysis_raw or []):
             if isinstance(item, (list, tuple)) and len(item) >= 3:
                 analysis.append({"dot": item[0], "label": item[1], "text": item[2]})
             elif isinstance(item, dict):
                 analysis.append(item)
-        forecast = generate_forecast(us_raw, idx, {})
+        forecast = generate_forecast(us_raw, idx, ma)
         return {
             "indices": indices,
             "analysis": analysis,
             "forecast": forecast,
+            "investor": investor,
             "market_phase": market_phase(),
             "is_open": is_market_open(),
         }
     except Exception as e:
-        return {"error": str(e), "indices": {}, "analysis": [], "forecast": {}, "market_phase": "close", "is_open": False}
+        return {"error": str(e), "indices": {}, "analysis": [], "forecast": {}, "investor": [], "market_phase": "close", "is_open": False}
 
 # ─────────────────────────────────────────────────────────
 # 지수 상세 API (KOSPI / KOSDAQ)

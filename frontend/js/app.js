@@ -182,6 +182,8 @@ function renderHome(d, el) {
 
   const analysis = Array.isArray(d.analysis) ? d.analysis : [];
   const forecast = d.forecast || {};
+  const investor = Array.isArray(d.investor) ? d.investor : [];
+  const investorHtml = buildInvestorSection(investor);
 
   const heroTitle = kpPct >= 1.5 ? '강한 상승장' : kpPct >= 0.3 ? '상승장' : kpPct <= -1.5 ? '하락장' : kpPct <= -0.3 ? '약세장' : '보합장';
   const heroIcon = kpPct >= 0 ? 'ti-trending-up' : 'ti-trending-down';
@@ -272,6 +274,52 @@ function renderHome(d, el) {
           </div>
         </div>
         <div class="warn-box"><i class="ti ti-alert-circle" style="font-size:14px;flex-shrink:0;"></i>${fWarn}</div>
+      </div>
+    </div>
+    ${investorHtml}`;
+}
+
+function buildInvestorSection(investor) {
+  if (!investor || !investor.length) return '';
+  // 최근 5일 합계로 방향 판단
+  const total5 = investor.reduce((acc, r) => ({
+    foreign: acc.foreign + (r.foreign || 0),
+    inst: acc.inst + (r.inst || 0),
+  }), { foreign: 0, inst: 0 });
+  const fDir = total5.foreign > 0 ? '순매수' : '순매도';
+  const iDir = total5.inst > 0 ? '순매수' : '순매도';
+  const fCls = total5.foreign > 0 ? 'up' : 'down';
+  const iCls = total5.inst > 0 ? 'up' : 'down';
+
+  const rows = [...investor].reverse().map(r => {
+    const fc = r.foreign > 0 ? 'up' : 'down';
+    const ic = r.inst > 0 ? 'up' : 'down';
+    const f = (r.foreign / 1e8).toFixed(0);
+    const i = (r.inst / 1e8).toFixed(0);
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid #F0F0F5;font-size:13px;">
+      <span style="color:#8E8E9A;min-width:56px;">${r.date.slice(5)}</span>
+      <span class="${fc}" style="flex:1;text-align:center;">외국인<br><b>${r.foreign>0?'+':''}${f}억</b></span>
+      <span class="${ic}" style="flex:1;text-align:center;">기관<br><b>${r.inst>0?'+':''}${i}억</b></span>
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="section">
+      <div class="sec-title"><i class="ti ti-users" style="font-size:15px;color:#5B5BD6;"></i>외국인·기관 수급 (5일)</div>
+      <div class="card">
+        <div style="display:flex;gap:10px;margin-bottom:12px;">
+          <div style="flex:1;text-align:center;padding:10px 6px;background:#F8F8FA;border-radius:10px;">
+            <div style="font-size:11px;color:#8E8E9A;margin-bottom:4px;">외국인 5일 합계</div>
+            <div class="${fCls}" style="font-size:16px;font-weight:700;">${total5.foreign>0?'+':''}${(total5.foreign/1e8).toFixed(0)}억</div>
+            <div class="${fCls}" style="font-size:11px;">${fDir}</div>
+          </div>
+          <div style="flex:1;text-align:center;padding:10px 6px;background:#F8F8FA;border-radius:10px;">
+            <div style="font-size:11px;color:#8E8E9A;margin-bottom:4px;">기관 5일 합계</div>
+            <div class="${iCls}" style="font-size:16px;font-weight:700;">${total5.inst>0?'+':''}${(total5.inst/1e8).toFixed(0)}억</div>
+            <div class="${iCls}" style="font-size:11px;">${iDir}</div>
+          </div>
+        </div>
+        ${rows}
       </div>
     </div>`;
 }
