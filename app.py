@@ -1986,26 +1986,7 @@ def render_holdings():
     # ── 필터 탭 (st.tabs 스타일) ──
     tab_all, tab_profit, tab_loss, tab_sell = st.tabs(["전체", "수익", "손실", "매도신호"])
 
-    def _add_form(form_key):
-        with st.expander("➕ 종목 추가"):
-            with st.form(form_key, clear_on_submit=True):
-                c1, c2 = st.columns(2)
-                with c1: code = st.text_input("종목코드", placeholder="005930")
-                with c2: name_in = st.text_input("종목명", placeholder="삼성전자")
-                c3, c4 = st.columns(2)
-                with c3: avg_p = st.number_input("평균 매수가", min_value=0, step=100)
-                with c4: qty = st.number_input("수량 (주)", min_value=0, step=1)
-                if st.form_submit_button("추가", use_container_width=True, type="primary"):
-                    if not code or not avg_p or not qty:
-                        st.error("종목코드, 평균가, 수량을 모두 입력해주세요.")
-                    else:
-                        code = code.strip().zfill(6)
-                        name = name_in.strip() or get_stock_name(code) or code
-                        ok, msg = add_holding(st.session_state.user_id, code, name, avg_p, int(qty))
-                        if ok: st.success(msg); st.rerun()
-                        else: st.error(msg)
-
-    def _render_sections(sections, form_key):
+    def _render_sections(sections):
         for lbl, items in sections:
             if not items:
                 st.info("해당하는 종목이 없습니다.")
@@ -2013,16 +1994,34 @@ def render_holdings():
             st.markdown(f'<div class="section"><div class="sec-lbl">{lbl}</div></div>', unsafe_allow_html=True)
             for e in items:
                 _holding_card(e)
-        _add_form(form_key)
 
     with tab_all:
-        _render_sections([("수익 중인 종목", profit), ("손실 중인 종목", loss)], "ahf_all")
+        _render_sections([("수익 중인 종목", profit), ("손실 중인 종목", loss)])
     with tab_profit:
-        _render_sections([("수익 중인 종목", profit)], "ahf_profit")
+        _render_sections([("수익 중인 종목", profit)])
     with tab_loss:
-        _render_sections([("손실 중인 종목", loss)], "ahf_loss")
+        _render_sections([("손실 중인 종목", loss)])
     with tab_sell:
-        _render_sections([("매도신호 종목", sell_signal)], "ahf_sell")
+        _render_sections([("매도신호 종목", sell_signal)])
+
+    # ── 종목 추가 (탭 바깥 맨 아래) ──
+    with st.expander("➕ 종목 추가"):
+        with st.form("ahf", clear_on_submit=True):
+            c1, c2 = st.columns(2)
+            with c1: code = st.text_input("종목코드", placeholder="005930")
+            with c2: name_in = st.text_input("종목명", placeholder="삼성전자")
+            c3, c4 = st.columns(2)
+            with c3: avg_p = st.number_input("평균 매수가", min_value=0, step=100)
+            with c4: qty = st.number_input("수량 (주)", min_value=0, step=1)
+            if st.form_submit_button("추가", use_container_width=True, type="primary"):
+                if not code or not avg_p or not qty:
+                    st.error("종목코드, 평균가, 수량을 모두 입력해주세요.")
+                else:
+                    code = code.strip().zfill(6)
+                    name = name_in.strip() or get_stock_name(code) or code
+                    ok, msg = add_holding(st.session_state.user_id, code, name, avg_p, int(qty))
+                    if ok: st.success(msg); st.rerun()
+                    else: st.error(msg)
 
 
 def _holding_card(e):
