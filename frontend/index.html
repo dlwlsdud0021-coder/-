@@ -210,6 +210,33 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
 .metric-item { background: #F8F8FA; border-radius: 8px; padding: 6px 8px; text-align: center; }
 .metric-label { font-size: 9px; color: #8E8E93; }
 .metric-val { font-size: 12px; font-weight: 600; margin-top: 1px; }
+
+/* ── 기술 지표 ── */
+.ind-row { display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:0.5px solid #F0F0F5; }
+.ind-row:last-child { border-bottom:none; }
+.ind-label { font-size:12px; color:#8E8E9A; }
+.ind-right { display:flex; align-items:center; gap:4px; }
+.ind-val { font-size:13px; font-weight:600; color:#1C1C1E; }
+/* ── 지지선 ── */
+.sup-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:0.5px solid #F0F0F5; }
+.sup-row:last-child { border-bottom:none; }
+.sup-label { font-size:12px; color:#8E8E9A; }
+.sup-right { display:flex; align-items:center; gap:6px; }
+.sup-price { font-size:13px; font-weight:600; color:#1C1C1E; }
+.sup-dist { font-size:12px; font-weight:600; }
+.sup-note { font-size:10px; color:#8E8E9A; background:#F8F8FA; padding:1px 6px; border-radius:4px; }
+/* ── 수급 바 ── */
+.supply-row { display:flex; align-items:center; gap:8px; padding:8px 0; }
+.supply-who { font-size:12px; color:#8E8E9A; width:44px; flex-shrink:0; }
+.supply-bar-bg { flex:1; height:6px; background:#F0F0F5; border-radius:3px; overflow:hidden; }
+.supply-bar-fill { height:6px; border-radius:3px; transition:width .4s; }
+.bar-buy { background:#E24B4A; }
+.bar-sell { background:#185FA5; }
+.supply-val { font-size:12px; font-weight:600; min-width:70px; text-align:right; }
+.days-row { display:flex; gap:4px; flex-wrap:wrap; padding-bottom:8px; }
+.day-chip { font-size:10px; padding:2px 6px; border-radius:4px; font-weight:600; }
+.chip-buy { background:#FCEBEB; color:#791F1F; }
+.chip-sell { background:#EBF0FC; color:#1F3A79; }
 </style>
 </head>
 <body>

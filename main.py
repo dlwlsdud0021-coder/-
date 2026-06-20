@@ -365,14 +365,71 @@ def holding_detail(code: str, user=Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="종목을 찾을 수 없습니다")
     try:
         ohlcv = get_ohlcv(code, days=60)
-        inv = get_investor_trading(code, days=5)
+        inv = get_investor_trading(code, days=25)  # 5일→25일로 확장
         analysis = analyze_stock(ohlcv, inv, h["avg_price"], h["qty"])
         pd2 = get_current_price(code)
-        analysis["cur_price"] = pd2.get("current_price", h["avg_price"])
+        cur = pd2.get("current_price", h["avg_price"]) or h["avg_price"]
+        analysis["cur_price"] = cur
+        analysis["cur_change"] = pd2.get("change", 0)
+        analysis["cur_change_pct"] = pd2.get("change_pct", 0)
+        analysis["cur_high"] = pd2.get("high", 0)
+        analysis["cur_low"] = pd2.get("low", 0)
+        analysis["cur_volume"] = pd2.get("volume", 0)
+
+        # 목표가/손절가 자동 계산
+        boll = analysis.get("bollinger", {})
+        ma20 = analysis.get("ma20")
+        boll_upper = boll.get("upper")
+        boll_lower = boll.get("lower")
+        avg_p = h["avg_price"]
+        tp, tb = None, ""
+        if boll_upper and boll_upper > cur:
+            tp = round(boll_upper / 100) * 100; tb = "볼린저 상단"
+        elif ohlcv is not None and not ohlcv.empty:
+            high60 = float(ohlcv["high"].tail(60).max())
+            if high60 > cur * 1.03:
+                tp = round(high60 / 100) * 100; tb = "60일 고점"
+        avg_tp = round(avg_p * 1.10 / 100) * 100
+        if not tp or avg_tp > tp:
+            tp = avg_tp; tb = "평단가 +10%"
+        if not tp:
+            tp = round(cur * 1.08 / 100) * 100; tb = "현재가 +8%"
+        sp, sb = None, ""
+        if boll_lower and boll_lower < cur:
+            sp = round(boll_lower / 100) * 100; sb = "볼린저 하단"
+        elif ma20 and ma20 * 0.97 < cur:
+            sp = round(ma20 * 0.97 / 100) * 100; sb = "20일선 -3%"
+        avg_sp = round(avg_p * 0.93 / 100) * 100
+        if not sp or avg_sp > sp:
+            sp = avg_sp; sb = "평단가 -7%"
+        if not sp:
+            sp = round(cur * 0.95 / 100) * 100; sb = "현재가 -5%"
+        tu = (tp - cur) / cur * 100 if cur else 0
+        sd = (sp - cur) / cur * 100 if cur else 0
+        avs = (sp - avg_p) / avg_p * 100 if avg_p and sp else None
+        rr = abs(tu / sd) if sd else 0
+        analysis["targets"] = {
+            "target_price": tp, "target_basis": tb, "target_upside": round(tu, 1),
+            "stop_price": sp, "stop_basis": sb, "stop_downside": round(sd, 1),
+            "avg_vs_stop": round(avs, 1) if avs is not None else None,
+            "risk_reward": round(rr, 1),
+        }
+
+        # 수급 일별 칩 (inv_df → 리스트)
+        inv_list = []
+        if inv is not None and not inv.empty:
+            for dt, row in inv.tail(5).iterrows():
+                inv_list.append({
+                    "date": str(dt)[:10],
+                    "foreign": int(row.get("외국인", 0)),
+                    "inst": int(row.get("기관", 0)),
+                })
+        analysis["inv_list"] = inv_list
+
         news = fetch_stock_news(code, h["name"])
         analysis["news"] = news[:3]
     except Exception as e:
-        analysis = {"error": str(e)}
+        analysis = {"error": str(e), "cur_price": h["avg_price"]}
     return {"holding": h, "analysis": analysis}
 
 # ─────────────────────────────────────────────────────────
@@ -403,12 +460,30 @@ def watchlist_detail(code: str, user=Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="종목을 찾을 수 없습니다")
     try:
         ohlcv = get_ohlcv(code, days=60)
-        inv = get_investor_trading(code, days=5)
+        inv = get_investor_trading(code, days=25)
         analysis = analyze_stock(ohlcv, inv)
         pd2 = get_current_price(code)
-        analysis["cur_price"] = pd2.get("current_price", 0)
+        cur = pd2.get("current_price", 0) or 0
+        analysis["cur_price"] = cur
+        analysis["cur_change"] = pd2.get("change", 0)
+        analysis["cur_change_pct"] = pd2.get("change_pct", 0)
+        analysis["cur_high"] = pd2.get("high", 0)
+        analysis["cur_low"] = pd2.get("low", 0)
+        analysis["cur_volume"] = pd2.get("volume", 0)
         timing = watchlist_timing(analysis, item.get("target_price"), item.get("stop_loss"))
         analysis["timing"] = timing
+        # 수급 일별
+        inv_list = []
+        if inv is not None and not inv.empty:
+            for dt, row in inv.tail(5).iterrows():
+                inv_list.append({
+                    "date": str(dt)[:10],
+                    "foreign": int(row.get("외국인", 0)),
+                    "inst": int(row.get("기관", 0)),
+                })
+        analysis["inv_list"] = inv_list
+        news = fetch_stock_news(code, item.get("name", code))
+        analysis["news"] = news[:3]
     except Exception as e:
         analysis = {"error": str(e)}
     return {"item": item, "analysis": analysis}

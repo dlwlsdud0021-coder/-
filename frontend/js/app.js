@@ -844,77 +844,272 @@ async function loadHoldingDetail(code, name) {
 function renderHoldingDetail(d, el) {
   const h = d.holding || {};
   const a = d.analysis || {};
-  // analyze_stock 반환: current_price, rsi, gap20, gap60, ma20, ma60, badges, verdict, pnl_pct, pnl_amount, eval_amount
   const curPrice = a.cur_price || a.current_price || h.avg_price;
+  const chgPct = a.cur_change_pct || 0;
+  const chg = a.cur_change || 0;
   const pnl = a.pnl_amount !== undefined ? a.pnl_amount : (curPrice - h.avg_price) * h.qty;
   const pnlPct = a.pnl_pct !== undefined ? a.pnl_pct : ((curPrice - h.avg_price) / h.avg_price * 100);
+  const pnlCls = pnlPct >= 0 ? 'up' : 'down';
 
-  const rsi = a.rsi ? Math.round(a.rsi) : '-';
-  const gap20 = a.gap20 ? (a.gap20 * 100).toFixed(1) + '%' : '-';
-  const gap60 = a.gap60 ? (a.gap60 * 100).toFixed(1) + '%' : '-';
-  const ma20 = a.ma20 ? fmtNum(Math.round(a.ma20)) : '-';
-  const ma60 = a.ma60 ? fmtNum(Math.round(a.ma60)) : '-';
-  const volRatio = a.volume_ratio ? a.volume_ratio.toFixed(1) + 'x' : '-';
-  const foreignNet = a.foreign_net_3d !== undefined ? fmtPnl(a.foreign_net_3d) : '-';
-  const instNet = a.institution_net_3d !== undefined ? fmtPnl(a.institution_net_3d) : '-';
-
+  const rsiVal = a.rsi ? Math.round(a.rsi) : null;
+  const boll = a.bollinger || {};
+  const bollPos = boll.position !== undefined ? boll.position : 0.5;
+  const ma20Val = a.ma20;
+  const ma60Val = a.ma60;
+  const gap20Raw = a.gap20; // 비율 (1.05 = 105%)
+  const gap20 = gap20Raw ? (gap20Raw * 100).toFixed(1) : null;
+  const targets = a.targets || {};
+  const invList = Array.isArray(a.inv_list) ? a.inv_list : [];
+  const foreignNet = a.foreign_net_3d || 0;
+  const instNet = a.institution_net_3d || 0;
   const badges = Array.isArray(a.badges) ? a.badges : [];
   const verdict = a.verdict || '';
 
-  // 지지선 칩
-  const boll = a.bollinger || {};
-  let supportChips = '';
-  if (a.ma20) supportChips += `<div class="sup-chip">20일선 <span class="${pnlClass(a.gap20||0)}">${gap20}</span></div>`;
-  if (a.ma60) supportChips += `<div class="sup-chip">60일선 <span class="${pnlClass(a.gap60||0)}">${gap60}</span></div>`;
-  if (boll.lower) supportChips += `<div class="sup-chip">볼하단 ${fmtNum(Math.round(boll.lower))}</div>`;
+  // ── RSI 해석 ──
+  const rsiColor = rsiVal >= 70 ? '#E24B4A' : rsiVal <= 30 ? '#185FA5' : rsiVal >= 60 ? '#BA7517' : '#30D158';
+  let rsiInterp = '', rsiIcon = '🟢';
+  if (rsiVal !== null) {
+    if (rsiVal >= 70)      { rsiInterp = `RSI ${rsiVal}으로 <b>과열 구간</b>이에요. 너무 빠르게 올라온 상태예요. 추가 상승보다 숨 고르기 가능성이 높아요.`; rsiIcon='🔴'; }
+    else if (rsiVal <= 30) { rsiInterp = `RSI ${rsiVal}으로 <b>과매도 구간</b>이에요. 너무 많이 떨어진 상태예요. 단기 반등 시도가 나올 수 있어요.`; rsiIcon='🟢'; }
+    else if (rsiVal >= 60) { rsiInterp = `RSI ${rsiVal}으로 <b>정상 범위 상단</b>이에요. 과열도 침체도 아닌 건강한 상승세예요.`; rsiIcon='🟡'; }
+    else if (rsiVal <= 40) { rsiInterp = `RSI ${rsiVal}으로 <b>정상 범위 하단</b>이에요. 힘이 빠지는 구간이지만 아직 위험하진 않아요.`; rsiIcon='🟡'; }
+    else                   { rsiInterp = `RSI ${rsiVal}으로 <b>정상 범위</b>예요. 과열도 침체도 아닌 건강한 상태예요.`; rsiIcon='🟢'; }
+  }
 
+  // ── 이격도 해석 ──
+  const g = gap20 ? parseFloat(gap20) : 100;
+  let gapInterp = '', gapIcon = '🟢';
+  if (g >= 115)     { gapInterp = `이격도 ${g.toFixed(0)}%로 20일 평균보다 <b>${(g-100).toFixed(0)}% 위</b>에 있어요. 용수철처럼 평균으로 되돌아오려는 힘이 강해요.`; gapIcon='⚠️'; }
+  else if (g >= 105){ gapInterp = `이격도 ${g.toFixed(0)}%로 20일 평균보다 <b>${(g-100).toFixed(0)}% 위</b>에 있어요. 약간 올라온 상태지만 아직 과열은 아니에요.`; gapIcon='🟡'; }
+  else if (g <= 85) { gapInterp = `이격도 ${g.toFixed(0)}%로 20일 평균보다 <b>${(100-g).toFixed(0)}% 아래</b>에 있어요. 많이 떨어진 상태로 반등 가능성이 있어요.`; gapIcon='🟢'; }
+  else if (g <= 95) { gapInterp = `이격도 ${g.toFixed(0)}%로 20일 평균보다 <b>${(100-g).toFixed(0)}% 아래</b>에 있어요. 평균선 아래지만 크게 이탈한 건 아니에요.`; gapIcon='🟡'; }
+  else              { gapInterp = `이격도 ${g.toFixed(0)}%로 20일 평균 근처에 있어요. 안정적인 위치예요.`; gapIcon='🟢'; }
+
+  // ── 볼린저 해석 ──
+  let bollInterp = '', bollIcon = '🟡';
+  if (bollPos >= 0.8)     { bollInterp = '볼린저밴드 <b>상단 근처</b>에요. 주가가 터널 천장에 닿아있어요. 여기서 저항을 받으면 단기 조정이 올 수 있어요.'; bollIcon='⚠️'; }
+  else if (bollPos <= 0.2){ bollInterp = '볼린저밴드 <b>하단 근처</b>예요. 주가가 터널 바닥에 있어요. 여기서 지지를 받으면 반등이 나올 수 있어요.'; bollIcon='🟢'; }
+  else                    { bollInterp = '볼린저밴드 <b>중간 구간</b>에 있어요. 상단 또는 하단 돌파 방향을 지켜보세요.'; bollIcon='🟡'; }
+  const bollLbl = bollPos <= 0.2 ? '하단 근처' : bollPos >= 0.8 ? '상단 근처' : '중간';
+
+  // ── 기술 지표 섹션 ──
+  const rsiBarW = rsiVal || 50;
+  const rsiStatus = rsiVal >= 70 ? '과매수' : rsiVal <= 30 ? '과매도' : '정상';
+  const rsiStatusCls = rsiVal >= 70 || rsiVal <= 30 ? 'badge-sell' : 'badge-buy';
+  const gapStatus = g >= 95 && g <= 115 ? '평균선 근처' : '이격 과대';
+  const gapStatusCls = g >= 95 && g <= 115 ? 'badge-ok' : 'badge-sell';
+  const bollStatusCls = bollPos <= 0.3 ? 'badge-buy' : bollPos >= 0.8 ? 'badge-sell' : 'badge-ok';
+
+  let ma20Row = '', ma60Row = '';
+  if (ma20Val) {
+    const d20 = (curPrice - ma20Val) / ma20Val * 100;
+    const scls = d20 >= 0 ? 'badge-ok' : 'badge-sell';
+    ma20Row = `<div class="ind-row"><span class="ind-label">20일선</span><div class="ind-right"><span class="ind-val">${fmtNum(Math.round(ma20Val))}</span><span class="badge ${scls}" style="font-size:10px;">${d20>=0?'위':'아래'} ${Math.abs(d20).toFixed(1)}%</span></div></div>`;
+  }
+  if (ma60Val) {
+    const d60 = (curPrice - ma60Val) / ma60Val * 100;
+    const scls = d60 >= 0 ? 'badge-ok' : 'badge-sell';
+    ma60Row = `<div class="ind-row"><span class="ind-label">60일선</span><div class="ind-right"><span class="ind-val">${fmtNum(Math.round(ma60Val))}</span><span class="badge ${scls}" style="font-size:10px;">${d60>=0?'위':'아래'} ${Math.abs(d60).toFixed(1)}%</span></div></div>`;
+  }
+
+  // ── 지지선 ──
+  let supRows = '';
+  if (ma20Val) {
+    const d = (curPrice - ma20Val) / ma20Val * 100;
+    const cls = d >= 0 ? 'up' : 'down';
+    supRows += `<div class="sup-row"><span class="sup-label">20일선</span><div class="sup-right"><span class="sup-price">${fmtNum(Math.round(ma20Val))}</span><span class="sup-dist ${cls}">${d>=0?'+':''}${d.toFixed(1)}%</span><span class="sup-note">${d>=0?'현재 위':'이탈'}</span></div></div>`;
+  }
+  if (boll.lower) {
+    const d = (curPrice - boll.lower) / boll.lower * 100;
+    const cls = d >= 0 ? 'up' : 'down';
+    supRows += `<div class="sup-row"><span class="sup-label">볼린저 하단</span><div class="sup-right"><span class="sup-price">${fmtNum(Math.round(boll.lower))}</span><span class="sup-dist ${cls}">${d>=0?'+':''}${d.toFixed(1)}%</span><span class="sup-note">지지선</span></div></div>`;
+  }
+  if (ma60Val) {
+    const d = (curPrice - ma60Val) / ma60Val * 100;
+    const cls = d >= 0 ? 'up' : 'down';
+    supRows += `<div class="sup-row"><span class="sup-label">60일선</span><div class="sup-right"><span class="sup-price">${fmtNum(Math.round(ma60Val))}</span><span class="sup-dist ${cls}">${d>=0?'+':''}${d.toFixed(1)}%</span><span class="sup-note">주요 지지</span></div></div>`;
+  }
+
+  // ── 수급 ──
+  const fMax = Math.max(Math.abs(foreignNet), Math.abs(instNet), 1);
+  const fBarW = Math.min(Math.abs(foreignNet) / fMax * 80, 80);
+  const iBarW = Math.min(Math.abs(instNet) / fMax * 80, 80);
+  const fCls = foreignNet >= 0 ? 'up' : 'down';
+  const iCls = instNet >= 0 ? 'up' : 'down';
+  const fBarCls = foreignNet >= 0 ? 'bar-buy' : 'bar-sell';
+  const iBarCls = instNet >= 0 ? 'bar-buy' : 'bar-sell';
+  const fChips = invList.map(r => {
+    const v = r.foreign; const c = v >= 0 ? 'chip-buy' : 'chip-sell';
+    return `<span class="day-chip ${c}">${v>=0?'+':''}${Math.round(v/1000)}K</span>`;
+  }).join('');
+  const iChips = invList.map(r => {
+    const v = r.inst; const c = v >= 0 ? 'chip-buy' : 'chip-sell';
+    return `<span class="day-chip ${c}">${v>=0?'+':''}${Math.round(v/1000)}K</span>`;
+  }).join('');
+
+  // ── 배지 & verdict ──
   const badgesHtml = badges.map(b => {
-    const cls = b.includes('매도') || b.includes('과열') || b.includes('손절') ? 'badge-sell' :
-                b.includes('매수') || b.includes('정배열') || b.includes('지지') ? 'badge-buy' :
-                b.includes('주의') || b.includes('경고') ? 'badge-warn' : 'badge-ok';
+    const cls = b.includes('매도')||b.includes('과열')||b.includes('손절') ? 'badge-sell' :
+                b.includes('매수')||b.includes('정배열')||b.includes('지지') ? 'badge-buy' :
+                b.includes('주의')||b.includes('경고') ? 'badge-warn' : 'badge-ok';
     return `<span class="badge ${cls}">${b}</span>`;
   }).join('');
 
+  // ── 목표가/손절가 ──
+  const tp = targets.target_price, sp2 = targets.stop_price;
+  const tu = targets.target_upside, sd = targets.stop_downside;
+  const tb = targets.target_basis, sb = targets.stop_basis;
+  const rr = targets.risk_reward || 0;
+  const avs = targets.avg_vs_stop;
+  const rrCls = rr >= 2 ? '#27500A' : rr >= 1 ? '#BA7517' : '#A32D2D';
+  const rrLbl = rr >= 2 ? '✅ 양호' : rr >= 1 ? '⚠️ 보통' : '❌ 불리';
+
+  // ── 뉴스 ──
   const newsHtml = (a.news||[]).slice(0,3).map(n => {
     const bdg = n.sentiment === 'positive' ? 'badge-pos' : n.sentiment === 'negative' ? 'badge-neg' : 'badge-mix';
-    const lbl = n.label || '중립';
     const briefHtml = n.brief ? `<div class="news-brief">💡 ${n.brief}</div>` : '';
     return `<div class="news-card">
-      <div class="news-card-top"><span class="badge ${bdg}">${lbl}</span><span class="news-source">${n.source||''}</span></div>
+      <div class="news-card-top"><span class="badge ${bdg}">${n.label||'중립'}</span><span class="news-source">${n.source||''} · ${n.published||''}</span></div>
       <div class="news-title">${n.title||''}</div>${briefHtml}
     </div>`;
   }).join('');
 
   el.innerHTML = `
+    <!-- 히어로 -->
     <div class="detail-hero">
-      <div class="detail-name">${h.name}</div>
-      <div class="detail-price">${fmtNum(curPrice)}원 <span style="font-size:16px;opacity:0.85;">${pnlPct>=0?'▲':'▼'} ${fmtPct(Math.abs(pnlPct))}</span></div>
-      <div class="detail-meta">${h.code} · 평단 ${fmtNum(h.avg_price)}원 · ${h.qty}주</div>
-      <div class="detail-grid">
-        <div class="detail-item"><div class="detail-item-label">평가손익</div><div class="detail-item-val">${fmtPnl(pnl)}원</div></div>
-        <div class="detail-item"><div class="detail-item-label">수익률</div><div class="detail-item-val">${fmtPct(pnlPct)}</div></div>
-        <div class="detail-item"><div class="detail-item-label">RSI</div><div class="detail-item-val">${rsi}</div></div>
-        <div class="detail-item"><div class="detail-item-label">거래량비</div><div class="detail-item-val">${volRatio}</div></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+        <div class="detail-name">${h.name}</div>
+        <span class="badge ${pnlCls==='up'?'badge-buy':'badge-sell'}">${pnlCls==='up'?'수익':'손실'} ${pnlPct>=0?'+':''}${pnlPct.toFixed(2)}%</span>
+      </div>
+      <div class="detail-price">${fmtNum(curPrice)}원</div>
+      <div style="font-size:13px;margin-top:2px;opacity:0.85;">
+        <span class="${chgPct>=0?'up':'down'}" style="color:#fff;">${chgPct>=0?'▲':'▼'} ${Math.abs(chg).toLocaleString()}원 (${Math.abs(chgPct).toFixed(2)}%)</span>
+      </div>
+      ${a.cur_high || a.cur_low ? `<div style="font-size:11px;opacity:0.7;margin-top:6px;">
+        고가 ${fmtNum(a.cur_high||0)} · 저가 ${fmtNum(a.cur_low||0)} · 거래량 ${(a.cur_volume||0).toLocaleString()}
+      </div>` : ''}
+      <div class="detail-grid" style="margin-top:12px;">
+        <div class="detail-item"><div class="detail-item-label">평단가</div><div class="detail-item-val">${fmtNum(h.avg_price)}</div></div>
+        <div class="detail-item"><div class="detail-item-label">보유 수량</div><div class="detail-item-val">${h.qty}주</div></div>
+        <div class="detail-item"><div class="detail-item-label">평가손익</div><div class="detail-item-val ${pnlCls}">${pnl>=0?'+':''}${Math.round(pnl/10000)}만원</div></div>
       </div>
     </div>
+
+    <!-- 기술 지표 -->
     <div class="section" style="margin-top:12px;">
+      <div class="sec-title"><i class="ti ti-activity" style="font-size:15px;color:#5B5BD6;"></i>기술적 지표</div>
       <div class="card">
-        <div class="mini-grid" style="grid-template-columns:1fr 1fr 1fr;">
-          <div class="mini-item"><div class="mini-label">20일선</div><div class="mini-val">${ma20}</div></div>
-          <div class="mini-item"><div class="mini-label">60일선</div><div class="mini-val">${ma60}</div></div>
-          <div class="mini-item"><div class="mini-label">이격도(20일)</div><div class="mini-val">${gap20}</div></div>
+        ${rsiVal !== null ? `<div class="ind-row">
+          <span class="ind-label">RSI (14일)</span>
+          <div class="ind-right">
+            <div style="width:80px;height:6px;background:#F0F0F5;border-radius:3px;margin-right:8px;">
+              <div style="width:${rsiBarW}%;height:6px;background:${rsiColor};border-radius:3px;"></div>
+            </div>
+            <span class="ind-val">${rsiVal}</span>
+            <span class="badge ${rsiStatusCls}" style="font-size:10px;margin-left:4px;">${rsiStatus}</span>
+          </div>
+        </div>` : ''}
+        ${gap20 ? `<div class="ind-row">
+          <span class="ind-label">이격도 (20일)</span>
+          <div class="ind-right"><span class="ind-val">${parseFloat(gap20).toFixed(0)}%</span><span class="badge ${gapStatusCls}" style="font-size:10px;margin-left:4px;">${gapStatus}</span></div>
+        </div>` : ''}
+        <div class="ind-row">
+          <span class="ind-label">볼린저밴드</span>
+          <div class="ind-right"><span class="ind-val">${bollLbl}</span><span class="badge ${bollStatusCls}" style="font-size:10px;margin-left:4px;">${bollPos<=0.3?'지지 시도':bollPos>=0.8?'과열':'보통'}</span></div>
         </div>
-        <div class="mini-grid" style="grid-template-columns:1fr 1fr;margin-top:6px;">
-          <div class="mini-item"><div class="mini-label">외국인 3일순매수</div><div class="mini-val ${foreignNet>0?'up':'down'}">${foreignNet}</div></div>
-          <div class="mini-item"><div class="mini-label">기관 3일순매수</div><div class="mini-val ${instNet>0?'up':'down'}">${instNet}</div></div>
-        </div>
-        ${supportChips ? `<div class="support-mini" style="margin-top:10px;">${supportChips}</div>` : ''}
-        ${badgesHtml ? `<div class="signal-badges" style="margin-top:10px;">${badgesHtml}</div>` : ''}
-        ${verdict ? `<div class="analysis-text" style="margin-top:10px;padding-top:10px;border-top:0.5px solid #F0F0F5;">${verdict}</div>` : ''}
+        ${ma20Row}${ma60Row}
       </div>
     </div>
-    ${newsHtml ? `<div class="section"><div class="sec-title"><i class="ti ti-news" style="font-size:15px;color:#5B5BD6;"></i>관련 뉴스</div>${newsHtml}</div>` : ''}
+
+    <!-- 지표 해석 -->
+    ${rsiVal !== null ? `<div style="background:#EEEDFE;border-radius:16px;padding:16px 18px;margin:0 16px 12px;">
+      <div style="font-size:12px;font-weight:700;color:#3C3489;margin-bottom:12px;display:flex;align-items:center;gap:6px;">
+        <i class="ti ti-microscope" style="font-size:14px;"></i> 지금 이 숫자가 의미하는 것
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="background:rgba(255,255,255,0.6);border-radius:10px;padding:10px 12px;">
+          <div style="font-size:10px;font-weight:700;color:#534AB7;margin-bottom:4px;">${rsiIcon} RSI (상대강도지수)</div>
+          <div style="font-size:11px;color:#3C3489;line-height:1.6;">${rsiInterp}</div>
+        </div>
+        ${gap20 ? `<div style="background:rgba(255,255,255,0.6);border-radius:10px;padding:10px 12px;">
+          <div style="font-size:10px;font-weight:700;color:#534AB7;margin-bottom:4px;">${gapIcon} 이격도 (20일 평균 기준)</div>
+          <div style="font-size:11px;color:#3C3489;line-height:1.6;">${gapInterp}</div>
+        </div>` : ''}
+        <div style="background:rgba(255,255,255,0.6);border-radius:10px;padding:10px 12px;">
+          <div style="font-size:10px;font-weight:700;color:#534AB7;margin-bottom:4px;">${bollIcon} 볼린저밴드</div>
+          <div style="font-size:11px;color:#3C3489;line-height:1.6;">${bollInterp}</div>
+        </div>
+      </div>
+    </div>` : ''}
+
+    <!-- 지지선 -->
+    ${supRows ? `<div class="section">
+      <div class="sec-title"><i class="ti ti-barrier-block" style="font-size:15px;color:#5B5BD6;"></i>바닥 지지선</div>
+      <div class="card">${supRows}</div>
+    </div>` : ''}
+
+    <!-- 수급 -->
+    <div class="section">
+      <div class="sec-title"><i class="ti ti-users" style="font-size:15px;color:#5B5BD6;"></i>외국인·기관 수급 (5일)</div>
+      <div class="card">
+        <div class="supply-row">
+          <span class="supply-who">외국인</span>
+          <div class="supply-bar-bg"><div class="supply-bar-fill ${fBarCls}" style="width:${fBarW}%;"></div></div>
+          <span class="supply-val ${fCls}">${foreignNet>=0?'+':''}${foreignNet.toLocaleString()}주</span>
+        </div>
+        ${fChips ? `<div class="days-row">${fChips}</div>` : ''}
+        <div class="supply-row">
+          <span class="supply-who">기관</span>
+          <div class="supply-bar-bg"><div class="supply-bar-fill ${iBarCls}" style="width:${iBarW}%;"></div></div>
+          <span class="supply-val ${iCls}">${instNet>=0?'+':''}${instNet.toLocaleString()}주</span>
+        </div>
+        ${iChips ? `<div class="days-row">${iChips}</div>` : ''}
+      </div>
+    </div>
+
+    <!-- 배지/경고 -->
+    ${verdict||badgesHtml ? `<div class="section">
+      ${badgesHtml ? `<div style="padding:0 16px 8px;"><div class="signal-badges">${badgesHtml}</div></div>` : ''}
+      ${verdict ? `<div class="card" style="border-left:3px solid #E24B4A;">
+        <div style="font-size:12px;font-weight:600;color:#E24B4A;margin-bottom:6px;"><i class="ti ti-alert-triangle" style="font-size:13px;"></i> 주의 신호</div>
+        <div style="font-size:13px;color:#3C3C43;line-height:1.6;">${verdict}</div>
+      </div>` : ''}
+    </div>` : ''}
+
+    <!-- 목표가/손절가 -->
+    ${tp ? `<div class="section">
+      <div class="sec-title"><i class="ti ti-target" style="font-size:15px;color:#5B5BD6;"></i>목표가 / 손절가 분석</div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;margin-bottom:12px;">
+          <div>
+            <div style="font-size:10px;color:#8E8E9A;margin-bottom:3px;">추천 목표가</div>
+            <div style="font-size:18px;font-weight:700;color:#27500A;">${fmtNum(tp)}</div>
+            <div style="font-size:11px;color:#27500A;">+${tu}%</div>
+            <div style="font-size:10px;color:#8E8E9A;margin-top:2px;">기준: ${tb}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:10px;color:#8E8E9A;margin-bottom:3px;">추천 손절가</div>
+            <div style="font-size:18px;font-weight:700;color:#A32D2D;">${fmtNum(sp2)}</div>
+            <div style="font-size:11px;color:#A32D2D;">${sd}%</div>
+            <div style="font-size:10px;color:#8E8E9A;margin-top:2px;">기준: ${sb}${avs!==null?` · 평단 대비 ${avs>0?'+':''}${avs}%`:''}</div>
+          </div>
+        </div>
+        <div style="background:#F8F8FA;border-radius:10px;padding:10px 12px;">
+          <div style="font-size:10px;color:#8E8E9A;margin-bottom:4px;">리스크/리워드 비율</div>
+          <div style="font-size:13px;font-weight:600;color:${rrCls};">1 : ${rr} ${rrLbl}</div>
+          <div style="font-size:10px;color:#8E8E9A;margin-top:3px;">손실 1원 대비 수익 ${rr}원 기대 — 2 이상이면 진입 적합</div>
+        </div>
+      </div>
+    </div>` : ''}
+
+    <!-- 뉴스 -->
+    ${newsHtml ? `<div class="section">
+      <div class="sec-title"><i class="ti ti-news" style="font-size:15px;color:#5B5BD6;"></i>${h.name} 뉴스</div>
+      ${newsHtml}
+    </div>` : ''}
+
     <div style="padding:0 16px 16px;">
+      <div class="warn-box" style="margin-bottom:10px;"><i class="ti ti-alert-circle" style="font-size:14px;flex-shrink:0;"></i>투자 결정은 본인 책임입니다. 이 정보는 참고용이며 투자 권유가 아닙니다.</div>
       <button class="btn-danger" onclick="deleteHolding('${h.code}', '${h.name}')">
         <i class="ti ti-trash" style="font-size:16px;"></i> 종목 삭제하기
       </button>
