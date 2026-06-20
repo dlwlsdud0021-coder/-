@@ -288,19 +288,7 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"],
   background-color: #F5F5F7 !important;
   color: #1A1A2E !important;
 }
-/* 탭 배경 */
-[data-testid="stTabs"], [data-testid="stTabsTabList"],
-[role="tablist"], [data-baseweb="tab-list"] {
-  background-color: #F5F5F7 !important;
-}
-[data-baseweb="tab"] {
-  background-color: transparent !important;
-  color: #8E8E93 !important;
-}
-[aria-selected="true"][data-baseweb="tab"] {
-  color: #5B5BD6 !important;
-}
-/* 탭 패널 */
+/* 탭 패널 배경 */
 [data-testid="stTabsContent"], [data-baseweb="tab-panel"] {
   background-color: #F5F5F7 !important;
 }
@@ -368,78 +356,39 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"],
 ::-webkit-scrollbar-thumb { background: #C7C7CC; border-radius: 2px; }
 
 /* ── 바텀 네비게이션 ── */
-/* 탭 바를 화면 하단 고정 */
-[data-testid="stTabsTabList"] {
-  position: fixed !important;
-  bottom: 0 !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
-  width: 420px !important;
-  max-width: 100vw !important;
-  background: #fff !important;
-  border-top: 0.5px solid #E5E5EA !important;
-  border-bottom: none !important;
-  z-index: 9999 !important;
-  padding: 8px 0 16px !important;
-  display: flex !important;
-  justify-content: space-around !important;
-  gap: 0 !important;
-  box-shadow: 0 -2px 8px rgba(0,0,0,0.04) !important;
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 380px;
+  max-width: 100vw;
+  background: #fff;
+  border-top: 0.5px solid #E5E5EA;
+  display: flex;
+  padding: 10px 0 16px;
+  z-index: 9999;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.04);
 }
-/* 기존 탭 선택 인디케이터(밑줄/하이라이트) 제거 */
-[data-baseweb="tab-highlight"],
-[data-baseweb="tab-border"] {
-  display: none !important;
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  color: #C7C7CC;
+  font-size: 10px;
+  cursor: pointer;
+  text-decoration: none;
 }
-/* 각 탭 버튼 */
-[data-baseweb="tab"] {
-  flex: 1 !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 3px !important;
-  padding: 4px 0 !important;
-  color: #C7C7CC !important;
-  border: none !important;
-  background: transparent !important;
-  min-height: 52px !important;
-  margin: 0 !important;
-}
-/* 탭 라벨 텍스트 */
-[data-baseweb="tab"] p {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  gap: 3px !important;
-  font-size: 10px !important;
-  line-height: 1.2 !important;
-  margin: 0 !important;
-}
-/* 아이콘 (::before 가상요소) */
-[data-baseweb="tab"] p::before {
-  display: block !important;
-  font-family: 'tabler-icons' !important;
-  font-size: 22px !important;
-  line-height: 1 !important;
-}
-/* 탭별 아이콘 (Tabler icons 유니코드) */
-[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(1) p::before { content: '\\ea76'; } /* home */
-[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(2) p::before { content: '\\f0e9'; } /* news */
-[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(3) p::before { content: '\\ea3b'; } /* briefcase */
-[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(4) p::before { content: '\\ebeb'; } /* star */
-[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(5) p::before { content: '\\ed12'; } /* chart-bar */
-/* 활성 탭 색상 */
-[aria-selected="true"][data-baseweb="tab"] {
-  color: #5B5BD6 !important;
-}
-[aria-selected="true"][data-baseweb="tab"] p::before {
-  color: #5B5BD6 !important;
-}
-/* 탭 콘텐츠 영역 — 하단 네비에 가리지 않도록 여백 */
-[data-testid="stTabsContent"],
-[data-baseweb="tab-panel"] {
-  padding-bottom: 80px !important;
-}
+.nav-item.active { color: #5B5BD6; }
+.nav-item i { font-size: 22px; }
+/* Streamlit 기본 탭 완전 숨김 */
+[data-testid="stTabs"], [data-testid="stTabsTabList"],
+[data-baseweb="tab-list"], [data-baseweb="tab-highlight"],
+[data-baseweb="tab-border"] { display: none !important; }
+/* 콘텐츠 영역 — 하단 네비에 가리지 않도록 여백 */
+.main .block-container { padding-bottom: 90px !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -3594,12 +3543,31 @@ if st.session_state.get("show_market_detail"):
     render_market_detail(_idx, _us, _ma_kp, _ma_kd, _kp_hist, _kd_hist)
     st.stop()
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["홈", "뉴스", "보유", "관심", "매집"])
-with tab1: render_home()
-with tab2: render_news()
-with tab3: render_holdings()
-with tab4: render_watchlist()
-with tab5: render_scanner()
+# ── 바텀 네비게이션 (query param 기반) ──
+_TAB_NAMES = ["홈", "뉴스", "보유", "관심", "매집"]
+_TAB_ICONS = ["ti-home", "ti-news", "ti-briefcase", "ti-star", "ti-chart-bar"]
+_active_tab = st.query_params.get("tab", "홈")
+if _active_tab not in _TAB_NAMES:
+    _active_tab = "홈"
+
+# 탭 콘텐츠 렌더링
+if _active_tab == "홈":
+    render_home()
+elif _active_tab == "뉴스":
+    render_news()
+elif _active_tab == "보유":
+    render_holdings()
+elif _active_tab == "관심":
+    render_watchlist()
+elif _active_tab == "매집":
+    render_scanner()
+
+# 하단 네비바 HTML
+_nav_items = ""
+for _name, _icon in zip(_TAB_NAMES, _TAB_ICONS):
+    _cls = "nav-item active" if _name == _active_tab else "nav-item"
+    _nav_items += f'<a class="{_cls}" href="?tab={_name}"><i class="ti {_icon}"></i><span>{_name}</span></a>'
+st.markdown(f'<div class="bottom-nav">{_nav_items}</div>', unsafe_allow_html=True)
 
 with st.sidebar:
     st.markdown(f"**{st.session_state.username}** 님")
