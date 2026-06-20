@@ -607,21 +607,34 @@ def render_home():
     sp_pct = sp.get("change_pct", 0)
     nd_pct = nd.get("change_pct", 0)
 
-    # ── 헤더 ──
-    st.markdown(f"""<div class="hdr">
-      <div><div class="hdr-title">오늘의 시장</div><div class="hdr-sub">{_now()} 기준</div></div>
-      <div style="color:#8E8E93;font-size:20px;"><i class="ti ti-refresh"></i></div>
-    </div>""", unsafe_allow_html=True)
-
-    # ── 히어로 카드 ──
+    # ── 헤더 + 히어로 통합 ──
     badge_txt, status, desc, tip = _market_hero(idx)
-    desc_full = f"{desc} · S&P500 {'+' if sp_pct>=0 else ''}{sp_pct:.2f}% / 나스닥 {'+' if nd_pct>=0 else ''}{nd_pct:.2f}%"
-    st.markdown(f"""<div class="hero">
-      <div class="hero-badge"><i class="ti ti-rocket" style="font-size:13px;"></i> {badge_txt}</div>
-      <div class="hero-status">{status}</div>
-      <div class="hero-desc">{desc_full}</div>
-      <div class="hero-tip"><i class="ti ti-bulb" style="font-size:14px;flex-shrink:0;"></i> {tip}</div>
-    </div>""", unsafe_allow_html=True)
+    desc_full = (f"{desc} · S&P500 {'+' if sp_pct>=0 else ''}{sp_pct:.2f}%"
+                 f" / 나스닥 {'+' if nd_pct>=0 else ''}{nd_pct:.2f}%")
+    badge_clr = ("#E24B4A" if "상승" in status or "강한" in status
+                 else "#185FA5" if "하락" in status or "급락" in status
+                 else "#FF9F0A")
+    st.markdown(
+        '<div class="hdr" style="flex-direction:column;align-items:flex-start;gap:0;">'
+        '<div style="display:flex;justify-content:space-between;align-items:center;width:100%;">'
+        '<div><div class="hdr-title">오늘의 시장</div>'
+        '<div class="hdr-sub">' + _now() + ' 기준</div></div>'
+        '<div style="color:rgba(255,255,255,0.6);font-size:20px;"><i class="ti ti-refresh"></i></div>'
+        '</div>'
+        '<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid rgba(255,255,255,0.2);width:100%;">'
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">'
+        '<span style="font-size:16px;font-weight:800;color:#fff;">' + status + '</span>'
+        '<span style="font-size:11px;font-weight:600;color:' + badge_clr + ';background:rgba(255,255,255,0.12);'
+        'padding:2px 8px;border-radius:20px;">' + badge_txt + '</span>'
+        '</div>'
+        '<div style="font-size:11px;color:rgba(255,255,255,0.75);margin-bottom:8px;">' + desc_full + '</div>'
+        '<div style="font-size:11px;color:rgba(255,255,255,0.65);line-height:1.5;">'
+        '<i class="ti ti-bulb" style="font-size:12px;margin-right:4px;"></i>' + tip +
+        '</div>'
+        '</div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
     # 상세분석 버튼
     if st.button("› KOSPI · KOSDAQ 상세 분석 보기", key="btn_market_detail",
                  use_container_width=True):
