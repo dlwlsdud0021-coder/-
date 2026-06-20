@@ -564,7 +564,28 @@ def holding_detail(code: str, user=Depends(get_current_user)):
 @app.get("/api/watchlist")
 def get_watchlist(user=Depends(get_current_user)):
     items = db.get_watchlist(user["user_id"])
-    return {"watchlist": items}
+    # 각 종목에 미니 분석 추가 (현재가, RSI, 타이밍)
+    enriched = []
+    for item in items:
+        entry = dict(item)
+        try:
+            ohlcv = get_ohlcv(item["code"], days=60)
+            inv   = get_investor_trading(item["code"], days=5)
+            a     = analyze_stock(ohlcv, inv)
+            pd2   = get_current_price(item["code"])
+            cur   = pd2.get("current_price", 0) or 0
+            chg_pct = pd2.get("change_pct", 0) or 0
+            timing  = watchlist_timing(a, item.get("target_price"), item.get("stop_loss"))
+            entry["cur_price"]    = cur
+            entry["change_pct"]   = round(chg_pct, 2)
+            entry["rsi"]          = round(a.get("rsi", 50), 1)
+            entry["gap20"]        = round(a.get("gap20", 100), 1)
+            entry["badges"]       = a.get("badges", [])
+            entry["timing"]       = timing
+        except Exception:
+            pass
+        enriched.append(entry)
+    return {"watchlist": enriched}
 
 @app.post("/api/watchlist")
 def add_watchlist(body: WatchlistBody, user=Depends(get_current_user)):

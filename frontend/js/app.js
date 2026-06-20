@@ -1568,30 +1568,117 @@ function filterWatchlist(filter, btn) {
 function renderWatchlist() {
   const el = document.getElementById('watchlist-content');
   let list = _allWatchlist;
+  const filt = _watchlistFilter || '전체';
+
+  if (filt !== '전체') {
+    list = list.filter(w => {
+      const st = w.timing?.status;
+      if (filt === '매수검토') return st === 'buy_ok';
+      if (filt === '추격금지') return st === 'chase_no';
+      if (filt === '관망')   return st === 'watch';
+      return true;
+    });
+  }
+
   if (!list.length) {
     el.innerHTML = '<div class="empty-state"><i class="ti ti-star"></i>관심종목을 추가해보세요</div>';
     return;
   }
-  el.innerHTML = `<div class="section" style="margin-top:8px;">
-    ${list.map(w => `
-      <div class="card clickable" onclick="openWatchlistDetail('${w.code}', '${w.name}')">
-        <div class="card-top">
-          <div class="stock-icon ${iconColors(w.name)}">${iconText(w.name)}</div>
-          <div>
-            <div class="stock-name">${w.name}</div>
-            <div class="stock-sub">${w.code}</div>
-          </div>
-          <div style="margin-left:auto;">
-            <i class="ti ti-chevron-right" style="color:#C7C7CC;font-size:18px;"></i>
-          </div>
+
+  // 그룹핑
+  const groups = { buy_ok: [], chase_no: [], watch: [], none: [] };
+  list.forEach(w => {
+    const st = w.timing?.status || 'none';
+    (groups[st] || groups.none).push(w);
+  });
+
+  const groupMeta = {
+    buy_ok:   { label: '매수 검토 가능', color: '#27500A' },
+    chase_no: { label: '추격매수 금지',  color: '#791F1F' },
+    watch:    { label: '관망 중',        color: '#633806' },
+    none:     { label: '기타',           color: '#8E8E9A' },
+  };
+
+  function buildCard(w) {
+    const rsi    = w.rsi != null ? Math.round(w.rsi) : null;
+    const gap20  = w.gap20 != null ? w.gap20 : null;
+    const chgPct = w.change_pct || 0;
+    const chgCls = chgPct >= 0 ? 'up' : 'down';
+    const chgTxt = (chgPct >= 0 ? '▲ +' : '▼ ') + Math.abs(chgPct).toFixed(2) + '%';
+
+    // RSI 색상
+    let rsiColor = '#5B5BD6', rsiLabel = '보통';
+    if (rsi != null) {
+      if (rsi >= 70) { rsiColor = '#E24B4A'; rsiLabel = '과열'; }
+      else if (rsi <= 35) { rsiColor = '#3B6D11'; rsiLabel = '저점'; }
+    }
+
+    // 목표가·손절가 거리
+    const cur = w.cur_price || 0;
+    let targetRow = '';
+    if (w.target_price && cur) {
+      const tDist = ((w.target_price - cur) / cur * 100).toFixed(1);
+      const sDist = w.stop_loss ? ((w.stop_loss - cur) / cur * 100).toFixed(1) : null;
+      targetRow = `<div class="target-row">
+        <span class="target-label">목표가</span>
+        <span class="target-val">${fmtNum(w.target_price)}원</span>
+        <span class="target-dist">(${tDist >= 0 ? '+' : ''}${tDist}%)</span>
+        ${sDist != null ? `<span class="target-label" style="margin-left:8px;">손절가</span>
+        <span class="target-val" style="color:#A32D2D;">${fmtNum(w.stop_loss)}원</span>
+        <span class="target-dist" style="color:#A32D2D;">(${sDist}%)</span>` : ''}
+      </div>`;
+    }
+
+    // 배지
+    const timing = w.timing || {};
+    const bdgType = timing.badge_type || 'neutral';
+    const bdgCls  = bdgType === 'buy' ? 'badge-buy' : bdgType === 'sell' ? 'badge-sell' : 'badge-ok';
+    const extraBadges = (w.badges || []).slice(0, 3)
+      .map(b => `<span class="badge badge-ok">${b}</span>`).join('');
+
+    return `<div class="card clickable" onclick="openWatchlistDetail('${w.code}','${w.name.replace(/'/g,"\\'")}')">
+      <div class="card-top">
+        <div class="stock-icon ${iconColors(w.name)}">${iconText(w.name)}</div>
+        <div>
+          <div class="stock-name">${w.name}</div>
+          <div class="stock-sub">${w.code}</div>
         </div>
-        ${w.target_price ? `
-          <div class="target-row">
-            <span class="target-label">목표가</span><span class="target-val">${fmtNum(w.target_price)}원</span>
-            ${w.stop_loss ? `<span class="target-label" style="margin-left:8px;">손절가</span><span class="target-val" style="color:#A32D2D;">${fmtNum(w.stop_loss)}원</span>` : ''}
-          </div>` : ''}
-      </div>`).join('')}
-  </div>`;
+        <div class="stock-right">
+          ${cur ? `<div class="stock-price">${fmtNum(cur)}원</div>` : ''}
+          ${chgPct !== 0 ? `<div class="stock-change ${chgCls}">${chgTxt}</div>` : ''}
+        </div>
+      </div>
+      ${rsi != null ? `
+      <div class="rsi-mini">
+        <span class="rsi-label">RSI ${rsi}</span>
+        <div class="rsi-bar"><div class="rsi-fill" style="width:${rsi}%;background:${rsiColor};"></div></div>
+        <span class="rsi-val" style="color:${rsiColor};">${rsiLabel}</span>
+      </div>` : ''}
+      ${timing.reason ? `<div class="watch-reason ${bdgType === 'buy' ? 'reason-buy' : 'reason-sell'}">${timing.reason}</div>` : ''}
+      ${targetRow}
+      <div class="card-bottom">
+        <div class="badges">
+          ${timing.label ? `<span class="badge ${bdgCls}">${timing.label}</span>` : ''}
+          ${extraBadges}
+        </div>
+        <i class="ti ti-chevron-right" style="color:#C7C7CC;font-size:18px;"></i>
+      </div>
+    </div>`;
+  }
+
+  const order = ['buy_ok', 'chase_no', 'watch', 'none'];
+  let html = '';
+  order.forEach(key => {
+    if (!groups[key].length) return;
+    if (filt === '전체') {
+      html += `<div class="section"><div class="sec-label" style="color:${groupMeta[key].color};">${groupMeta[key].label}</div>`;
+    } else {
+      html += `<div class="section">`;
+    }
+    html += groups[key].map(buildCard).join('') + '</div>';
+  });
+
+  el.innerHTML = html;
 }
 
 function openWatchlistDetail(code, name) {
