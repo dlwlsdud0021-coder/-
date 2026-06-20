@@ -356,6 +356,7 @@ def scanner():
 # 정적 파일 서빙 (프론트엔드)
 # ─────────────────────────────────────────────────────────
 app.mount("/icons", StaticFiles(directory="frontend/icons"), name="icons")
+app.mount("/js", StaticFiles(directory="frontend/js"), name="js")
 
 @app.get("/manifest.json")
 def manifest():
@@ -365,10 +366,11 @@ def manifest():
 def service_worker():
     return FileResponse("frontend/service-worker.js", media_type="application/javascript")
 
-@app.get("/{full_path:path}")
-def serve_frontend(full_path: str):
+@app.get("/")
+@app.head("/")
+def root():
     return FileResponse("frontend/index.html")
 
-@app.get("/")
-def root():
+@app.get("/{full_path:path}")
+def serve_frontend(full_path: str):
     return FileResponse("frontend/index.html")
