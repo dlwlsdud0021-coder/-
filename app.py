@@ -18,7 +18,8 @@ from datetime import datetime
 
 from market_data import (get_stock_name, get_index_data, get_us_indices,
     get_ohlcv, get_current_price, get_investor_trading, get_top_stocks,
-    get_index_ohlcv_history, get_sector_performance, get_kospi_investor_value)
+    get_index_ohlcv_history, get_sector_performance, get_kospi_investor_value,
+    search_stock_by_name)
 from analysis import analyze_stock, watchlist_timing
 from news import (fetch_stock_news, fetch_market_news, fetch_category_news,
                    summarize_sentiment, rank_by_importance, enrich_top10_summaries,
@@ -1916,6 +1917,47 @@ def _render_news_cards(news_list: list):
         st.markdown(card_html, unsafe_allow_html=True)
 
 
+def _holding_add_ui(form_key: str, sq_key: str):
+    with st.form(form_key, clear_on_submit=True):
+        name_in = st.text_input("종목명", placeholder="삼성전자")
+        c1, c2 = st.columns(2)
+        with c1: avg_p = st.number_input("평균 매수가", min_value=0, step=100)
+        with c2: qty = st.number_input("수량 (주)", min_value=1, step=1)
+        if st.form_submit_button("추가", use_container_width=True, type="primary"):
+            if not name_in or not avg_p or not qty:
+                st.error("종목명, 평균가, 수량을 모두 입력해주세요.")
+            else:
+                results = search_stock_by_name(name_in.strip())
+                if not results:
+                    st.error(f"'{name_in}' 종목을 찾을 수 없습니다.")
+                else:
+                    sel_name, sel_code = results[0]
+                    ok, msg = add_holding(st.session_state.user_id, sel_code, sel_name, avg_p, int(qty))
+                    if ok: st.success(msg); st.rerun()
+                    else: st.error(msg)
+
+
+def _watchlist_add_ui(form_key: str, sq_key: str):
+    with st.form(form_key, clear_on_submit=True):
+        name_in = st.text_input("종목명", placeholder="레인보우로보틱스")
+        c1, c2 = st.columns(2)
+        with c1: target = st.number_input("목표가 (선택)", min_value=0, step=100)
+        with c2: stop = st.number_input("손절가 (선택)", min_value=0, step=100)
+        if st.form_submit_button("추가", use_container_width=True, type="primary"):
+            if not name_in:
+                st.error("종목명을 입력해주세요.")
+            else:
+                results = search_stock_by_name(name_in.strip())
+                if not results:
+                    st.error(f"'{name_in}' 종목을 찾을 수 없습니다.")
+                else:
+                    sel_name, sel_code = results[0]
+                    ok, msg = add_watchlist(st.session_state.user_id, sel_code, sel_name,
+                                            target or None, stop or None)
+                    if ok: st.success(msg); st.rerun()
+                    else: st.error(msg)
+
+
 # ─────────────────────────────────────────────────────────
 # 보유종목 탭
 # ─────────────────────────────────────────────────────────
@@ -1930,22 +1972,7 @@ def render_holdings():
     if not holdings:
         st.info("아직 보유종목이 없습니다. 아래에서 종목을 추가해보세요!")
         with st.expander("➕ 종목 추가"):
-            with st.form("ahf", clear_on_submit=True):
-                c1, c2 = st.columns(2)
-                with c1: code = st.text_input("종목코드", placeholder="005930")
-                with c2: name_in = st.text_input("종목명", placeholder="삼성전자")
-                c3, c4 = st.columns(2)
-                with c3: avg_p = st.number_input("평균 매수가", min_value=0, step=100)
-                with c4: qty = st.number_input("수량 (주)", min_value=0, step=1)
-                if st.form_submit_button("추가", use_container_width=True, type="primary"):
-                    if not code or not avg_p or not qty:
-                        st.error("종목코드, 평균가, 수량을 모두 입력해주세요.")
-                    else:
-                        code = code.strip().zfill(6)
-                        name = name_in.strip() or get_stock_name(code) or code
-                        ok, msg = add_holding(st.session_state.user_id, code, name, avg_p, int(qty))
-                        if ok: st.success(msg); st.rerun()
-                        else: st.error(msg)
+            _holding_add_ui("ahf_empty", "hq_empty")
         return
 
     # 전체 평가
@@ -2008,22 +2035,7 @@ def render_holdings():
     with tab_all:
         _render_sections([("수익 중인 종목", profit), ("손실 중인 종목", loss)], "a", show_empty_msg=False)
         with st.expander("➕ 종목 추가"):
-            with st.form("ahf", clear_on_submit=True):
-                c1, c2 = st.columns(2)
-                with c1: code = st.text_input("종목코드", placeholder="005930")
-                with c2: name_in = st.text_input("종목명", placeholder="삼성전자")
-                c3, c4 = st.columns(2)
-                with c3: avg_p = st.number_input("평균 매수가", min_value=0, step=100)
-                with c4: qty = st.number_input("수량 (주)", min_value=0, step=1)
-                if st.form_submit_button("추가", use_container_width=True, type="primary"):
-                    if not code or not avg_p or not qty:
-                        st.error("종목코드, 평균가, 수량을 모두 입력해주세요.")
-                    else:
-                        code = code.strip().zfill(6)
-                        name = name_in.strip() or get_stock_name(code) or code
-                        ok, msg = add_holding(st.session_state.user_id, code, name, avg_p, int(qty))
-                        if ok: st.success(msg); st.rerun()
-                        else: st.error(msg)
+            _holding_add_ui("ahf_main", "hq_main")
     with tab_profit:
         _render_sections([("수익 중인 종목", profit)], "p", show_empty_msg=True)
     with tab_loss:
@@ -2113,22 +2125,7 @@ def render_watchlist():
     if not watchlist:
         st.info("관심종목을 추가해보세요!")
         with st.expander("➕ 관심종목 추가"):
-            with st.form("awf", clear_on_submit=True):
-                c1, c2 = st.columns(2)
-                with c1: code = st.text_input("종목코드", placeholder="277810")
-                with c2: name_in = st.text_input("종목명", placeholder="레인보우로보틱스")
-                c3, c4 = st.columns(2)
-                with c3: target = st.number_input("목표가 (선택)", min_value=0, step=100)
-                with c4: stop = st.number_input("손절가 (선택)", min_value=0, step=100)
-                if st.form_submit_button("추가", use_container_width=True, type="primary"):
-                    if not code: st.error("종목코드를 입력해주세요.")
-                    else:
-                        code = code.strip().zfill(6)
-                        name = name_in.strip() or get_stock_name(code) or code
-                        ok, msg = add_watchlist(st.session_state.user_id, code, name,
-                                               target or None, stop or None)
-                        if ok: st.success(msg); st.rerun()
-                        else: st.error(msg)
+            _watchlist_add_ui("awf_empty", "wq_empty")
         return
 
     buy_ok = []; chase_no = []; watch_lst = []
@@ -2161,22 +2158,7 @@ def render_watchlist():
     with tab_all:
         _render_w_sections([("매수 검토 가능", buy_ok), ("추격매수 금지", chase_no), ("관망", watch_lst)], "wa")
         with st.expander("➕ 관심종목 추가"):
-            with st.form("awf", clear_on_submit=True):
-                c1, c2 = st.columns(2)
-                with c1: code = st.text_input("종목코드", placeholder="277810")
-                with c2: name_in = st.text_input("종목명", placeholder="레인보우로보틱스")
-                c3, c4 = st.columns(2)
-                with c3: target = st.number_input("목표가 (선택)", min_value=0, step=100)
-                with c4: stop = st.number_input("손절가 (선택)", min_value=0, step=100)
-                if st.form_submit_button("추가", use_container_width=True, type="primary"):
-                    if not code: st.error("종목코드를 입력해주세요.")
-                    else:
-                        code = code.strip().zfill(6)
-                        name = name_in.strip() or get_stock_name(code) or code
-                        ok, msg = add_watchlist(st.session_state.user_id, code, name,
-                                               target or None, stop or None)
-                        if ok: st.success(msg); st.rerun()
-                        else: st.error(msg)
+            _watchlist_add_ui("awf_main", "wq_main")
     with tab_buy:
         _render_w_sections([("매수 검토 가능", buy_ok)], "wb", show_empty=True)
     with tab_chase:
@@ -2671,23 +2653,6 @@ def render_holdings_detail():
       </div>
     </div>""", unsafe_allow_html=True)
 
-    # ── 종목 삭제 ──
-    if st.button("🗑️ 종목 삭제하기", use_container_width=True):
-        st.session_state["hd_confirm_del"] = True
-    if st.session_state.get("hd_confirm_del"):
-        st.warning(f"**'{name}'** 종목을 보유 목록에서 삭제하시겠습니까?")
-        cc1, cc2 = st.columns(2)
-        with cc1:
-            if st.button("확인", key="hd_del_ok", type="primary", use_container_width=True):
-                delete_holding(st.session_state.user_id, code)
-                st.session_state.pop("hd_confirm_del", None)
-                st.session_state.page = "main"
-                st.rerun()
-        with cc2:
-            if st.button("취소", key="hd_del_cancel", use_container_width=True):
-                st.session_state.pop("hd_confirm_del", None)
-                st.rerun()
-
     # 공시 섹션
     with st.spinner("공시 불러오는 중..."):
         disclosures = fetch_disclosures(code, name, days=30, max_items=4)
@@ -2742,6 +2707,24 @@ def render_holdings_detail():
             </div></div>""", unsafe_allow_html=True)
 
     st.caption("⚠️ 투자 결정은 본인 책임입니다. 이 앱의 정보는 참고용이며 투자 권유가 아닙니다.")
+
+    # ── 종목 삭제 ──
+    st.markdown('<div class="hd-del-anchor" style="height:8px;"></div>', unsafe_allow_html=True)
+    if st.button("🗑️ 종목 삭제하기", key="hd_del_btn", type="primary", use_container_width=True):
+        st.session_state["hd_confirm_del"] = True
+    if st.session_state.get("hd_confirm_del"):
+        st.warning(f"**'{name}'** 종목을 보유 목록에서 삭제하시겠습니까?")
+        cc1, cc2 = st.columns(2)
+        with cc1:
+            if st.button("확인", key="hd_del_ok", type="primary", use_container_width=True):
+                delete_holding(st.session_state.user_id, code)
+                st.session_state.pop("hd_confirm_del", None)
+                st.session_state.page = "main"
+                st.rerun()
+        with cc2:
+            if st.button("취소", key="hd_del_cancel", use_container_width=True):
+                st.session_state.pop("hd_confirm_del", None)
+                st.rerun()
 
 
 # ─────────────────────────────────────────────────────────
@@ -2846,28 +2829,30 @@ def render_watchlist_detail():
     bdg_cls, bdg_txt = bdg_map.get(t["status"], ("badge-neu", "분석 중"))
     timing_bdg = f'<span class="badge {bdg_cls}">{bdg_txt}</span>'
 
-    # ── 헤더 ──
-    st.markdown(f"""<div class="hdr">
-      <div style="display:flex;align-items:center;gap:12px;width:100%;">
-        <div style="flex:1;"><div class="hdr-title">{name}</div>
-          <div style="font-size:11px;color:#8E8E93;">{code}</div></div>
-        {timing_bdg}
-      </div>
-    </div>""", unsafe_allow_html=True)
-
-    # ── 현재가 ──
-    st.markdown(f"""<div class="price-section">
-      <div class="current-price">{_fp(cur)}</div>
-      <div style="display:flex;gap:8px;margin-top:4px;">
-        <span class="{chg_cls}" style="font-size:14px;font-weight:600;">{'▲' if chg_pct>=0 else '▼'} {abs(chg):,.0f}원</span>
-        <span class="{chg_cls}" style="font-size:14px;font-weight:600;">({abs(chg_pct):.2f}%)</span>
-      </div>
-      <div class="price-meta">
-        <div class="pm-item">고가 <span>{_fp(pd2.get('high'))}</span></div>
-        <div class="pm-item">저가 <span>{_fp(pd2.get('low'))}</span></div>
-        <div class="pm-item">거래량 <span>{pd2.get('volume',0):,}</span></div>
-      </div>
-    </div>""", unsafe_allow_html=True)
+    # ── 헤더 + 현재가 통합 카드 ──
+    chg_arrow = "▲" if chg_pct >= 0 else "▼"
+    st.markdown(
+        f'<div style="margin:0 0 12px; border:0.5px solid #E5E5EA; border-radius:16px; overflow:hidden; background:#fff;">'
+        f'  <div style="padding:16px 20px 14px; display:flex; align-items:center; gap:12px; border-bottom:0.5px solid #E5E5EA;">'
+        f'    <div style="flex:1;"><div class="hdr-title">{name}</div>'
+        f'      <div style="font-size:11px;color:#8E8E93;">{code}</div></div>'
+        f'    {timing_bdg}'
+        f'  </div>'
+        f'  <div style="padding:20px 20px 16px;">'
+        f'    <div class="current-price">{_fp(cur)}</div>'
+        f'    <div style="display:flex;gap:8px;margin-top:4px;">'
+        f'      <span class="{chg_cls}" style="font-size:14px;font-weight:600;">{chg_arrow} {abs(chg):,.0f}원</span>'
+        f'      <span class="{chg_cls}" style="font-size:14px;font-weight:600;">({abs(chg_pct):.2f}%)</span>'
+        f'    </div>'
+        f'    <div class="price-meta">'
+        f'      <div class="pm-item">고가 <span>{_fp(pd2.get("high"))}</span></div>'
+        f'      <div class="pm-item">저가 <span>{_fp(pd2.get("low"))}</span></div>'
+        f'      <div class="pm-item">거래량 <span>{pd2.get("volume", 0):,}</span></div>'
+        f'    </div>'
+        f'  </div>'
+        f'</div>',
+        unsafe_allow_html=True
+    )
 
     # ── 매수 타이밍 히어로 카드 ──
     rsi  = a.get("rsi", 50)

@@ -192,6 +192,17 @@ def get_all_tickers() -> dict:
     return {}
 
 
+def search_stock_by_name(query: str, max_results: int = 10) -> list:
+    """종목명 검색 → [(name, code), ...]. get_all_tickers() 기반 부분 일치."""
+    if not query:
+        return []
+    q = query.strip().lower()
+    tickers = get_all_tickers()
+    matches = [(name, code) for code, name in tickers.items() if q in name.lower()]
+    matches.sort(key=lambda x: (not x[0].lower().startswith(q), x[0]))
+    return matches[:max_results]
+
+
 # ─────────────────────────────────────────────────────────
 # 국내 지수 (KOSPI / KOSDAQ) — yfinance 기반
 # ─────────────────────────────────────────────────────────
