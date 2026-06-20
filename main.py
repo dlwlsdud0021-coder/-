@@ -135,11 +135,16 @@ def home_data():
             "nasdaq": nd.get("current", 0),
             "nasdaq_change_pct": nd.get("change_pct", 0),
         }
-        us = {"sp500_pct": sp.get("change_pct", 0), "nasdaq_pct": nd.get("change_pct", 0)}
-        kr = {"kospi": kp.get("current", 0), "kospi_pct": kp.get("change_pct", 0),
-              "kosdaq": kd.get("current", 0), "kosdaq_pct": kd.get("change_pct", 0)}
-        analysis = analyze_us_impact(us, kr, {})
-        forecast = generate_forecast(us, kr, {})
+        # 원래 형식 그대로 전달 (analyze_us_impact, generate_forecast가 기대하는 형식)
+        analysis_raw = analyze_us_impact(us_raw, idx, {})
+        # analysis_raw = [(dot_class, label, html_text), ...] 형식
+        analysis = []
+        for item in (analysis_raw or []):
+            if isinstance(item, (list, tuple)) and len(item) >= 3:
+                analysis.append({"dot": item[0], "label": item[1], "text": item[2]})
+            elif isinstance(item, dict):
+                analysis.append(item)
+        forecast = generate_forecast(us_raw, idx, {})
         return {
             "indices": indices,
             "analysis": analysis,
@@ -188,18 +193,19 @@ def stock_news(code: str):
 def get_holdings_list(user=Depends(get_current_user)):
     holdings = db.get_holdings(user["user_id"])
     if not holdings:
-        return {"holdings": [], "total_value": 0, "total_pnl": 0}
-    try:
-        indices = get_market_indices()
-    except Exception:
-        indices = {}
+        return {"holdings": [], "total_value": 0, "total_pnl": 0, "total_pnl_pct": 0}
     result = []
     total_value = 0
     total_cost = 0
     for h in holdings:
         code = h["code"]
-        price_key = f"price_{code}"
-        cur_price = indices.get(price_key, h["avg_price"])
+        try:
+            pd2 = get_current_price(code)
+            cur_price = pd2.get("current_price", h["avg_price"]) or h["avg_price"]
+            change_pct = pd2.get("change_pct", 0)
+        except Exception:
+            cur_price = h["avg_price"]
+            change_pct = 0
         value = cur_price * h["qty"]
         cost = h["avg_price"] * h["qty"]
         pnl = value - cost
@@ -209,6 +215,7 @@ def get_holdings_list(user=Depends(get_current_user)):
         result.append({
             **h,
             "cur_price": cur_price,
+            "change_pct": round(change_pct, 2),
             "value": value,
             "pnl": pnl,
             "pnl_pct": round(pnl_pct, 2),
