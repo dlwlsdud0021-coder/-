@@ -50,7 +50,7 @@ body { background: #F5F5F7; color: #1A1A2E; }
 .hdr-title { font-size:16px; font-weight:600; }
 .hdr-sub { font-size:11px; color:#8E8E93; margin-top:2px; }
 /* 히어로 카드 */
-.hero { margin:12px 16px; background:#5B5BD6; border-radius:20px; padding:18px 20px; color:#fff; }
+.hero { margin:0; background:#5B5BD6; border-radius:0; padding:18px 20px; color:#fff; }
 .hero-badge { display:inline-flex; align-items:center; gap:5px; background:rgba(255,255,255,0.18); border-radius:20px; padding:4px 10px; font-size:11px; margin-bottom:10px; }
 .hero-status { font-size:18px; font-weight:700; margin-bottom:6px; }
 .hero-desc { font-size:11px; color:rgba(255,255,255,0.8); line-height:1.5; }
@@ -790,9 +790,6 @@ def render_home():
                  use_container_width=True):
         st.session_state["show_market_detail"] = True
         st.rerun()
-    st.markdown(f"""<div class="section">
-      <div class="sec-title"><i class="ti ti-users" style="font-size:15px;color:#5B5BD6;"></i>외국인·기관 수급 흐름</div>
-    </div>""", unsafe_allow_html=True)
     if st.button("📊 외국인·기관 KOSPI 수급 상세 보기 ›",
                  key="btn_supply_detail", use_container_width=True):
         st.session_state["show_supply_detail"] = True
