@@ -3561,84 +3561,96 @@ elif _active_tab == "관심":
 elif _active_tab == "매집":
     render_scanner()
 
-# 실제 Streamlit 버튼 (탭 전환용) — JS가 하단 고정으로 이동시킴
-_cols = st.columns(5)
-for _name, _col in zip(_TAB_NAMES, _cols):
-    with _col:
+# 숨겨진 Streamlit 버튼 (JS가 클릭 트리거, CSS로 안 보이게)
+st.markdown("""
+<style>
+div[data-testid="stHorizontalBlock"]:has(button[data-testid="baseButton-secondary"][aria-label="navhidden"]),
+div[data-testid="stHorizontalBlock"]:has(button[data-testid="baseButton-primary"][aria-label="navhidden"]) {
+  position: absolute !important; opacity: 0 !important;
+  pointer-events: none !important; height: 0 !important; overflow: hidden !important;
+}
+</style>
+""", unsafe_allow_html=True)
+_hcols = st.columns(5)
+for _name, _hcol in zip(_TAB_NAMES, _hcols):
+    with _hcol:
         if st.button(_name, key=f"navbtn_{_name}", use_container_width=True,
-                     type="primary" if _name == _active_tab else "secondary"):
+                     type="primary" if _name == _active_tab else "secondary",
+                     help="navhidden"):
             st.session_state.active_tab = _name
             st.rerun()
 
-# JS: 버튼 행을 하단 고정 네비바로 변환
+# JS: body에 직접 네비 삽입 + 숨겨진 버튼 클릭 연결
 import streamlit.components.v1 as _cv1
-_icons_map = {"홈": "ea76", "뉴스": "f0e9", "보유": "ea3b", "관심": "ebeb", "매집": "ed12"}
-_active_color = "#5B5BD6"
-_inactive_color = "#C7C7CC"
+_nav_items_js = ", ".join([
+    f'{{"name":"{n}","icon":"{i}","active":{"true" if n==_active_tab else "false"}}}'
+    for n, i in zip(_TAB_NAMES, ["home","news","briefcase","star","chart-bar"])
+])
 _cv1.html(f"""
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <script>
-(function applyNav() {{
-  var NAV = {list(_TAB_NAMES)};
-  var ICONS = {_icons_map};
-  var ACTIVE = "{_active_tab}";
+(function() {{
+  var TABS = [{_nav_items_js}];
 
-  function setup() {{
+  function injectNav() {{
     var p = window.parent.document;
-    // 탭 이름 텍스트로 버튼 찾기
-    var allBtns = Array.from(p.querySelectorAll('button'));
-    var navBtns = allBtns.filter(function(b) {{
-      return NAV.includes(b.textContent.trim());
-    }});
-    if (navBtns.length < 5) {{ setTimeout(setup, 300); return; }}
+    if (p.getElementById('__custom_bottom_nav__')) return;
 
-    // 공통 부모(horizontal block) 찾기
-    var hBlock = navBtns[0].closest('[data-testid="stHorizontalBlock"]');
-    if (!hBlock) {{ setTimeout(setup, 300); return; }}
-
-    // hBlock의 부모 래퍼를 하단 고정
-    var wrapper = hBlock.parentElement;
-    while (wrapper && !wrapper.matches('[data-testid="stVerticalBlock"],[data-testid="stVerticalBlockBorderWrapper"],[data-testid="block-container"],.block-container')) {{
-      wrapper = wrapper.parentElement;
-    }}
-    var target = hBlock.parentElement;
-    target.style.cssText = [
-      'position:fixed', 'bottom:0', 'left:50%',
-      'transform:translateX(-50%)', 'width:380px', 'max-width:100vw',
-      'background:#fff', 'border-top:0.5px solid #E5E5EA',
-      'z-index:9999', 'box-shadow:0 -2px 8px rgba(0,0,0,0.04)',
-      'padding:10px 0 16px', 'display:flex'
-    ].join('!important;') + '!important';
-
-    // hBlock 자체도 flex
-    hBlock.style.cssText = 'display:flex!important;gap:0!important;padding:0!important;width:100%!important;';
-
-    // 각 버튼 스타일 + 아이콘
-    navBtns.forEach(function(btn) {{
-      var name = btn.textContent.trim();
-      var isActive = (name === ACTIVE);
-      var color = isActive ? "{_active_color}" : "{_inactive_color}";
-      btn.style.cssText = [
-        'background:transparent', 'border:none', 'box-shadow:none',
-        'color:' + color, 'font-size:10px', 'padding:4px 0',
-        'min-height:52px', 'width:100%', 'display:flex',
-        'flex-direction:column', 'align-items:center', 'gap:3px',
-        'cursor:pointer', 'font-family:-apple-system,sans-serif'
-      ].join('!important;') + '!important';
-
-      // 아이콘 추가 (없으면)
-      if (!btn.querySelector('.nav-icon')) {{
-        var icon = document.createElement('i');
-        icon.className = 'ti ti-' + (
-          name==='홈'?'home':name==='뉴스'?'news':
-          name==='보유'?'briefcase':name==='관심'?'star':'chart-bar'
-        ) + ' nav-icon';
-        icon.style.cssText = 'font-size:22px!important;line-height:1!important;display:block!important;color:' + color + '!important;';
-        btn.insertBefore(icon, btn.firstChild);
+    // CSS 삽입
+    var style = p.createElement('style');
+    style.textContent = `
+      #__custom_bottom_nav__ {{
+        position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+        width: 380px; max-width: 100vw; background: #fff;
+        border-top: 0.5px solid #E5E5EA; display: flex;
+        padding: 10px 0 16px; z-index: 99999;
+        box-shadow: 0 -2px 8px rgba(0,0,0,0.04);
       }}
+      #__custom_bottom_nav__ .ni {{
+        flex: 1; display: flex; flex-direction: column; align-items: center;
+        gap: 3px; color: #C7C7CC; font-size: 10px; cursor: pointer;
+        border: none; background: none; padding: 4px 0; font-family: -apple-system, sans-serif;
+      }}
+      #__custom_bottom_nav__ .ni.active {{ color: #5B5BD6; }}
+      #__custom_bottom_nav__ .ni i {{ font-size: 22px; line-height: 1; }}
+    `;
+    p.head.appendChild(style);
+
+    // 네비 div 삽입
+    var nav = p.createElement('div');
+    nav.id = '__custom_bottom_nav__';
+    TABS.forEach(function(t) {{
+      var btn = p.createElement('button');
+      btn.className = 'ni' + (t.active ? ' active' : '');
+      btn.innerHTML = '<i class="ti ti-' + t.icon + '"></i><span>' + t.name + '</span>';
+      btn.onclick = function() {{ clickTab(t.name); }};
+      nav.appendChild(btn);
     }});
+    p.body.appendChild(nav);
   }}
-  setTimeout(setup, 400);
+
+  function clickTab(name) {{
+    var p = window.parent.document;
+    var btns = Array.from(p.querySelectorAll('button'));
+    for (var b of btns) {{
+      if (b.textContent.trim() === name && b.title === 'navhidden') {{
+        b.dispatchEvent(new MouseEvent('click', {{bubbles: true}}));
+        return;
+      }}
+    }}
+    // title 없으면 텍스트로만 매칭
+    for (var b of btns) {{
+      if (b.textContent.trim() === name) {{
+        b.dispatchEvent(new MouseEvent('click', {{bubbles: true}}));
+        return;
+      }}
+    }}
+  }}
+
+  if (document.readyState === 'complete') {{ injectNav(); }}
+  else {{ window.addEventListener('load', injectNav); }}
+  // Streamlit 재렌더 후에도 재적용
+  setTimeout(injectNav, 600);
 }})();
 </script>
 """, height=0, scrolling=False)
