@@ -1912,31 +1912,32 @@ def _render_news_cards(news_list: list):
 # 보유종목 탭
 # ─────────────────────────────────────────────────────────
 def render_holdings():
+    holdings = get_holdings(st.session_state.user_id)
+
+    # ── 헤더 ──
     st.markdown(f"""<div class="hdr">
       <div><div class="hdr-title">보유종목 관리</div><div class="hdr-sub">{_today()} 기준</div></div>
     </div>""", unsafe_allow_html=True)
 
-    with st.expander("➕ 종목 추가"):
-        with st.form("ahf", clear_on_submit=True):
-            c1, c2 = st.columns(2)
-            with c1: code = st.text_input("종목코드", placeholder="005930")
-            with c2: name_in = st.text_input("종목명", placeholder="삼성전자")
-            c3, c4 = st.columns(2)
-            with c3: avg_p = st.number_input("평균 매수가", min_value=0, step=100)
-            with c4: qty = st.number_input("수량 (주)", min_value=0, step=1)
-            if st.form_submit_button("추가", use_container_width=True, type="primary"):
-                if not code or not avg_p or not qty:
-                    st.error("종목코드, 평균가, 수량을 모두 입력해주세요.")
-                else:
-                    code = code.strip().zfill(6)
-                    name = name_in.strip() or get_stock_name(code) or code
-                    ok, msg = add_holding(st.session_state.user_id, code, name, avg_p, int(qty))
-                    if ok: st.success(msg); st.rerun()
-                    else: st.error(msg)
-
-    holdings = get_holdings(st.session_state.user_id)
     if not holdings:
-        st.info("아직 보유종목이 없습니다. 위에서 종목을 추가해보세요!")
+        st.info("아직 보유종목이 없습니다. 아래에서 종목을 추가해보세요!")
+        with st.expander("➕ 종목 추가"):
+            with st.form("ahf", clear_on_submit=True):
+                c1, c2 = st.columns(2)
+                with c1: code = st.text_input("종목코드", placeholder="005930")
+                with c2: name_in = st.text_input("종목명", placeholder="삼성전자")
+                c3, c4 = st.columns(2)
+                with c3: avg_p = st.number_input("평균 매수가", min_value=0, step=100)
+                with c4: qty = st.number_input("수량 (주)", min_value=0, step=1)
+                if st.form_submit_button("추가", use_container_width=True, type="primary"):
+                    if not code or not avg_p or not qty:
+                        st.error("종목코드, 평균가, 수량을 모두 입력해주세요.")
+                    else:
+                        code = code.strip().zfill(6)
+                        name = name_in.strip() or get_stock_name(code) or code
+                        ok, msg = add_holding(st.session_state.user_id, code, name, avg_p, int(qty))
+                        if ok: st.success(msg); st.rerun()
+                        else: st.error(msg)
         return
 
     # 전체 평가
@@ -1956,47 +1957,72 @@ def render_holdings():
 
     total_pnl = total_eval - total_cost
     total_pnl_pct = total_pnl / total_cost * 100 if total_cost > 0 else 0
-    pnl_cls = "up" if total_pnl >= 0 else "down"
     pnl_sign = "+" if total_pnl >= 0 else ""
-    st.markdown(f"""<div class="total-strip">
-      <div><div class="total-lbl">총 평가금액</div><div class="total-amt">{total_eval:,.0f}원</div></div>
-      <div><div class="total-pnl-lbl">총 평가손익</div>
-        <div class="total-pnl {pnl_cls}">{pnl_sign}{total_pnl:,.0f}원 ({pnl_sign}{total_pnl_pct:.1f}%)</div></div>
-    </div>""", unsafe_allow_html=True)
+    pnl_clr = "#E24B4A" if total_pnl >= 0 else "#185FA5"
 
-    profit       = [e for e in enriched if (e["analysis"].get("pnl_pct") or 0) >= 0]
-    loss         = [e for e in enriched if (e["analysis"].get("pnl_pct") or 0) <  0]
-    sell_signal  = [e for e in enriched if any(b.get("type") in ("sell","warn") for b in e["analysis"].get("badges",[]))]
+    # ── 총 평가 (헤더 바로 아래 이어지는 스타일) ──
+    st.markdown(
+        '<div style="padding:14px 20px 16px;background:#fff;border-bottom:0.5px solid #E5E5EA;">'
+        '<div style="display:flex;justify-content:space-between;align-items:flex-end;">'
+        '<div>'
+        '<div style="font-size:11px;color:#8E8E93;margin-bottom:4px;">총 평가금액</div>'
+        '<div style="font-size:22px;font-weight:700;color:#1A1A2E;">' + f'{total_eval:,.0f}원' + '</div>'
+        '</div>'
+        '<div style="text-align:right;">'
+        '<div style="font-size:11px;color:#8E8E93;margin-bottom:4px;">총 평가손익</div>'
+        '<div style="font-size:15px;font-weight:700;color:' + pnl_clr + ';">'
+        + f'{pnl_sign}{total_pnl:,.0f}원 ({pnl_sign}{total_pnl_pct:.1f}%)' +
+        '</div>'
+        '</div>'
+        '</div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
 
-    # 필터 탭
-    filt = st.session_state.holdings_filter
-    filter_labels = [("all","전체"), ("profit","수익"), ("loss","손실"), ("sell","매도신호")]
-    cols = st.columns(len(filter_labels))
-    for i, (key, label) in enumerate(filter_labels):
-        with cols[i]:
-            is_active = filt == key
-            btn_style = "primary" if is_active else "secondary"
-            if st.button(label, key=f"hflt_{key}", use_container_width=True, type=btn_style):
-                st.session_state.holdings_filter = key
-                st.rerun()
+    profit      = [e for e in enriched if (e["analysis"].get("pnl_pct") or 0) >= 0]
+    loss        = [e for e in enriched if (e["analysis"].get("pnl_pct") or 0) <  0]
+    sell_signal = [e for e in enriched if any(b.get("type") in ("sell","warn") for b in e["analysis"].get("badges",[]))]
 
-    filt = st.session_state.holdings_filter
-    if filt == "profit":
-        sections = [("수익 중인 종목", profit)]
-    elif filt == "loss":
-        sections = [("손실 중인 종목", loss)]
-    elif filt == "sell":
-        sections = [("매도신호 종목", sell_signal)]
-    else:
-        sections = [("수익 중인 종목", profit), ("손실 중인 종목", loss)]
+    # ── 필터 탭 (st.tabs 스타일) ──
+    tab_all, tab_profit, tab_loss, tab_sell = st.tabs(["전체", "수익", "손실", "매도신호"])
 
-    for lbl, items in sections:
-        if not items:
-            st.info("해당하는 종목이 없습니다.")
-            continue
-        st.markdown(f'<div class="section"><div class="sec-lbl">{lbl}</div></div>', unsafe_allow_html=True)
-        for e in items:
-            _holding_card(e)
+    def _add_form(form_key):
+        with st.expander("➕ 종목 추가"):
+            with st.form(form_key, clear_on_submit=True):
+                c1, c2 = st.columns(2)
+                with c1: code = st.text_input("종목코드", placeholder="005930")
+                with c2: name_in = st.text_input("종목명", placeholder="삼성전자")
+                c3, c4 = st.columns(2)
+                with c3: avg_p = st.number_input("평균 매수가", min_value=0, step=100)
+                with c4: qty = st.number_input("수량 (주)", min_value=0, step=1)
+                if st.form_submit_button("추가", use_container_width=True, type="primary"):
+                    if not code or not avg_p or not qty:
+                        st.error("종목코드, 평균가, 수량을 모두 입력해주세요.")
+                    else:
+                        code = code.strip().zfill(6)
+                        name = name_in.strip() or get_stock_name(code) or code
+                        ok, msg = add_holding(st.session_state.user_id, code, name, avg_p, int(qty))
+                        if ok: st.success(msg); st.rerun()
+                        else: st.error(msg)
+
+    def _render_sections(sections, form_key):
+        for lbl, items in sections:
+            if not items:
+                st.info("해당하는 종목이 없습니다.")
+                continue
+            st.markdown(f'<div class="section"><div class="sec-lbl">{lbl}</div></div>', unsafe_allow_html=True)
+            for e in items:
+                _holding_card(e)
+        _add_form(form_key)
+
+    with tab_all:
+        _render_sections([("수익 중인 종목", profit), ("손실 중인 종목", loss)], "ahf_all")
+    with tab_profit:
+        _render_sections([("수익 중인 종목", profit)], "ahf_profit")
+    with tab_loss:
+        _render_sections([("손실 중인 종목", loss)], "ahf_loss")
+    with tab_sell:
+        _render_sections([("매도신호 종목", sell_signal)], "ahf_sell")
 
 
 def _holding_card(e):
