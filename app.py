@@ -2147,7 +2147,7 @@ def render_watchlist():
     # st.tabs 필터
     tab_all, tab_buy, tab_chase, tab_watch = st.tabs(["전체", "매수검토", "추격금지", "관망"])
 
-    def _render_w_sections(sections, show_empty=False):
+    def _render_w_sections(sections, pfx, show_empty=False):
         has_any = any(items for _, items in sections)
         for lbl, items in sections:
             if not items:
@@ -2156,10 +2156,10 @@ def render_watchlist():
                 continue
             st.markdown(f'<div class="section"><div class="sec-lbl">{lbl}</div></div>', unsafe_allow_html=True)
             for item in items:
-                _watchlist_card(item)
+                _watchlist_card(item, pfx)
 
     with tab_all:
-        _render_w_sections([("매수 검토 가능", buy_ok), ("추격매수 금지", chase_no), ("관망", watch_lst)])
+        _render_w_sections([("매수 검토 가능", buy_ok), ("추격매수 금지", chase_no), ("관망", watch_lst)], "wa")
         with st.expander("➕ 관심종목 추가"):
             with st.form("awf", clear_on_submit=True):
                 c1, c2 = st.columns(2)
@@ -2178,14 +2178,14 @@ def render_watchlist():
                         if ok: st.success(msg); st.rerun()
                         else: st.error(msg)
     with tab_buy:
-        _render_w_sections([("매수 검토 가능", buy_ok)], show_empty=True)
+        _render_w_sections([("매수 검토 가능", buy_ok)], "wb", show_empty=True)
     with tab_chase:
-        _render_w_sections([("추격매수 금지", chase_no)], show_empty=True)
+        _render_w_sections([("추격매수 금지", chase_no)], "wc", show_empty=True)
     with tab_watch:
-        _render_w_sections([("관망", watch_lst)], show_empty=True)
+        _render_w_sections([("관망", watch_lst)], "ww", show_empty=True)
 
 
-def _watchlist_card(item):
+def _watchlist_card(item, pfx="wa"):
     w, a, t = item, item["analysis"], item["timing"]
     rsi = a.get("rsi", 50)
     ico = _ico_cls(item["idx"]); lbl = _ico_lbl(w["name"])
@@ -2229,7 +2229,7 @@ def _watchlist_card(item):
       </div>
     </div>""", unsafe_allow_html=True)
 
-    if st.button("상세분석 보기  ›", key=f"w_{w['code']}", use_container_width=True):
+    if st.button("상세분석 보기  ›", key=f"w_{pfx}_{w['code']}", use_container_width=True):
         st.session_state.page = "watchlist_detail"
         st.session_state.detail_code = w["code"]
         st.session_state.detail_name = w["name"]
