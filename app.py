@@ -3561,94 +3561,87 @@ elif _active_tab == "관심":
 elif _active_tab == "매집":
     render_scanner()
 
-# 바텀 네비 — st.container(key) + CSS fixed 포지션
-st.markdown("""
-<style>
-/* 바텀 네비 컨테이너 */
-[data-st-key="bottom_nav_container"] {
-  position: fixed !important;
-  bottom: 0 !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
-  width: 380px !important;
-  max-width: 100vw !important;
-  background: #fff !important;
-  border-top: 0.5px solid #E5E5EA !important;
-  z-index: 9999 !important;
-  box-shadow: 0 -2px 8px rgba(0,0,0,0.04) !important;
-  padding: 10px 0 16px !important;
-}
-/* 컨테이너 내부 horizontal block */
-[data-st-key="bottom_nav_container"] [data-testid="stHorizontalBlock"] {
-  gap: 0 !important;
-  padding: 0 !important;
-}
-/* 각 버튼 (비활성) */
-[data-st-key="bottom_nav_container"] button[kind="secondary"] {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  color: #C7C7CC !important;
-  font-size: 10px !important;
-  padding: 4px 0 !important;
-  min-height: 52px !important;
-  width: 100% !important;
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  gap: 3px !important;
-  line-height: 1.2 !important;
-}
-/* 활성 버튼 */
-[data-st-key="bottom_nav_container"] button[kind="primary"] {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  color: #5B5BD6 !important;
-  font-size: 10px !important;
-  padding: 4px 0 !important;
-  min-height: 52px !important;
-  width: 100% !important;
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  gap: 3px !important;
-  line-height: 1.2 !important;
-}
-[data-st-key="bottom_nav_container"] button:hover {
-  background: transparent !important;
-  border: none !important;
-  opacity: 0.8 !important;
-}
-/* 아이콘 (::before 가상요소) */
-[data-st-key="bottom_nav_container"] button p::before {
-  display: block !important;
-  font-family: 'tabler-icons' !important;
-  font-size: 22px !important;
-  line-height: 1 !important;
-  margin-bottom: 3px !important;
-}
-[data-st-key="bottom_nav_container"] [data-testid="stHorizontalBlock"] > div:nth-child(1) button p::before { content: '\ea76'; } /* home */
-[data-st-key="bottom_nav_container"] [data-testid="stHorizontalBlock"] > div:nth-child(2) button p::before { content: '\f0e9'; } /* news */
-[data-st-key="bottom_nav_container"] [data-testid="stHorizontalBlock"] > div:nth-child(3) button p::before { content: '\ea3b'; } /* briefcase */
-[data-st-key="bottom_nav_container"] [data-testid="stHorizontalBlock"] > div:nth-child(4) button p::before { content: '\ebeb'; } /* star */
-[data-st-key="bottom_nav_container"] [data-testid="stHorizontalBlock"] > div:nth-child(5) button p::before { content: '\ed12'; } /* chart-bar */
-</style>
-""", unsafe_allow_html=True)
+# 실제 Streamlit 버튼 (탭 전환용) — JS가 하단 고정으로 이동시킴
+_cols = st.columns(5)
+for _name, _col in zip(_TAB_NAMES, _cols):
+    with _col:
+        if st.button(_name, key=f"navbtn_{_name}", use_container_width=True,
+                     type="primary" if _name == _active_tab else "secondary"):
+            st.session_state.active_tab = _name
+            st.rerun()
 
-with st.container(key="bottom_nav_container"):
-    _cols = st.columns(5)
-    for _name, _icon, _col in zip(_TAB_NAMES, _TAB_ICONS, _cols):
-        with _col:
-            _is_active = (_name == _active_tab)
-            if st.button(
-                _name,
-                key=f"navbtn_{_name}",
-                use_container_width=True,
-                type="primary" if _is_active else "secondary",
-            ):
-                st.session_state.active_tab = _name
-                st.rerun()
+# JS: 버튼 행을 하단 고정 네비바로 변환
+import streamlit.components.v1 as _cv1
+_icons_map = {"홈": "ea76", "뉴스": "f0e9", "보유": "ea3b", "관심": "ebeb", "매집": "ed12"}
+_active_color = "#5B5BD6"
+_inactive_color = "#C7C7CC"
+_cv1.html(f"""
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script>
+(function applyNav() {{
+  var NAV = {list(_TAB_NAMES)};
+  var ICONS = {_icons_map};
+  var ACTIVE = "{_active_tab}";
+
+  function setup() {{
+    var p = window.parent.document;
+    // 탭 이름 텍스트로 버튼 찾기
+    var allBtns = Array.from(p.querySelectorAll('button'));
+    var navBtns = allBtns.filter(function(b) {{
+      return NAV.includes(b.textContent.trim());
+    }});
+    if (navBtns.length < 5) {{ setTimeout(setup, 300); return; }}
+
+    // 공통 부모(horizontal block) 찾기
+    var hBlock = navBtns[0].closest('[data-testid="stHorizontalBlock"]');
+    if (!hBlock) {{ setTimeout(setup, 300); return; }}
+
+    // hBlock의 부모 래퍼를 하단 고정
+    var wrapper = hBlock.parentElement;
+    while (wrapper && !wrapper.matches('[data-testid="stVerticalBlock"],[data-testid="stVerticalBlockBorderWrapper"],[data-testid="block-container"],.block-container')) {{
+      wrapper = wrapper.parentElement;
+    }}
+    var target = hBlock.parentElement;
+    target.style.cssText = [
+      'position:fixed', 'bottom:0', 'left:50%',
+      'transform:translateX(-50%)', 'width:380px', 'max-width:100vw',
+      'background:#fff', 'border-top:0.5px solid #E5E5EA',
+      'z-index:9999', 'box-shadow:0 -2px 8px rgba(0,0,0,0.04)',
+      'padding:10px 0 16px', 'display:flex'
+    ].join('!important;') + '!important';
+
+    // hBlock 자체도 flex
+    hBlock.style.cssText = 'display:flex!important;gap:0!important;padding:0!important;width:100%!important;';
+
+    // 각 버튼 스타일 + 아이콘
+    navBtns.forEach(function(btn) {{
+      var name = btn.textContent.trim();
+      var isActive = (name === ACTIVE);
+      var color = isActive ? "{_active_color}" : "{_inactive_color}";
+      btn.style.cssText = [
+        'background:transparent', 'border:none', 'box-shadow:none',
+        'color:' + color, 'font-size:10px', 'padding:4px 0',
+        'min-height:52px', 'width:100%', 'display:flex',
+        'flex-direction:column', 'align-items:center', 'gap:3px',
+        'cursor:pointer', 'font-family:-apple-system,sans-serif'
+      ].join('!important;') + '!important';
+
+      // 아이콘 추가 (없으면)
+      if (!btn.querySelector('.nav-icon')) {{
+        var icon = document.createElement('i');
+        icon.className = 'ti ti-' + (
+          name==='홈'?'home':name==='뉴스'?'news':
+          name==='보유'?'briefcase':name==='관심'?'star':'chart-bar'
+        ) + ' nav-icon';
+        icon.style.cssText = 'font-size:22px!important;line-height:1!important;display:block!important;color:' + color + '!important;';
+        btn.insertBefore(icon, btn.firstChild);
+      }}
+    }});
+  }}
+  setTimeout(setup, 400);
+}})();
+</script>
+""", height=0, scrolling=False)
 
 with st.sidebar:
     st.markdown(f"**{st.session_state.username}** 님")
