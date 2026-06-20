@@ -372,20 +372,9 @@ def get_ohlcv(code: str, days: int = 120) -> pd.DataFrame:
     """
     Returns DataFrame with columns: open, high, low, close, volume
     최신 날짜가 마지막 행
+    KIS VTS는 OHLCV 미지원 → pykrx/FDR 우선
     """
-    # 1순위: KIS API
-    try:
-        from kis_api import get_ohlcv as kis_ohlcv
-        rows = kis_ohlcv(code, "D", days)
-        if rows:
-            df = pd.DataFrame(rows)
-            df["date"] = pd.to_datetime(df["date"])
-            df = df.set_index("date").sort_index()
-            return df[["open", "high", "low", "close", "volume"]].tail(days)
-    except Exception as e:
-        _logger.warning(f"[OHLCV] KIS API 실패({code}): {e}")
-
-    # 2순위: pykrx
+    # 1순위: pykrx (KIS VTS가 OHLCV 미지원이므로 pykrx 우선)
     if PYKRX_OK:
         try:
             end = _today()
@@ -395,10 +384,12 @@ def get_ohlcv(code: str, days: int = 120) -> pd.DataFrame:
                 df = df.rename(columns={"시가": "open", "고가": "high", "저가": "low",
                                         "종가": "close", "거래량": "volume"})
                 df.index = pd.to_datetime(df.index)
-                return df.tail(days)
-        except:
-            pass
-    # 3순위: FinanceDataReader
+                _logger.info(f"[OHLCV] pykrx 성공({code}): {len(df)}행")
+                return df[["open", "high", "low", "close", "volume"]].tail(days)
+        except Exception as e:
+            _logger.warning(f"[OHLCV] pykrx 실패({code}): {e}")
+
+    # 2순위: FinanceDataReader
     if FDR_OK:
         try:
             start = (datetime.today() - timedelta(days=days + 30)).strftime("%Y-%m-%d")
@@ -407,9 +398,23 @@ def get_ohlcv(code: str, days: int = 120) -> pd.DataFrame:
                 df = df.rename(columns={"Open": "open", "High": "high", "Low": "low",
                                         "Close": "close", "Volume": "volume"})
                 df.index = pd.to_datetime(df.index)
+                _logger.info(f"[OHLCV] FDR 성공({code}): {len(df)}행")
                 return df[["open", "high", "low", "close", "volume"]].tail(days)
-        except:
-            pass
+        except Exception as e:
+            _logger.warning(f"[OHLCV] FDR 실패({code}): {e}")
+
+    # 3순위: KIS API (실전 계정에서만 동작)
+    try:
+        from kis_api import get_ohlcv as kis_ohlcv
+        rows = kis_ohlcv(code, "D", days)
+        if rows:
+            df = pd.DataFrame(rows)
+            df["date"] = pd.to_datetime(df["date"])
+            df = df.set_index("date").sort_index()
+            return df[["open", "high", "low", "close", "volume"]].tail(days)
+    except Exception as e:
+        _logger.warning(f"[OHLCV] KIS 실패({code}): {e}")
+
     return pd.DataFrame()
 
 
