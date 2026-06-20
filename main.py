@@ -147,24 +147,35 @@ def home_data():
             kp_hist = None
             ma = {}
 
-        # 외국인/기관 수급 최근 5일 (억원 단위로 정규화)
+        # 외국인/기관 수급 최근 5일
         investor = []
         try:
             inv_df = get_kospi_investor(days=30)
             if inv_df is not None and not inv_df.empty:
+                unit = inv_df["_unit"].iloc[0] if "_unit" in inv_df.columns else "qty"
                 for dt, row in inv_df.tail(5).iterrows():
-                    f_raw = int(row.get("외국인", 0))
-                    i_raw = int(row.get("기관", 0))
-                    # 단위 감지: 절댓값이 1e6 이상이면 원(원화) 단위, 1e4 이상이면 백만원
-                    # KIS는 백만원, pykrx는 원 단위 가능성 모두 처리
-                    scale = 1e8  # 원 → 억
-                    if abs(f_raw) < 1e6:  # 백만원 단위로 판단
-                        scale = 100  # 백만원 → 억 (÷100)
+                    f_raw = float(row.get("외국인", 0))
+                    i_raw = float(row.get("기관", 0))
+                    if unit == "won":
+                        # 원 단위 → 억원
+                        f_val = round(f_raw / 1e8, 0)
+                        i_val = round(i_raw / 1e8, 0)
+                        disp_unit = "억"
+                    elif unit == "百만" or (abs(f_raw) > 0 and abs(f_raw) < 1e6):
+                        # 백만원 → 억원
+                        f_val = round(f_raw / 100, 0)
+                        i_val = round(i_raw / 100, 0)
+                        disp_unit = "억"
+                    else:
+                        # 주(qty) → 만주
+                        f_val = round(f_raw / 10000, 1)
+                        i_val = round(i_raw / 10000, 1)
+                        disp_unit = "만주"
                     investor.append({
                         "date": str(dt)[:10],
-                        "foreign": round(f_raw / scale, 1),   # 억원
-                        "inst":    round(i_raw / scale, 1),
-                        "individual": round(int(row.get("개인", 0)) / scale, 1) if "개인" in row else 0,
+                        "foreign": f_val,
+                        "inst":    i_val,
+                        "unit":    disp_unit,
                     })
         except Exception:
             pass
@@ -233,21 +244,23 @@ def index_detail(name: str):
         # extra_metrics (RSI, 이격도, 5일 수익률, 거래량비)
         ex = _extra_metrics(hist_df, ma)
 
-        # 외국인/기관 수급 (KOSPI만, 억원 단위 정규화)
+        # 외국인/기관 수급 (KOSPI만)
         investor_data = []
         if name.upper() == "KOSPI":
             try:
                 inv_df = get_kospi_investor(days=10)
                 if inv_df is not None and not inv_df.empty:
+                    unit = inv_df["_unit"].iloc[0] if "_unit" in inv_df.columns else "qty"
                     for dt, row in inv_df.tail(5).iterrows():
-                        f_raw = int(row.get("외국인", 0))
-                        i_raw = int(row.get("기관", 0))
-                        scale = 1e8 if abs(f_raw) >= 1e6 else 100
-                        investor_data.append({
-                            "date": str(dt)[:10],
-                            "foreign": round(f_raw / scale, 1),
-                            "inst":    round(i_raw / scale, 1),
-                        })
+                        f_raw = float(row.get("외국인", 0))
+                        i_raw = float(row.get("기관", 0))
+                        if unit == "won":
+                            f_val, i_val, disp_unit = round(f_raw/1e8,0), round(i_raw/1e8,0), "억"
+                        elif abs(f_raw) > 0 and abs(f_raw) < 1e6:
+                            f_val, i_val, disp_unit = round(f_raw/100,0), round(i_raw/100,0), "억"
+                        else:
+                            f_val, i_val, disp_unit = round(f_raw/10000,1), round(i_raw/10000,1), "만주"
+                        investor_data.append({"date": str(dt)[:10], "foreign": f_val, "inst": i_val, "unit": disp_unit})
             except Exception:
                 pass
 

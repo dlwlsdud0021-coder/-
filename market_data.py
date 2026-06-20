@@ -589,7 +589,8 @@ def get_kospi_investor(days: int = 25) -> pd.DataFrame:
     try:
         from kis_api import get_investor_trading_value as kis_inv_val
         rows = kis_inv_val("005930", days)  # 삼성전자 거래대금 기준
-        if rows:
+        # 값이 모두 0이면 필드 미지원 → pykrx로 폴백
+        if rows and any(abs(r.get("foreign_net", 0)) > 0 for r in rows):
             records = [{"날짜": pd.to_datetime(r["date"]),
                         "외국인": r.get("foreign_net", 0),   # 백만원 단위
                         "기관":   r.get("institution_net", 0)} for r in rows]
@@ -597,8 +598,27 @@ def get_kospi_investor(days: int = 25) -> pd.DataFrame:
             df.index = pd.to_datetime(df.index)
             _logger.info(f"[수급-KOSPI] KIS 금액 성공: {len(df)}행")
             return df.tail(days)
+        else:
+            raise ValueError("KIS 수급 금액 필드 0 또는 미지원 → pykrx 폴백")
     except Exception as e:
         _logger.warning(f"[수급-KOSPI] KIS API 실패: {e}")
+
+    # 2순위: KIS 수량(주) 기반 — 거래대금 필드 미지원 시 수량으로 폴백
+    try:
+        from kis_api import get_investor_trading as kis_inv_qty
+        rows = kis_inv_qty("005930", days)
+        if rows and any(abs(r.get("foreign_net", 0)) > 0 for r in rows):
+            # 수량(주) 단위 그대로 저장 — 프론트에서 만주 단위로 표시
+            records = [{"날짜": pd.to_datetime(r["date"]),
+                        "외국인": r.get("foreign_net", 0),
+                        "기관":   r.get("institution_net", 0),
+                        "_unit": "qty"} for r in rows]
+            df = pd.DataFrame(records).set_index("날짜")
+            df.index = pd.to_datetime(df.index)
+            _logger.info(f"[수급-KOSPI] KIS 수량 폴백 성공: {len(df)}행")
+            return df.tail(days)
+    except Exception as e:
+        _logger.warning(f"[수급-KOSPI] KIS 수량 폴백 실패: {e}")
 
     if not PYKRX_OK:
         _logger.error("[수급-KOSPI] pykrx 미설치")
@@ -607,6 +627,25 @@ def get_kospi_investor(days: int = 25) -> pd.DataFrame:
     end   = _today()
     start = _ndays_ago(days + 15)
 
+    # pykrx 거래대금(원) 버전 우선
+    try:
+        df = krx.get_market_trading_value_by_date(start, end, "KOSPI")
+        if df is not None and not df.empty:
+            col_map = {}
+            for c in df.columns:
+                if "외국인" in c: col_map["외국인"] = c
+                elif "기관" in c: col_map["기관"] = c
+            if len(col_map) >= 2:
+                result = df[[col_map["외국인"], col_map["기관"]]].copy()
+                result.columns = ["외국인", "기관"]
+                result.index = pd.to_datetime(result.index)
+                result["_unit"] = "won"
+                _logger.info("[수급-KOSPI] pykrx 거래대금 성공")
+                return result.tail(days)
+    except Exception as exc:
+        _logger.warning("[수급-KOSPI] pykrx 거래대금 실패 | %s", exc)
+
+    # pykrx 거래량(주) 버전 폴백
     try:
         df = krx.get_market_trading_volume_by_date(
             start, end, "KOSPI", on="순매수"
@@ -627,6 +666,7 @@ def get_kospi_investor(days: int = 25) -> pd.DataFrame:
 
     result = df[available].rename(columns=_INVESTOR_COL_MAP)
     result.index = pd.to_datetime(result.index)
+    result["_unit"] = "qty"
     _logger.info("[수급-KOSPI] 성공 | rows=%d", len(result))
     return result.tail(days)
 

@@ -281,13 +281,20 @@ function renderHome(d, el) {
     ${investorHtml}`;
 }
 
-function fmtEok(v) {
-  // 이미 억원 단위로 정규화된 값 표시
-  const abs = Math.abs(v);
-  if (abs >= 10000) return (v/10000).toFixed(1) + '조';
-  if (abs >= 1)     return v.toFixed(0) + '억';
-  return (v * 100).toFixed(0) + '백만';
+function fmtInv(v, unit) {
+  // unit: "억" | "만주" — 백엔드가 이미 해당 단위로 정규화해서 줌
+  if (v === null || v === undefined || (Math.abs(v) < 0.01 && v !== 0)) return '—';
+  const u = unit || '억';
+  if (u === '억') {
+    const abs = Math.abs(v);
+    if (abs >= 10000) return (v/10000).toFixed(1) + '조';
+    return v.toFixed(0) + '억';
+  }
+  // 만주
+  return (v >= 0 ? '+' : '') + v.toFixed(1) + '만주';
 }
+// 하위호환
+function fmtEok(v) { return fmtInv(v, '억'); }
 
 function buildInvestorSection(investor) {
   if (!investor || !investor.length) return '';
@@ -300,16 +307,19 @@ function buildInvestorSection(investor) {
   const fCls = total5.foreign > 0 ? 'up' : 'down';
   const iCls = total5.inst > 0 ? 'up' : 'down';
 
+  const unit = investor[0]?.unit || '억';
   const rows = [...investor].reverse().map(r => {
     const fc = r.foreign > 0 ? 'up' : 'down';
     const ic = r.inst > 0 ? 'up' : 'down';
+    const maxAbs = Math.max(...investor.map(x => Math.max(Math.abs(x.foreign||0), Math.abs(x.inst||0))), 1);
+    const bw = Math.min(Math.abs(r.foreign||0)/maxAbs*70+5, 80);
     return `<div style="display:grid;grid-template-columns:44px 1fr 80px 80px;gap:4px;align-items:center;padding:8px 0;border-bottom:0.5px solid #F0F0F5;font-size:12px;">
       <span style="color:#8E8E9A;">${r.date.slice(5)}</span>
       <div style="height:5px;background:#F0F0F5;border-radius:3px;overflow:hidden;">
-        <div style="height:5px;border-radius:3px;width:${Math.min(Math.abs(r.foreign)/Math.max(Math.abs(total5.foreign/5),1)*60+20,90)}%;background:${r.foreign>=0?'rgba(226,75,74,0.4)':'rgba(24,95,165,0.3)'};"></div>
+        <div style="height:5px;border-radius:3px;width:${bw}%;background:${(r.foreign||0)>=0?'rgba(226,75,74,0.4)':'rgba(24,95,165,0.3)'};"></div>
       </div>
-      <span class="${fc}" style="text-align:right;font-weight:600;">${r.foreign>=0?'+':''}${fmtEok(r.foreign)}</span>
-      <span class="${ic}" style="text-align:right;font-weight:600;">${r.inst>=0?'+':''}${fmtEok(r.inst)}</span>
+      <span class="${fc}" style="text-align:right;font-weight:600;">${(r.foreign||0)>=0?'+':''}${fmtInv(r.foreign, unit)}</span>
+      <span class="${ic}" style="text-align:right;font-weight:600;">${(r.inst||0)>=0?'+':''}${fmtInv(r.inst, unit)}</span>
     </div>`;
   }).join('');
 
@@ -323,17 +333,17 @@ function buildInvestorSection(investor) {
         <div style="display:flex;gap:10px;margin-bottom:12px;">
           <div style="flex:1;text-align:center;padding:10px 6px;background:#F8F8FA;border-radius:10px;">
             <div style="font-size:10px;color:#8E8E9A;margin-bottom:4px;">외국인 5일 합계</div>
-            <div class="${fCls}" style="font-size:17px;font-weight:700;">${total5.foreign>=0?'+':''}${fmtEok(total5.foreign)}</div>
+            <div class="${fCls}" style="font-size:17px;font-weight:700;">${total5.foreign>=0?'+':''}${fmtInv(total5.foreign, unit)}</div>
             <div class="${fCls}" style="font-size:11px;">${fDir}</div>
           </div>
           <div style="flex:1;text-align:center;padding:10px 6px;background:#F8F8FA;border-radius:10px;">
             <div style="font-size:10px;color:#8E8E9A;margin-bottom:4px;">기관 5일 합계</div>
-            <div class="${iCls}" style="font-size:17px;font-weight:700;">${total5.inst>=0?'+':''}${fmtEok(total5.inst)}</div>
+            <div class="${iCls}" style="font-size:17px;font-weight:700;">${total5.inst>=0?'+':''}${fmtInv(total5.inst, unit)}</div>
             <div class="${iCls}" style="font-size:11px;">${iDir}</div>
           </div>
         </div>
         <div style="display:grid;grid-template-columns:44px 1fr 80px 80px;gap:4px;padding-bottom:6px;border-bottom:0.5px solid #E5E5EA;font-size:10px;color:#8E8E9A;">
-          <span>날짜</span><span>추세</span><span style="text-align:right;">외국인</span><span style="text-align:right;">기관</span>
+          <span>날짜</span><span>추세</span><span style="text-align:right;">외국인(${unit})</span><span style="text-align:right;">기관(${unit})</span>
         </div>
         ${rows}
         <div style="text-align:center;margin-top:10px;font-size:11px;color:#5B5BD6;font-weight:600;">
