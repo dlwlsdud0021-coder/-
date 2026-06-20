@@ -383,8 +383,61 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"],
 }
 .nav-item.active { color: #5B5BD6; }
 .nav-item i { font-size: 22px; }
-/* 콘텐츠 하단 여백 (바텀 네비에 가리지 않도록) */
-.main .block-container { padding-bottom: 90px !important; }
+/* ── 바텀 네비 ── */
+/* position:fixed 차단하는 transform/overflow 전부 제거 */
+section[data-testid="stMain"],
+div[data-testid="stMainBlockContainer"],
+div[data-testid="stAppViewContainer"],
+div[data-testid="stApp"] {
+  overflow: visible !important;
+  transform: none !important;
+  will-change: auto !important;
+}
+[data-testid="stTabsTabList"] {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: 380px !important;
+  max-width: 100vw !important;
+  background: #fff !important;
+  border-top: 0.5px solid #E5E5EA !important;
+  border-bottom: none !important;
+  display: flex !important;
+  padding: 10px 0 16px !important;
+  z-index: 99999 !important;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.04) !important;
+  gap: 0 !important;
+}
+[data-baseweb="tab-highlight"],
+[data-baseweb="tab-border"] { display: none !important; }
+[data-baseweb="tab"] {
+  flex: 1 !important; flex-direction: column !important;
+  align-items: center !important; justify-content: center !important;
+  gap: 2px !important; padding: 4px 0 !important;
+  color: #C7C7CC !important; border: none !important;
+  background: transparent !important;
+  min-height: 52px !important; margin: 0 !important;
+}
+[data-baseweb="tab"] p {
+  display: flex !important; flex-direction: column !important;
+  align-items: center !important; gap: 2px !important;
+  font-size: 10px !important; margin: 0 !important;
+}
+[data-baseweb="tab"] p::before {
+  font-family: 'tabler-icons' !important;
+  font-size: 22px !important; line-height: 1 !important; display: block !important;
+}
+[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(1) p::before { content: '\ea76'; }
+[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(2) p::before { content: '\f0e9'; }
+[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(3) p::before { content: '\ea3b'; }
+[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(4) p::before { content: '\ebeb'; }
+[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(5) p::before { content: '\ed12'; }
+[aria-selected="true"][data-baseweb="tab"] { color: #5B5BD6 !important; }
+[aria-selected="true"][data-baseweb="tab"] p::before { color: #5B5BD6 !important; }
+/* 콘텐츠 하단 여백 */
+.main .block-container,
+[data-testid="stTabsContent"] { padding-bottom: 90px !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -3540,47 +3593,12 @@ if st.session_state.get("show_market_detail"):
     st.stop()
 
 # ── 원래대로 st.tabs() 사용 — 기능은 그대로, JS로 탭바만 하단 이동 ──
-from streamlit_option_menu import option_menu
-
-_selected = option_menu(
-    menu_title=None,
-    options=["홈", "뉴스", "보유", "관심", "매집"],
-    icons=["house", "newspaper", "briefcase", "star", "bar-chart"],
-    default_index=0,
-    orientation="horizontal",
-    styles={
-        "container": {
-            "position": "fixed", "bottom": "0", "left": "50%",
-            "transform": "translateX(-50%)",
-            "width": "380px", "max-width": "100vw",
-            "background-color": "#fff",
-            "border-top": "0.5px solid #E5E5EA",
-            "padding": "10px 0 16px",
-            "z-index": "99999",
-            "box-shadow": "0 -2px 8px rgba(0,0,0,0.04)",
-            "margin": "0",
-        },
-        "nav-link": {
-            "font-size": "10px", "color": "#C7C7CC",
-            "display": "flex", "flex-direction": "column",
-            "align-items": "center", "gap": "2px",
-            "padding": "4px 0", "border-radius": "0",
-            "background": "transparent",
-        },
-        "nav-link-selected": {
-            "color": "#5B5BD6", "background": "transparent",
-            "font-weight": "600",
-        },
-        "icon": {"font-size": "22px"},
-        "menu-title": {"display": "none"},
-    }
-)
-
-if _selected == "홈": render_home()
-elif _selected == "뉴스": render_news()
-elif _selected == "보유": render_holdings()
-elif _selected == "관심": render_watchlist()
-elif _selected == "매집": render_scanner()
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["홈", "뉴스", "보유", "관심", "매집"])
+with tab1: render_home()
+with tab2: render_news()
+with tab3: render_holdings()
+with tab4: render_watchlist()
+with tab5: render_scanner()
 
 
 
