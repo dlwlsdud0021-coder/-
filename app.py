@@ -2414,9 +2414,9 @@ def render_holdings_detail():
     pnl_bar_clr = "#E24B4A" if pnl_pct>=0 else "#185FA5"
     pnl_10k = int(pnl_amt/10000)
     st.markdown(f"""
-    <div style="margin:0 16px 12px; border:0.5px solid #E5E5EA; border-radius:16px; overflow:hidden; background:#fff;">
+    <div style="margin:0 0 12px; border:0.5px solid #E5E5EA; border-radius:16px; overflow:hidden; background:#fff;">
       <!-- 헤더 -->
-      <div style="padding:14px 20px 12px; display:flex; align-items:center; gap:12px; border-bottom:0.5px solid #E5E5EA;">
+      <div style="padding:16px 20px 14px; display:flex; align-items:center; gap:12px; border-bottom:0.5px solid #E5E5EA;">
         <div style="flex:1;">
           <div class="hdr-title">{name}</div>
           <div style="font-size:11px;color:#8E8E93;">{code}</div>
@@ -2424,7 +2424,7 @@ def render_holdings_detail():
         <span class="badge {hdg_bdg_cls}">{'수익' if pnl_pct>=0 else '손실'} {pnl_sign}{pnl_pct:.2f}%</span>
       </div>
       <!-- 현재가 -->
-      <div style="padding:16px 20px; border-bottom:0.5px solid #E5E5EA;">
+      <div style="padding:20px 20px 16px; border-bottom:0.5px solid #E5E5EA;">
         <div class="current-price">{_fp(cur)}</div>
         <div style="display:flex;gap:8px;margin-top:4px;">
           <span class="{chg_cls}" style="font-size:14px;font-weight:600;">{'▲' if chg_pct>=0 else '▼'} {abs(chg):,.0f}원</span>
@@ -2437,7 +2437,7 @@ def render_holdings_detail():
         </div>
       </div>
       <!-- 내 보유 현황 -->
-      <div style="padding:14px 16px;">
+      <div style="padding:16px 20px 18px;">
         <div style="font-size:11px;font-weight:600;color:#8E8E93;margin-bottom:10px;display:flex;align-items:center;gap:5px;">
           <i class="ti ti-briefcase" style="font-size:12px;color:#5B5BD6;"></i>내 보유 현황
         </div>
