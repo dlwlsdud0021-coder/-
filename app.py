@@ -267,14 +267,9 @@ body { background: #F5F5F7; color: #1A1A2E; }
 .login-title { font-size:24px; font-weight:700; text-align:center; margin-bottom:6px; color:#5B5BD6; }
 .login-sub { font-size:13px; color:#8E8E93; text-align:center; margin-bottom:28px; }
 /* 보유 카드 액션 버튼 */
-/* stk-card 바로 다음 Streamlit 버튼 블록 — 카드 하단에 붙이기 */
-[data-testid="stVerticalBlockSeparatorBlock"]:has(.stk-card) + [data-testid="stVerticalBlockSeparatorBlock"] {
-  margin-top: -2px !important; }
-[data-testid="stVerticalBlockSeparatorBlock"]:has(.stk-card) + [data-testid="stVerticalBlockSeparatorBlock"] button {
-  background: #fff !important; border: 0.5px solid #E5E5EA !important;
-  border-top: 0.5px solid #F0F0F5 !important; border-radius: 0 0 16px 16px !important;
-  color: #5B5BD6 !important; font-size: 13px !important;
-  padding: 8px 0 !important; min-height: 38px !important; }
+/* 숨겨진 nav 버튼 */
+div:has(> .stk-hidden-nav) { height:0 !important; overflow:hidden !important; margin:0 !important; padding:0 !important; }
+div:has(> .stk-hidden-nav) + div { margin-top:0 !important; height:0 !important; overflow:hidden !important; }
 .hld-del-wrap button { background:#EAF3DE !important; border:0.5px solid #E5E5EA !important; border-top:none !important;
   border-radius:0 0 14px 0 !important; font-size:15px !important; color:#27500A !important;
   padding:6px 0 !important; min-height:34px !important; }
@@ -2063,8 +2058,10 @@ def _holding_card(e, pfx="a"):
         for b in a.get("badges", [])[:2])
     pnl_10k = int(pnl_amt / 10000)
 
-    # 카드 (하단 모서리 없음 — 아래 버튼 행과 연결)
-    st.markdown(f"""<div class="stk-card" style="border-radius:16px 16px 0 0;margin-bottom:0;border-bottom:none;">
+    btn_key = f"hnav_{pfx}_{h['code']}"
+    # 카드 전체 클릭 → 숨겨진 버튼 JS 트리거
+    st.markdown(f"""<div class="stk-card" style="border-radius:16px;cursor:pointer;"
+      onclick="(function(){{var bs=document.querySelectorAll('button');for(var b of bs){{if(b.innerText.trim()==='{btn_key}'){{b.click();return;}}}}}})()" >
       <div style="display:flex;align-items:center;gap:10px;">
         <div class="stk-icon {ico}">{lbl}</div>
         <div><div style="font-size:13px;font-weight:600;">{h['name']}</div>
@@ -2086,13 +2083,16 @@ def _holding_card(e, pfx="a"):
       </div>
     </div>""", unsafe_allow_html=True)
 
-    if st.button("상세분석 보기  ›", key=f"h_{pfx}_{h['code']}", use_container_width=True):
+    # 숨겨진 버튼 (JS가 클릭 트리거)
+    st.markdown('<div class="stk-hidden-nav">', unsafe_allow_html=True)
+    if st.button(btn_key, key=f"h_{pfx}_{h['code']}", use_container_width=False):
         st.session_state.page = "holdings_detail"
         st.session_state.detail_code = h["code"]
         st.session_state.detail_name = h["name"]
         st.session_state.detail_avg  = h["avg_price"]
         st.session_state.detail_qty  = h["qty"]
         st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
     st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
 
