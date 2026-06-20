@@ -383,9 +383,47 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"],
 }
 .nav-item.active { color: #5B5BD6; }
 .nav-item i { font-size: 22px; }
-/* 콘텐츠 하단 여백 */
-.main .block-container,
-[data-testid="stTabsContent"] { padding-bottom: 90px !important; }
+/* ── 상단 탭 네비 스타일 ── */
+[data-testid="stTabsTabList"] {
+  background: #fff !important;
+  border-bottom: 0.5px solid #E5E5EA !important;
+  gap: 0 !important;
+  padding: 0 !important;
+}
+[data-baseweb="tab-highlight"] { background: #5B5BD6 !important; height: 2px !important; }
+[data-baseweb="tab-border"] { display: none !important; }
+[data-baseweb="tab"] {
+  flex: 1 !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 2px !important;
+  padding: 10px 0 8px !important;
+  color: #C7C7CC !important;
+  background: transparent !important;
+  border: none !important;
+}
+[data-baseweb="tab"] p {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 3px !important;
+  font-size: 11px !important;
+  margin: 0 !important;
+}
+[data-baseweb="tab"] p::before {
+  font-family: 'tabler-icons' !important;
+  font-size: 20px !important;
+  line-height: 1 !important;
+  display: block !important;
+}
+[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(1) p::before { content: '\ea76'; }
+[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(2) p::before { content: '\f0e9'; }
+[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(3) p::before { content: '\ea3b'; }
+[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(4) p::before { content: '\ebeb'; }
+[data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(5) p::before { content: '\ed12'; }
+[aria-selected="true"][data-baseweb="tab"] { color: #5B5BD6 !important; }
+[aria-selected="true"][data-baseweb="tab"] p::before { color: #5B5BD6 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -3548,87 +3586,6 @@ with tab3: render_holdings()
 with tab4: render_watchlist()
 with tab5: render_scanner()
 
-import streamlit.components.v1 as _cv1
-_cv1.html("""
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
-<script>
-(function() {
-  var p = window.parent.document;
-  var CSS_ID = '__bnav_css__';
-  var busy = false;
-
-  function injectCSS() {
-    if (p.getElementById(CSS_ID)) return;
-    var s = p.createElement('style');
-    s.id = CSS_ID;
-    s.textContent = `
-      [data-testid="stTabsTabList"] {
-        position: fixed !important;
-        bottom: 0 !important; left: 50% !important;
-        transform: translateX(-50%) !important;
-        width: 380px !important; max-width: 100vw !important;
-        background: #fff !important;
-        border-top: 0.5px solid #E5E5EA !important;
-        border-bottom: none !important;
-        display: flex !important;
-        padding: 10px 0 16px !important;
-        z-index: 99999 !important;
-        box-shadow: 0 -2px 8px rgba(0,0,0,.04) !important;
-        gap: 0 !important;
-      }
-      [data-baseweb="tab-highlight"],
-      [data-baseweb="tab-border"] { display: none !important; }
-      [data-baseweb="tab"] {
-        flex: 1 !important; flex-direction: column !important;
-        align-items: center !important; justify-content: center !important;
-        gap: 2px !important; padding: 4px 0 !important;
-        color: #C7C7CC !important; border: none !important;
-        background: transparent !important;
-        min-height: 52px !important; margin: 0 !important;
-      }
-      [data-baseweb="tab"] p {
-        display: flex !important; flex-direction: column !important;
-        align-items: center !important; gap: 2px !important;
-        font-size: 10px !important; margin: 0 !important;
-      }
-      [data-baseweb="tab"] p::before {
-        font-family: 'tabler-icons' !important;
-        font-size: 22px !important; line-height: 1 !important;
-        display: block !important;
-      }
-      [data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(1) p::before { content: '\\ea76'; }
-      [data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(2) p::before { content: '\\f0e9'; }
-      [data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(3) p::before { content: '\\ea3b'; }
-      [data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(4) p::before { content: '\\ebeb'; }
-      [data-testid="stTabsTabList"] [data-baseweb="tab"]:nth-child(5) p::before { content: '\\ed12'; }
-      [aria-selected="true"][data-baseweb="tab"] { color: #5B5BD6 !important; }
-      [aria-selected="true"][data-baseweb="tab"] p::before { color: #5B5BD6 !important; }
-    `;
-    p.head.appendChild(s);
-  }
-
-  function moveToBody() {
-    if (busy) return;
-    var t = p.querySelector('[data-testid="stTabsTabList"]');
-    if (!t || t.parentElement === p.body) return;
-    busy = true;
-    p.body.appendChild(t);
-    busy = false;
-  }
-
-  function init() {
-    injectCSS();
-    moveToBody();
-    // Streamlit 리렌더 후 탭바가 원위치로 돌아오면 즉시 다시 이동
-    new MutationObserver(function() {
-      if (!busy) moveToBody();
-    }).observe(p.body, { childList: true, subtree: true });
-  }
-
-  setTimeout(init, 300);
-})();
-</script>
-""", height=0, scrolling=False)
 
 
 
