@@ -660,9 +660,11 @@ def holding_detail(code: str, user=Depends(get_current_user)):
         if boll_upper and boll_upper > cur:
             tp = round(boll_upper / 100) * 100; tb = "볼린저 상단"
         elif ohlcv is not None and not ohlcv.empty:
-            high60 = float(ohlcv["high"].tail(60).max())
-            if high60 > cur * 1.03:
-                tp = round(high60 / 100) * 100; tb = "60일 고점"
+            _hcol = "high" if "high" in ohlcv.columns else "고가"
+            if _hcol in ohlcv.columns:
+                high60 = float(ohlcv[_hcol].tail(60).max())
+                if high60 > cur * 1.03:
+                    tp = round(high60 / 100) * 100; tb = "60일 고점"
         avg_tp = round(avg_p * 1.10 / 100) * 100
         if not tp or avg_tp > tp:
             tp = avg_tp; tb = "평단가 +10%"
