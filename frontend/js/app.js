@@ -384,30 +384,93 @@ function renderNews() {
   const el = document.getElementById('news-content');
   let news = _allNews;
   if (_newsFilter !== '전체') {
-    const map = { '긍정': 'positive', '부정': 'negative', '혼조': 'mixed' };
+    const map = {'긍정': 'positive', '부정': 'negative', '혼조': 'mixed'};
     news = news.filter(n => n.sentiment === map[_newsFilter]);
   }
   if (!news.length) {
     el.innerHTML = '<div class="empty-state"><i class="ti ti-news"></i>뉴스가 없습니다</div>';
     return;
   }
+
+  const catIconMap = {'반도체': '💻', '바이오': '🧬', '2차전지': '🔋', '금융': '🏦', '글로벌': '🌐', '전체': '📈'};
+  const briefStrategyMap = {
+    'positive': '장 초반 관련 종목 주가 반응을 먼저 확인하고, 상승 추세가 이어지면 분할 매수 진입을 고려하세요.',
+    'negative': '장 초반 주가 반응을 보고, 추가 하락이 예상되면 손절 또는 비중 축소를 검토하세요.',
+    'mixed':    '장 초반 관련 종목 주가 반응을 먼저 보고, 상승하면 추세 진입, 하락하면 관망을 권장합니다.',
+    'neutral':  '직접적 영향이 제한적일 수 있어 시장 전반 흐름을 참고하며 포트폴리오를 점검하세요.',
+  };
+
   const html = news.map((n, i) => {
     const bdg = n.sentiment === 'positive' ? 'badge-pos' : n.sentiment === 'negative' ? 'badge-neg' : 'badge-mix';
     const lbl = n.label || (n.sentiment === 'positive' ? '긍정' : n.sentiment === 'negative' ? '부정' : '혼조');
     const borderClass = n.sentiment === 'positive' ? 'positive' : n.sentiment === 'negative' ? 'negative' : 'mixed';
-    const catChip = n.category && n.category !== '전체' ? `<span class="badge badge-ok" style="font-size:10px;">${n.category}</span>` : '';
-    const briefHtml = n.brief ? `<div class="news-brief">💡 ${n.brief}</div>` : '';
-    return `<div class="news-card ${borderClass} clickable" onclick="openNewsDetail(${i})">
-      <div class="news-card-top">
+    const catIcon = catIconMap[n.category] || '📊';
+    const catLabel = (n.category && n.category !== '전체') ? `${catIcon} ${n.category} 업종 관련` : '📈 전체 시장 관련';
+
+    // 카드 본문: brief > summary 앞부분
+    const summaryText = n.brief || (n.summary ? n.summary.slice(0, 130) + (n.summary.length > 130 ? '...' : '') : '');
+
+    // ai_summary에서 "📋 이 뉴스는?" 이후 텍스트만 추출
+    let aiText = '';
+    if (n.ai_summary) {
+      const m = n.ai_summary.match(/📋 이 뉴스는\?<br>([\s\S]+)$/);
+      if (m) {
+        aiText = m[1].trim();
+      } else {
+        aiText = n.ai_summary.replace(/<[^>]+>/g, '').replace(/🔍 감지된 키워드/g, '').replace(/📋 이 뉴스는\?/g, '').trim();
+      }
+    }
+
+    // 키워드 배지 (kw_section 부분)
+    let kwHtml = '';
+    if (n.ai_summary) {
+      const kwMatch = n.ai_summary.match(/^([\s\S]*?)(?=<b>📋|$)/);
+      if (kwMatch && kwMatch[1].includes('<span')) kwHtml = kwMatch[1].trim();
+    }
+
+    const briefStrategy = briefStrategyMap[n.sentiment] || briefStrategyMap['neutral'];
+
+    // 관련 종목 칩
+    const stocks = Array.isArray(n.related_stocks) ? n.related_stocks : [];
+    const stocksHtml = stocks.slice(0, 3).map(s => {
+      const nm = typeof s === 'object' ? (s.name || '') : s;
+      return `<span class="badge badge-ok" style="font-size:10px;">${nm}</span>`;
+    }).join('');
+
+    const linkHtml = n.link ? `<a href="${n.link}" target="_blank" rel="noopener" style="font-size:11px;color:#5B5BD6;text-decoration:none;flex-shrink:0;">원문 →</a>` : '';
+
+    return `<div class="news-card ${borderClass}">
+      <!-- 헤더: 감성 배지 + 출처·날짜 -->
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
         <span class="badge ${bdg}">${lbl}</span>
-        ${catChip}
-        <span class="news-source" style="margin-left:auto;">${n.source||''}</span>
-        <i class="ti ti-chevron-right" style="color:#C7C7CC;font-size:16px;flex-shrink:0;"></i>
+        <span style="font-size:11px;color:#8E8E9A;margin-left:auto;">${n.source||''}${n.published ? ' · ' + n.published : ''}</span>
       </div>
-      <div class="news-title">${n.title||''}</div>
-      ${briefHtml}
+      <!-- 제목 -->
+      <div class="news-title" style="margin-bottom:6px;">${n.title||''}</div>
+      <!-- 기사 요약 -->
+      ${summaryText ? `<div style="font-size:12px;color:#8E8E9A;line-height:1.6;margin-bottom:10px;">${summaryText}</div>` : ''}
+      <!-- AI 분석 -->
+      ${aiText ? `<div style="border-top:1px solid #F0F0F5;padding-top:10px;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:4px;margin-bottom:6px;">
+          <i class="ti ti-sparkles" style="font-size:12px;color:#5B5BD6;"></i>
+          <span style="font-size:11px;font-weight:700;color:#5B5BD6;">AI 분석</span>
+        </div>
+        <div style="font-size:11px;color:#8E8E9A;margin-bottom:6px;">${catLabel}</div>
+        ${kwHtml ? `<div style="margin-bottom:6px;">${kwHtml}</div>` : ''}
+        <div style="font-size:12px;color:#3C3C43;line-height:1.7;margin-bottom:8px;">${aiText}</div>
+        <div style="background:#F8F8FA;border-radius:10px;padding:8px 10px;">
+          <div style="font-size:11px;font-weight:700;color:#27500A;margin-bottom:3px;">☀️ 대응 전략</div>
+          <div style="font-size:12px;color:#3C3C43;line-height:1.6;">${briefStrategy}</div>
+        </div>
+      </div>` : ''}
+      <!-- 푸터: 원문 링크 + 관련 종목 -->
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;flex-wrap:wrap;">
+        ${linkHtml}
+        <div style="display:flex;gap:4px;flex-wrap:wrap;">${stocksHtml}</div>
+      </div>
     </div>`;
   }).join('');
+
   el.innerHTML = `<div class="section" style="margin-top:12px;">${html}</div>`;
 }
 
