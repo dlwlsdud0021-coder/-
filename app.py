@@ -271,9 +271,9 @@ body { background: #F5F5F7; color: #1A1A2E; }
 .element-container:has(.stk-card) + .element-container button,
 [data-testid="element-container"]:has(.stk-card) + [data-testid="element-container"] button,
 [data-testid="stVerticalBlockSeparatorBlock"]:has(.stk-card) + [data-testid="stVerticalBlockSeparatorBlock"] button {
-  background:#fff !important; border:0.5px solid #E5E5EA !important;
-  border-top:none !important; border-radius:0 0 16px 16px !important;
-  color:#5B5BD6 !important; font-size:13px !important;
+  background:#5B5BD6 !important; border:none !important;
+  border-radius:0 0 16px 16px !important;
+  color:#fff !important; font-size:13px !important; font-weight:600 !important;
   padding:8px 0 !important; min-height:38px !important; }
 .element-container:has(.stk-card) + .element-container,
 [data-testid="element-container"]:has(.stk-card) + [data-testid="element-container"],
