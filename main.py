@@ -20,7 +20,9 @@ import database as db
 from market_data import (get_index_data, get_us_indices, search_stock_by_name,
     get_all_tickers, get_top_stocks, get_ohlcv, get_investor_trading, get_current_price,
     get_index_ohlcv_history, get_kospi_investor, get_sector_performance)
-from news import fetch_market_news, fetch_stock_news, enrich_top10_summaries, rank_by_importance
+from news import (fetch_market_news, fetch_stock_news, enrich_top10_summaries,
+    rank_by_importance, generate_ai_summary, generate_strategy,
+    classify_sentiment, classify_category, extract_related_stocks)
 from home_analysis import analyze_us_impact, generate_forecast, calc_ma_status, market_phase, is_market_open
 from analysis import analyze_stock, watchlist_timing
 from database import get_recent_predictions, get_prediction_accuracy
@@ -286,12 +288,39 @@ def market_news():
     try:
         raw = fetch_market_news(max_items=15)
         ranked = rank_by_importance(raw)
-        enriched = enrich_top10_summaries(ranked[:10])
-        # 나머지는 ai_summary 없이 기본만
-        rest = ranked[10:]
-        return {"news": enriched + rest}
+        # 모든 뉴스 기본 분류만 (AI 분석은 클릭 시 온디맨드로 생성)
+        return {"news": ranked}
     except Exception as e:
         return {"news": [], "error": str(e)}
+
+class NewsAnalyzeBody(BaseModel):
+    title: str = ""
+    summary: str = ""
+    sentiment: str = "neutral"
+    category: str = "전체"
+
+@app.post("/api/news/analyze")
+def analyze_news_article(body: NewsAnalyzeBody):
+    """단일 뉴스 기사에 대한 AI 분석 온디맨드 생성"""
+    try:
+        title = body.title
+        summary = body.summary
+        # sentiment/category 재분류 (더 정확하게)
+        sentiment_info = classify_sentiment(title + " " + summary)
+        sentiment = body.sentiment or sentiment_info.get("sentiment", "neutral")
+        category = body.category or classify_category(title, summary)
+        ai_summary = generate_ai_summary(title, summary, sentiment, category)
+        strategy, _ = generate_strategy(sentiment, category, title, summary)
+        related = extract_related_stocks(title, summary, category)
+        return {
+            "ai_summary": ai_summary,
+            "strategy": strategy,
+            "related_stocks": related,
+            "sentiment": sentiment,
+            "category": category,
+        }
+    except Exception as e:
+        return {"error": str(e), "ai_summary": None, "strategy": None}
 
 @app.get("/api/news/{code}")
 def stock_news(code: str):

@@ -368,14 +368,14 @@ function renderNews() {
     const bdg = n.sentiment === 'positive' ? 'badge-pos' : n.sentiment === 'negative' ? 'badge-neg' : 'badge-mix';
     const lbl = n.label || (n.sentiment === 'positive' ? '긍정' : n.sentiment === 'negative' ? '부정' : '혼조');
     const borderClass = n.sentiment === 'positive' ? 'positive' : n.sentiment === 'negative' ? 'negative' : 'mixed';
+    const catChip = n.category && n.category !== '전체' ? `<span class="badge badge-ok" style="font-size:10px;">${n.category}</span>` : '';
     const briefHtml = n.brief ? `<div class="news-brief">💡 ${n.brief}</div>` : '';
-    const hasDetail = !!(n.ai_summary || n.strategy || n.summary);
-    const chevron = hasDetail ? `<i class="ti ti-chevron-right" style="color:#C7C7CC;font-size:18px;flex-shrink:0;"></i>` : '';
-    return `<div class="news-card ${borderClass} ${hasDetail?'clickable':''}" ${hasDetail?`onclick="openNewsDetail(${i})"`:''}>
+    return `<div class="news-card ${borderClass} clickable" onclick="openNewsDetail(${i})">
       <div class="news-card-top">
         <span class="badge ${bdg}">${lbl}</span>
-        <span class="news-source">${n.source||''} · ${n.published||''}</span>
-        ${chevron}
+        ${catChip}
+        <span class="news-source" style="margin-left:auto;">${n.source||''}</span>
+        <i class="ti ti-chevron-right" style="color:#C7C7CC;font-size:16px;flex-shrink:0;"></i>
       </div>
       <div class="news-title">${n.title||''}</div>
       ${briefHtml}
@@ -667,77 +667,115 @@ function renderIndexDetail(d, el) {
 // ─────────────────────────────────────────────────────────
 // 뉴스 상세
 // ─────────────────────────────────────────────────────────
-function openNewsDetail(idx) {
+async function openNewsDetail(idx) {
   const n = _allNews[idx];
   if (!n) return;
-  _currentTab = 'news'; // goBack()이 뉴스탭으로 돌아오도록
+  _currentTab = 'news';
   showScreen('news-detail');
-  renderNewsDetail(n);
+  const el = document.getElementById('news-detail-content');
+  // 기사 기본 정보 먼저 표시
+  renderNewsDetailBase(n, el);
+  // AI 분석이 없으면 온디맨드로 요청
+  if (!n.ai_summary && !n._analyzing) {
+    n._analyzing = true;
+    const analyzeEl = document.getElementById('news-analyze-placeholder');
+    if (analyzeEl) analyzeEl.innerHTML = '<div class="loading" style="padding:16px;"><div class="spinner"></div> AI 분석 생성 중... (최대 10초)</div>';
+    try {
+      const result = await api('POST', '/api/news/analyze', {
+        title: n.title || '',
+        summary: n.summary || '',
+        sentiment: n.sentiment || 'neutral',
+        category: n.category || '전체',
+      });
+      n.ai_summary = result.ai_summary;
+      n.strategy = result.strategy;
+      if (result.related_stocks) n.related_stocks = result.related_stocks;
+      n._analyzing = false;
+      // 분석 영역만 교체
+      if (analyzeEl) analyzeEl.innerHTML = buildNewsAnalysisHtml(n);
+    } catch(e) {
+      n._analyzing = false;
+      if (analyzeEl) analyzeEl.innerHTML = '<div style="padding:16px;font-size:13px;color:#8E8E9A;">분석을 불러오지 못했습니다.</div>';
+    }
+  }
 }
 
-function renderNewsDetail(n) {
-  const el = document.getElementById('news-detail-content');
+function renderNewsDetailBase(n, el) {
   const bdg = n.sentiment === 'positive' ? 'badge-pos' : n.sentiment === 'negative' ? 'badge-neg' : 'badge-mix';
   const lbl = n.label || (n.sentiment === 'positive' ? '긍정' : n.sentiment === 'negative' ? '부정' : '혼조');
-
-  // 카테고리 칩
-  const catChip = n.category ? `<span class="badge badge-ok" style="font-size:11px;">${n.category}</span>` : '';
-
-  // 관련 종목
-  const stocks = Array.isArray(n.related_stocks) ? n.related_stocks : [];
-  const stocksHtml = stocks.length ? `
-    <div style="margin-bottom:16px;">
-      <div style="font-size:12px;color:#8E8E9A;margin-bottom:6px;">관련 종목</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;">
-        ${stocks.map(s => `<span class="badge badge-ok">${s}</span>`).join('')}
-      </div>
-    </div>` : '';
+  const borderColor = n.sentiment === 'positive' ? '#185FA5' : n.sentiment === 'negative' ? '#E24B4A' : '#F0A500';
+  const catChip = n.category && n.category !== '전체' ? `<span class="badge badge-ok" style="font-size:11px;">${n.category}</span>` : '';
 
   // 원문 요약
   const summaryHtml = n.summary ? `
     <div class="card" style="margin-bottom:12px;">
-      <div style="font-size:12px;color:#8E8E9A;margin-bottom:6px;display:flex;align-items:center;gap:4px;">
-        <i class="ti ti-file-text" style="font-size:13px;"></i> 내용
+      <div style="font-size:11px;color:#8E8E9A;margin-bottom:6px;display:flex;align-items:center;gap:4px;">
+        <i class="ti ti-file-text" style="font-size:12px;"></i> 기사 요약
       </div>
-      <div style="font-size:14px;color:#3C3C43;line-height:1.6;">${n.summary}</div>
-    </div>` : '';
-
-  // AI 분석 (무슨 뉴스 / 영향 / 대응)
-  const aiHtml = n.ai_summary ? `
-    <div class="card" style="margin-bottom:12px;background:linear-gradient(135deg,#F5F4FF 0%,#fff 100%);border:1px solid #E8E7FF;">
-      <div style="font-size:14px;line-height:1.8;color:#3C3C43;">${n.ai_summary}</div>
-    </div>` : '';
-
-  // 투자 전략 (strategy)
-  const strategyHtml = n.strategy ? `
-    <div class="card" style="margin-bottom:12px;background:linear-gradient(135deg,#FFF8EC 0%,#fff 100%);border:1px solid #FFE0A0;">
-      <div style="font-size:13px;font-weight:700;color:#FF9F0A;margin-bottom:8px;display:flex;align-items:center;gap:4px;">
-        <i class="ti ti-target" style="font-size:15px;"></i> 투자 전략
-      </div>
-      <div style="font-size:14px;line-height:1.8;color:#3C3C43;">${n.strategy}</div>
+      <div style="font-size:13px;color:#3C3C43;line-height:1.7;">${n.summary}</div>
     </div>` : '';
 
   // 외부 링크
   const linkHtml = n.link ? `
-    <a href="${n.link}" target="_blank" rel="noopener" style="display:block;text-align:center;padding:12px;border:1px solid #E5E5EA;border-radius:12px;color:#5B5BD6;font-size:14px;font-weight:600;text-decoration:none;margin-bottom:12px;">
+    <a href="${n.link}" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border:1px solid #E5E5EA;border-radius:12px;color:#5B5BD6;font-size:14px;font-weight:600;text-decoration:none;margin-bottom:16px;">
       <i class="ti ti-external-link" style="font-size:15px;"></i> 원문 기사 보기
     </a>` : '';
 
+  const alreadyHasAnalysis = !!(n.ai_summary || n.strategy);
+
   el.innerHTML = `
     <div style="padding:16px 16px 0;">
-      <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;">
+      <!-- 헤더 -->
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
         <span class="badge ${bdg}">${lbl}</span>
         ${catChip}
-        <span style="font-size:11px;color:#8E8E9A;margin-left:auto;">${n.source||''} · ${n.published||''}</span>
+        <span style="font-size:11px;color:#8E8E9A;margin-left:auto;">${n.source||''}</span>
+        <span style="font-size:11px;color:#C7C7CC;">${n.published||''}</span>
       </div>
-      <div style="font-size:17px;font-weight:700;color:#1C1C1E;line-height:1.5;margin-bottom:12px;">${n.title||''}</div>
-      ${n.brief ? `<div class="news-brief" style="margin-bottom:16px;">💡 ${n.brief}</div>` : ''}
-      ${stocksHtml}
+      <!-- 제목 -->
+      <div style="font-size:17px;font-weight:700;color:#1C1C1E;line-height:1.5;margin-bottom:10px;border-left:3px solid ${borderColor};padding-left:10px;">${n.title||''}</div>
+      ${n.brief ? `<div class="news-brief" style="margin-bottom:12px;">💡 ${n.brief}</div>` : ''}
       ${summaryHtml}
-      ${aiHtml}
-      ${strategyHtml}
       ${linkHtml}
+    </div>
+    <!-- AI 분석 영역 (즉시 있으면 바로 렌더, 없으면 로딩) -->
+    <div id="news-analyze-placeholder">
+      ${alreadyHasAnalysis ? buildNewsAnalysisHtml(n) : ''}
     </div>`;
+}
+
+function buildNewsAnalysisHtml(n) {
+  // 관련 종목 — {name, ticker} 객체 또는 문자열 모두 처리
+  const stocks = Array.isArray(n.related_stocks) ? n.related_stocks : [];
+  const stocksHtml = stocks.length ? `
+    <div style="padding:0 16px 12px;">
+      <div style="font-size:11px;color:#8E8E9A;margin-bottom:6px;">관련 종목</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        ${stocks.map(s => {
+          const name = typeof s === 'object' ? (s.name||'') : s;
+          const ticker = typeof s === 'object' ? (s.ticker||'') : '';
+          return `<span class="badge badge-ok">${name}${ticker?` <span style="font-size:9px;opacity:0.7;">${ticker}</span>`:''}</span>`;
+        }).join('')}
+      </div>
+    </div>` : '';
+
+  const aiHtml = n.ai_summary ? `
+    <div style="padding:0 16px 12px;">
+      <div style="font-size:12px;font-weight:700;color:#3C3489;margin-bottom:8px;display:flex;align-items:center;gap:5px;">
+        <i class="ti ti-brain" style="font-size:14px;color:#5B5BD6;"></i> AI 심층 분석
+      </div>
+      <div style="background:linear-gradient(135deg,#F5F4FF 0%,#fff 100%);border:1px solid #E8E7FF;border-radius:14px;padding:14px 16px;font-size:13px;line-height:1.9;color:#3C3C43;">${n.ai_summary}</div>
+    </div>` : '';
+
+  const stratHtml = n.strategy ? `
+    <div style="padding:0 16px 16px;">
+      <div style="font-size:12px;font-weight:700;color:#BA6E00;margin-bottom:8px;display:flex;align-items:center;gap:5px;">
+        <i class="ti ti-target" style="font-size:14px;color:#F0A500;"></i> 투자 전략
+      </div>
+      <div style="background:linear-gradient(135deg,#FFF8EC 0%,#fff 100%);border:1px solid #FFE0A0;border-radius:14px;padding:14px 16px;font-size:13px;line-height:1.9;color:#3C3C43;">${n.strategy}</div>
+    </div>` : '';
+
+  return `${stocksHtml}${aiHtml}${stratHtml}`;
 }
 
 // ─────────────────────────────────────────────────────────
