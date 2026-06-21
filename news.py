@@ -1545,33 +1545,31 @@ def rank_by_importance(items: list) -> list:
 
 
 def enrich_top10_summaries(items: list) -> list:
-    """상위 뉴스 목록에 AI 요약/전략 필드를 추가해 반환. (최대 5개만 Gemini 처리)"""
-    enriched = []
-    for idx, item in enumerate(items):
+    """상위 뉴스 목록에 AI 요약/전략 필드를 추가해 반환. (최대 5개 Gemini 병렬 처리)"""
+    def _enrich_one(args):
+        idx, item = args
         title    = item.get("title", "")
         summary  = item.get("summary", "")
         sentiment_info = classify_sentiment(title + " " + summary)
         category = item.get("category") or classify_category(title, summary)
         sentiment = sentiment_info["sentiment"]
-
-        # 상위 5개만 Gemini AI 분석, 나머지는 rule-based
         if idx < 5:
-            ai_summary = item.get("ai_summary") or generate_ai_summary(
-                title, summary, sentiment, category
-            )
+            ai_summary = item.get("ai_summary") or generate_ai_summary(title, summary, sentiment, category)
             strategy, _ = generate_strategy(sentiment, category, title, summary)
         else:
             ai_summary = item.get("ai_summary") or ""
             strategy = ""
-
-        enriched.append({
+        return idx, {
             **item,
-            "category":   category,
-            "sentiment":  sentiment,
+            "category":        category,
+            "sentiment":       sentiment,
             "sentiment_label": sentiment_info["label"],
-            "badge_type": sentiment_info["badge_type"],
-            "ai_summary": ai_summary,
-            "strategy":   strategy,
-            "related_stocks": item.get("related_stocks") or extract_related_stocks(title, summary, category),
-        })
-    return enriched
+            "badge_type":      sentiment_info["badge_type"],
+            "ai_summary":      ai_summary,
+            "strategy":        strategy,
+            "related_stocks":  item.get("related_stocks") or extract_related_stocks(title, summary, category),
+        }
+
+    with ThreadPoolExecutor(max_workers=5) as ex:
+        results = list(ex.map(_enrich_one, enumerate(items)))
+    return [item for _, item in sorted(results, key=lambda x: x[0])]

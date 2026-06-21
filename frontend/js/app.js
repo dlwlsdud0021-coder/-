@@ -18,17 +18,24 @@ let _allWatchlist = [];
 // ─────────────────────────────────────────────────────────
 // API 유틸
 // ─────────────────────────────────────────────────────────
-async function api(method, path, body) {
+async function api(method, path, body, timeoutMs = 60000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   const opts = {
     method,
-    headers: { 'Content-Type': 'application/json' }
+    headers: { 'Content-Type': 'application/json' },
+    signal: controller.signal
   };
   if (_token) opts.headers['Authorization'] = 'Bearer ' + _token;
   if (body) opts.body = JSON.stringify(body);
-  const r = await fetch(API + path, opts);
-  const data = await r.json();
-  if (!r.ok) throw new Error(data.detail || '오류가 발생했습니다');
-  return data;
+  try {
+    const r = await fetch(API + path, opts);
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || '오류가 발생했습니다');
+    return data;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // ─────────────────────────────────────────────────────────
