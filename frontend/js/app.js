@@ -1304,7 +1304,12 @@ async function openForecastDetail() {
 
 function renderForecastDetail(d, el) {
   const forecast = d.forecast || {};
-  const history  = Array.isArray(d.history) ? d.history : [];
+  // 주말(토=6, 일=0) 데이터 필터링
+  const history  = (Array.isArray(d.history) ? d.history : []).filter(p => {
+    if (!p.date) return true;
+    const dow = new Date(p.date).getDay();
+    return dow !== 0 && dow !== 6;
+  });
   const stats    = d.stats || {};
 
   const fDir   = forecast.direction_kor || '횡보';

@@ -1539,8 +1539,12 @@ def render_market_detail(idx, us, ma_kp, ma_kd, kp_hist, kd_hist):
 def _save_today_prediction(fc: dict):
     """오늘 예측을 DB에 저장하고, 어제 예측 결과를 업데이트한다."""
     from datetime import date, timedelta
-    today_str = date.today().isoformat()
-    yesterday_str = (date.today() - timedelta(days=1)).isoformat()
+    today = date.today()
+    # 주말(토=5, 일=6)에는 장이 열리지 않으므로 저장 안 함
+    if today.weekday() >= 5:
+        return
+    today_str = today.isoformat()
+    yesterday_str = (today - timedelta(days=1)).isoformat()
 
     # 오늘 예측 저장 (INSERT OR IGNORE — 이미 있으면 무시)
     save_prediction(

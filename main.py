@@ -25,7 +25,7 @@ from news import (fetch_market_news, fetch_stock_news, enrich_top10_summaries,
     classify_sentiment, classify_category, extract_related_stocks)
 from home_analysis import analyze_us_impact, generate_forecast, calc_ma_status, _extra_metrics, market_phase, is_market_open
 from analysis import analyze_stock, watchlist_timing
-from database import get_recent_predictions, get_prediction_accuracy
+from database import get_recent_predictions, get_prediction_accuracy, save_prediction, update_prediction_result
 import requests as _requests
 
 # ─────────────────────────────────────────────────────────
@@ -340,6 +340,7 @@ def home_data():
 # ─────────────────────────────────────────────────────────
 @app.get("/api/forecast/detail")
 def forecast_detail():
+    from datetime import date, timedelta
     try:
         idx = get_index_data()
         us_raw = get_us_indices()
@@ -350,6 +351,37 @@ def forecast_detail():
             kp_hist = None
             ma = {}
         forecast = generate_forecast(us_raw, idx, ma)
+
+        # 주말(토=5, 일=6) 제외하고 예측 저장
+        today = date.today()
+        if today.weekday() < 5:
+            try:
+                today_str = today.isoformat()
+                save_prediction(
+                    date=today_str,
+                    index_name="KOSPI",
+                    predicted_direction=forecast.get("direction", "sideways"),
+                    predicted_change=forecast.get("predicted_pct", 0.0),
+                    confidence=forecast.get("confidence", 50),
+                    prediction_basis=forecast.get("basis", {}),
+                    gemini_text=forecast.get("full_gemini_text", ""),
+                )
+                # 전 거래일 예측 결과 업데이트 (직전 평일)
+                prev = today - timedelta(days=1)
+                while prev.weekday() >= 5:
+                    prev -= timedelta(days=1)
+                prev_str = prev.isoformat()
+                preds_check = get_recent_predictions(limit=5)
+                for p in preds_check:
+                    if p["date"] == prev_str and p.get("actual_direction") is None:
+                        kp_now = idx.get("KOSPI", {})
+                        actual_pct = kp_now.get("change_pct", 0.0)
+                        actual_dir = "up" if actual_pct > 0.3 else ("down" if actual_pct < -0.3 else "sideways")
+                        update_prediction_result(prev_str, "KOSPI", actual_dir, actual_pct)
+                        break
+            except Exception:
+                pass
+
         preds = get_recent_predictions(limit=7)
         stats = get_prediction_accuracy()
         return {
