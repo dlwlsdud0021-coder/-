@@ -987,8 +987,9 @@ def _run_scanner():
                 ohlcv = get_ohlcv(s["code"], days=60)
                 inv = get_investor_trading(s["code"], days=5)
                 a = analyze_stock(ohlcv, inv)
-                # 주말/장외엔 수급 신호 없으므로 기술적 신호 2개만으로도 포함
-                min_score = 2 if (a.get("foreign_net_3d", 0) == 0 and a.get("institution_net_3d", 0) == 0) else 3
+                # 수급 데이터 없을 땐 기술적 신호 1개만으로도 포함
+                no_investor = (a.get("foreign_net_3d", 0) == 0 and a.get("institution_net_3d", 0) == 0)
+                min_score = 1 if no_investor else 3
                 if a["score"] >= min_score:
                     pd2 = get_current_price(s["code"])
                     price = pd2.get("current_price", 0) or 0
