@@ -844,6 +844,9 @@ def get_watchlist(user=Depends(get_current_user)):
             a     = analyze_stock(ohlcv, inv)
             pd2   = get_current_price(item["code"])
             cur   = pd2.get("current_price", 0) or 0
+            # 장 마감/주말이면 OHLCV 마지막 종가로 폴백
+            if (not cur) and ohlcv is not None and not ohlcv.empty:
+                cur = float(ohlcv["close"].iloc[-1])
             chg_pct = pd2.get("change_pct", 0) or 0
             timing  = watchlist_timing(a, item.get("target_price"), item.get("stop_loss"))
             entry["cur_price"]    = float(cur)
@@ -881,12 +884,15 @@ def watchlist_detail(code: str, user=Depends(get_current_user)):
         analysis = analyze_stock(ohlcv, inv)
         pd2 = get_current_price(code)
         cur = pd2.get("current_price", 0) or 0
+        # 장 마감/주말이면 OHLCV 마지막 종가로 폴백
+        if (not cur) and ohlcv is not None and not ohlcv.empty:
+            cur = float(ohlcv["close"].iloc[-1])
         analysis["cur_price"] = cur
         analysis["cur_change"] = pd2.get("change", 0)
         analysis["cur_change_pct"] = pd2.get("change_pct", 0)
-        analysis["cur_high"] = pd2.get("high", 0)
-        analysis["cur_low"] = pd2.get("low", 0)
-        analysis["cur_volume"] = pd2.get("volume", 0)
+        analysis["cur_high"] = pd2.get("high", 0) or float(ohlcv["high"].iloc[-1]) if ohlcv is not None and not ohlcv.empty else 0
+        analysis["cur_low"] = pd2.get("low", 0) or float(ohlcv["low"].iloc[-1]) if ohlcv is not None and not ohlcv.empty else 0
+        analysis["cur_volume"] = pd2.get("volume", 0) or int(ohlcv["volume"].iloc[-1]) if ohlcv is not None and not ohlcv.empty else 0
         timing = watchlist_timing(analysis, item.get("target_price"), item.get("stop_loss"))
         analysis["timing"] = timing
         # 수급 일별

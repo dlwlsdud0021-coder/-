@@ -2356,10 +2356,13 @@ function renderWatchlistDetail(d, el, code, name) {
           </div>
           ${timing.label ? `<span class="badge ${timing.badge_type==='buy'?'badge-buy':timing.badge_type==='sell'?'badge-sell':'badge-warn'}" style="font-size:11px;padding:4px 10px;">${timing.label}</span>` : ''}
         </div>
-        <div style="font-size:28px;font-weight:800;color:#1A1A2E;margin-top:10px;">${fmtNum(curPrice)}원</div>
-        <div style="font-size:13px;margin-top:3px;color:${chgPct>=0?'#E24B4A':'#185FA5'};">
-          ${chgPct>=0?'▲':'▼'} ${Math.abs(chg).toLocaleString()}원 (${Math.abs(chgPct).toFixed(2)}%)
+        <div style="display:flex;align-items:baseline;gap:8px;margin-top:10px;">
+          <div style="font-size:28px;font-weight:800;color:#1A1A2E;">${fmtNum(curPrice)}원</div>
+          ${(!chgPct&&!chg)?'<span style="font-size:10px;color:#8E8E9A;background:#F0F0F5;border-radius:4px;padding:2px 6px;">최근 종가</span>':''}
         </div>
+        ${(chgPct||chg) ? `<div style="font-size:13px;margin-top:3px;color:${chgPct>=0?'#E24B4A':'#185FA5'};">
+          ${chgPct>=0?'▲':'▼'} ${Math.abs(chg).toLocaleString()}원 (${Math.abs(chgPct).toFixed(2)}%)
+        </div>` : '<div style="font-size:12px;color:#8E8E9A;margin-top:3px;">장 마감 · 전일 종가 기준</div>'}
         ${a.cur_high || a.cur_low ? `<div style="font-size:11px;color:#8E8E9A;margin-top:6px;">
           고가 ${fmtNum(a.cur_high||0)}원 &nbsp;저가 ${fmtNum(a.cur_low||0)}원 &nbsp;거래량 ${(a.cur_volume||0).toLocaleString()}
         </div>` : ''}
