@@ -410,19 +410,19 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
   <div id="holding-add-form" style="display:none;">
     <div class="add-form">
       <h3>종목 추가</h3>
-      <div style="display:flex;gap:6px;align-items:flex-start;">
-        <div class="search-wrap" style="flex:3;margin-bottom:0;">
-          <input id="h-search" class="input-field" type="text" placeholder="종목명 검색" oninput="searchStock('h')" autocomplete="off" style="margin-bottom:0;">
+      <div style="display:flex;gap:6px;align-items:center;min-width:0;">
+        <div class="search-wrap" style="flex:3;min-width:0;margin-bottom:0;">
+          <input id="h-search" class="input-field" type="text" placeholder="종목명 검색" oninput="searchStock('h')" autocomplete="off" style="margin-bottom:0;width:100%;box-sizing:border-box;">
           <div id="h-search-results" class="search-results" style="display:none;"></div>
         </div>
         <input id="h-code" type="hidden">
-        <div style="flex:2;">
-          <input id="h-price" class="input-field" type="number" placeholder="평단가" style="margin-bottom:0;">
+        <div style="flex:2;min-width:0;">
+          <input id="h-price" class="input-field" type="number" placeholder="평단가" style="margin-bottom:0;width:100%;box-sizing:border-box;">
         </div>
-        <div style="flex:1.2;">
-          <input id="h-qty" class="input-field" type="number" placeholder="수량" style="margin-bottom:0;">
+        <div style="flex:1.2;min-width:0;">
+          <input id="h-qty" class="input-field" type="number" placeholder="수량" style="margin-bottom:0;width:100%;box-sizing:border-box;">
         </div>
-        <button class="btn-primary" style="flex-shrink:0;padding:10px 14px;white-space:nowrap;" onclick="addHolding()">추가</button>
+        <button class="btn-primary" style="flex-shrink:0;padding:10px 12px;white-space:nowrap;" onclick="addHolding()">추가</button>
         <button class="btn-secondary" style="flex-shrink:0;padding:10px 10px;white-space:nowrap;" onclick="toggleAddHolding()">취소</button>
       </div>
     </div>
