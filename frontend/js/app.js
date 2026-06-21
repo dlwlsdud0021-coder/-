@@ -418,7 +418,7 @@ function buildGaugeSVG(score, color, label) {
   const [nx, ny] = pt(score, 92);
   // 활성 세그먼트 위에 하이라이트
   const activeColor = segments.find(([s1,s2]) => score >= s1 && score <= s2)?.[2] || color;
-  return `<svg viewBox="0 0 300 168" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:300px;display:block;margin:0 auto;">
+  return `<svg viewBox="0 0 300 190" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:300px;display:block;margin:0 auto;">
     <!-- 배경 트랙 -->
     <path d="M${cx-ro},${cy} A${ro},${ro} 0 0,1 ${cx+ro},${cy}" fill="none" stroke="#F0F0F5" stroke-width="${ro-ri}"/>
     <!-- 컬러 세그먼트 -->
@@ -429,11 +429,11 @@ function buildGaugeSVG(score, color, label) {
     <circle cx="${cx}" cy="${cy}" r="11" fill="${activeColor}"/>
     <circle cx="${cx}" cy="${cy}" r="5.5" fill="white"/>
     <!-- 점수 텍스트 -->
-    <text x="${cx}" y="${cy-30}" text-anchor="middle" font-size="36" font-weight="800" fill="${activeColor}" font-family="-apple-system,BlinkMacSystemFont,sans-serif">${score}</text>
-    <text x="${cx}" y="${cy+26}" text-anchor="middle" font-size="14" font-weight="700" fill="#1C1C1E" font-family="-apple-system,BlinkMacSystemFont,sans-serif">${label}</text>
+    <text x="${cx}" y="${cy-28}" text-anchor="middle" font-size="36" font-weight="800" fill="${activeColor}" font-family="-apple-system,BlinkMacSystemFont,sans-serif">${score}</text>
+    <text x="${cx}" y="${cy+28}" text-anchor="middle" font-size="15" font-weight="700" fill="#1C1C1E" font-family="-apple-system,BlinkMacSystemFont,sans-serif">${label}</text>
     <!-- 양끝 레이블 -->
-    <text x="14" y="${cy+8}" text-anchor="middle" font-size="10" fill="#8E8E9A" font-family="-apple-system,sans-serif">공포</text>
-    <text x="286" y="${cy+8}" text-anchor="middle" font-size="10" fill="#8E8E9A" font-family="-apple-system,sans-serif">탐욕</text>
+    <text x="16" y="${cy+12}" text-anchor="middle" font-size="10" fill="#8E8E9A" font-family="-apple-system,sans-serif">공포</text>
+    <text x="284" y="${cy+12}" text-anchor="middle" font-size="10" fill="#8E8E9A" font-family="-apple-system,sans-serif">탐욕</text>
   </svg>`;
 }
 
@@ -520,8 +520,8 @@ function renderSentiment(d) {
     ${newsHtml || '<div class="empty-state">뉴스가 없습니다</div>'}
 
     <!-- AI 종합 분석 -->
-    ${news.length ? `<div style="font-size:13px;font-weight:700;color:#1C1C1E;margin:16px 0 8px;">AI 시황 분석</div>` : ''}
-    ${aiHtml}
+    <div style="font-size:13px;font-weight:700;color:#1C1C1E;margin:16px 0 8px;">AI 시황 분석</div>
+    ${aiHtml || `<div class="card" style="margin-bottom:12px;color:#8E8E9A;font-size:13px;text-align:center;padding:20px;">AI 분석을 불러오는 중이에요...</div>`}
   `;
 
   // 뉴스 상세용 전역 저장

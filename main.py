@@ -590,7 +590,8 @@ def get_sentiment():
 
 200자 이내로 핵심만."""
             ai_analysis = _call_gemini(prompt) or ""
-        except: pass
+        except Exception as _ae:
+            _logger.warning(f"[시황] AI 분석 실패: {_ae}")
         return {"sentiment": sentiment, "news": news_list, "ai_analysis": ai_analysis}
     except Exception as e:
         return {"sentiment": {"score": 50, "label": "중립", "desc": "", "color": "#8E8E9A", "factors": []},
