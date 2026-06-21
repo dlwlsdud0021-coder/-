@@ -473,9 +473,7 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
   <div class="detail-header" style="display:flex;align-items:center;justify-content:space-between;">
     <button class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left"></i></button>
     <span style="font-size:16px;font-weight:700;color:#1A1A2E;">내일 KOSPI 예측</span>
-    <button onclick="navigator.share&&navigator.share({title:'내일 KOSPI 예측',url:location.href})" style="background:none;border:none;padding:6px;cursor:pointer;color:#8E8E9A;">
-      <i class="ti ti-share" style="font-size:20px;"></i>
-    </button>
+    <div style="width:32px;"></div>
   </div>
   <div id="forecast-detail-content" class="scroll-area" style="padding-bottom:32px;"></div>
 </div>
@@ -504,8 +502,12 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
      수급 상세
 ════════════════════════════════════════════════════════ -->
 <div id="screen-supply-detail" class="screen">
-  <div class="detail-header">
-    <button class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left"></i> 홈</button>
+  <div class="detail-header" style="display:flex;align-items:center;justify-content:space-between;">
+    <button class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left"></i></button>
+    <span style="font-size:16px;font-weight:700;color:#1A1A2E;">외국인 · 기관 수급 흐름</span>
+    <button id="supply-info-btn" style="background:none;border:none;padding:6px;cursor:pointer;color:#8E8E9A;" onclick="">
+      <i class="ti ti-info-circle" style="font-size:20px;"></i>
+    </button>
   </div>
   <div id="supply-detail-content" class="scroll-area" style="padding-bottom:32px;"></div>
 </div>
@@ -636,6 +638,6 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
   </button>
 </nav>
 
-<script src="/js/app.js?v=20260622n"></script>
+<script src="/js/app.js?v=20260622o"></script>
 </body>
 </html>

@@ -699,158 +699,226 @@ async function openSupplyDetail() {
 }
 
 function renderSupplyDetail(d, el) {
-  const rows = Array.isArray(d.rows) ? d.rows : [];
-  const unit = d.unit || '억';
-  const tf = d.total_foreign || 0;
-  const ti = d.total_inst || 0;
-  const bdf = d.buy_days_foreign || 0;
-  const bdi = d.buy_days_inst || 0;
-  const bothBuy = d.both_buy || 0;
+  const rows     = Array.isArray(d.rows) ? d.rows : [];
+  const unit     = d.unit || '억';
+  const tf       = d.total_foreign || 0;
+  const ti       = d.total_inst || 0;
+  const bdf      = d.buy_days_foreign || 0;
+  const bdi      = d.buy_days_inst || 0;
+  const bothBuy  = d.both_buy || 0;
   const bothSell = d.both_sell || 0;
-  const sf = d.streak_foreign || 0;
-  const si = d.streak_inst || 0;
-  const days = d.days || rows.length;
+  const sf       = d.streak_foreign || 0;
+  const si       = d.streak_inst || 0;
+  const days     = d.days || rows.length;
 
-  const maxAbs = Math.max(...rows.map(r => Math.max(Math.abs(r.foreign), Math.abs(r.inst))), 1);
+  // 전체 스케일 (외국인/기관 통합)
+  const maxAbsAll = Math.max(...rows.map(r => Math.max(Math.abs(r.foreign), Math.abs(r.inst))), 1);
 
-  function buildTabContent(tab) {
-    // 탭별 메타
-    const total = tab === 'inst' ? ti : tf;
-    const streak = tab === 'inst' ? si : sf;
-    const buyDays = tab === 'inst' ? bdi : bdf;
-    const label = tab === 'inst' ? '기관' : tab === 'both' ? '동반' : '외국인';
+  // ── SVG 바 차트 빌더 ──────────────────────────────────────
+  function buildSvgChart(tab) {
+    const vals = rows.map(r => tab === 'inst' ? r.inst : r.foreign);
+    const maxA = Math.max(...vals.map(v => Math.abs(v)), 1);
+    const n = vals.length;
+    const VW = 340, CHART_H = 80, BOTTOM = 18;
+    const barGap = n > 15 ? 2 : 4;
+    const barW = Math.max(Math.floor((VW - (n - 1) * barGap) / n), 3);
+    const zeroY = CHART_H / 2;
 
-    // 요약 카드
-    const summaryHtml = tab === 'both'
-      ? `<div class="summary-row">
-          <div class="sum-card"><div class="sum-label">동반 매수일</div><div class="sum-val" style="color:#3C3489;">${bothBuy}일</div></div>
-          <div class="sum-card"><div class="sum-label">동반 매도일</div><div class="sum-val" style="color:#8E8E9A;">${bothSell}일</div></div>
-          <div class="sum-card"><div class="sum-label">전체 기간</div><div class="sum-val" style="color:#3C3C43;">${days}일</div></div>
-        </div>`
-      : `<div class="summary-row">
-          <div class="sum-card"><div class="sum-label">${days}일 순매수</div><div class="sum-val ${total>=0?'up':'down'}">${total>=0?'+':''}${fmtInv(total,unit)}</div></div>
-          <div class="sum-card"><div class="sum-label">연속 ${streak>=0?'매수':'매도'}일</div><div class="sum-val" style="color:#3C3489;">${Math.abs(streak)}일</div></div>
-          <div class="sum-card"><div class="sum-label">매수 우위일</div><div class="sum-val up">${buyDays}일</div></div>
-        </div>`;
-
-    // 바 차트
-    const barCols = rows.map(r => {
-      const val = tab === 'inst' ? r.inst : r.foreign;
-      const h = Math.min(Math.abs(val) / maxAbs * 90, 90);
-      const isUp = val >= 0;
-      const label2 = r.date.slice(5);
-      return `<div class="bar-col">
-        ${isUp ? `<div class="bar-up" style="height:${h}px;background:rgba(226,75,74,${0.3+h/90*0.5});"></div>` : `<div style="flex:1;"></div>`}
-        <div class="zero-line"></div>
-        ${!isUp ? `<div class="bar-down" style="height:${h}px;background:rgba(24,95,165,${0.3+h/90*0.4});"></div>` : ''}
-        <div class="bar-label">${label2}</div>
-      </div>`;
-    });
-
-    // 상세 테이블 (최근 8일)
-    const singleGrid = 'grid-template-columns:44px 1fr auto';
-    const tableRows = [...rows].reverse().slice(0, 8).map(r => {
-      const fv = r.foreign, iv = r.inst;
-      const activeVal = tab === 'inst' ? iv : fv;
-      const fCls = fv >= 0 ? 'up' : 'down';
-      const iCls = iv >= 0 ? 'up' : 'down';
-      const barW = Math.min(Math.max(Math.abs(activeVal) / maxAbs * 80, 5), 80);
-      const barCls = activeVal >= 0 ? 'bar-buy' : 'bar-sell';
-      const fCell = tab === 'inst' ? '' : `<span class="${fCls}" style="text-align:right;font-weight:600;">${fv>=0?'+':''}${fmtInv(fv,unit)}</span>`;
-      const iCell = tab === 'foreign' ? '' : `<span class="${iCls}" style="text-align:right;font-weight:600;">${iv>=0?'+':''}${fmtInv(iv,unit)}</span>`;
-      const rowStyle = tab !== 'both' ? ` style="${singleGrid}"` : '';
-      return `<div class="day-row"${rowStyle}>
-        <span class="day-date">${r.date.slice(5)}</span>
-        <div class="net-bar-bg"><div class="net-bar ${barCls}" style="width:${barW}%;"></div></div>
-        ${fCell}${iCell}
-      </div>`;
+    const bars = vals.map((v, i) => {
+      const h = Math.max(Math.round(Math.abs(v) / maxA * (CHART_H / 2 - 2)), 1);
+      const x = i * (barW + barGap);
+      const y = v >= 0 ? zeroY - h : zeroY;
+      const fill = v >= 0 ? 'rgba(226,120,120,0.75)' : 'rgba(107,159,212,0.70)';
+      // 날짜 레이블: 5일 간격
+      const showLabel = (i % 5 === 0) || i === n - 1;
+      const lbl = showLabel ? rows[i].date.slice(5) : '';
+      return `<rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="1.5" fill="${fill}"/>
+${lbl ? `<text x="${x + barW / 2}" y="${CHART_H + BOTTOM - 2}" text-anchor="middle" font-size="9" fill="#AEAEB2">${lbl}</text>` : ''}`;
     }).join('');
 
-    // 스트릭 박스 (동반 탭 제외)
-    let streakBox = '';
-    if (tab !== 'both') {
-      if (streak > 0) {
-        const strength = streak >= 10 ? '강한 매집 신호' : streak >= 5 ? '지속 매집 중' : '매수 흐름';
-        streakBox = `<div class="streak-box">
-          <div class="streak-icon"><i class="ti ti-flame" style="font-size:20px;"></i></div>
-          <div><div class="streak-title">${label} ${streak}일 연속 순매수 중</div><div class="streak-sub">누적 ${total>=0?'+':''}${fmtInv(total,unit)} · ${strength}</div></div>
-        </div>`;
-      } else if (streak < 0) {
-        const warn = streak <= -5 ? '이탈 흐름 · 주의 필요' : streak <= -3 ? '매도 지속 · 관찰 필요' : '단기 매도 흐름';
-        streakBox = `<div class="streak-box" style="background:#FCEBEB;">
-          <div class="streak-icon" style="background:#E24B4A;"><i class="ti ti-trending-down" style="font-size:20px;"></i></div>
-          <div><div class="streak-title" style="color:#A32D2D;">${label} ${Math.abs(streak)}일 연속 순매도 중</div><div class="streak-sub" style="color:#791F1F;">${warn}</div></div>
-        </div>`;
-      } else {
-        streakBox = `<div class="streak-box" style="background:#F0F0F5;">
-          <div class="streak-icon" style="background:#8E8E9A;"><i class="ti ti-minus" style="font-size:20px;"></i></div>
-          <div><div class="streak-title" style="color:#3C3C43;">${label} 방향 혼조</div><div class="streak-sub" style="color:#6B6B8A;">누적 ${total>=0?'+':''}${fmtInv(total,unit)} · 뚜렷한 방향성 없음</div></div>
-        </div>`;
-      }
-    }
-
-    const tableHeader = tab === 'both'
-      ? `<div class="day-header"><span>날짜</span><span>외국인</span><span style="text-align:right;">기관</span><span style="text-align:right;">동반</span></div>`
-      : tab === 'inst'
-        ? `<div class="day-header" style="${singleGrid}"><span>날짜</span><span>추세</span><span style="text-align:right;">기관</span></div>`
-        : `<div class="day-header" style="${singleGrid}"><span>날짜</span><span>추세</span><span style="text-align:right;">외국인</span></div>`;
-
-    return `
-      ${summaryHtml}
-      <div class="chart-area">
-        <div class="chart-title"><i class="ti ti-chart-bar" style="font-size:14px;color:#5B5BD6;"></i>일별 ${label} 순매수</div>
-        <div class="bar-chart">${barCols.join('')}</div>
-        <div class="legend-row">
-          <div class="legend-item"><div class="legend-dot" style="background:rgba(226,75,74,0.6);"></div>순매수</div>
-          <div class="legend-item"><div class="legend-dot" style="background:rgba(24,95,165,0.4);"></div>순매도</div>
-        </div>
-      </div>
-      ${streakBox}
-      <div class="section">
-        <div class="sec-title"><i class="ti ti-list-details" style="font-size:15px;color:#5B5BD6;"></i>일별 상세 (최근 8일)</div>
-        <div class="card">
-          ${tableHeader}
-          ${tableRows}
-        </div>
-      </div>`;
+    return `<svg viewBox="0 0 ${VW} ${CHART_H + BOTTOM}" style="width:100%;overflow:visible;margin:6px 0 0;">
+  <line x1="0" y1="${zeroY}" x2="${VW}" y2="${zeroY}" stroke="#E5E5EA" stroke-width="1"/>
+  <text x="0" y="${zeroY - 3}" font-size="9" fill="#C5C5D0">0</text>
+  ${bars}
+</svg>`;
   }
 
-  el.innerHTML = `
-    <div style="padding:14px 16px 10px;background:#fff;border-bottom:0.5px solid #E5E5EA;">
-      <div style="font-size:14px;font-weight:700;">외국인·기관 수급 흐름</div>
-      <div style="font-size:11px;color:#8E8E9A;margin-top:2px;">KOSPI ${days}일 기준</div>
-    </div>
+  // ── 스트릭 시그널 박스 ────────────────────────────────────
+  function buildStreakBox(tab) {
+    if (tab === 'both') return '';
+    const streak = tab === 'inst' ? si : sf;
+    const total  = tab === 'inst' ? ti : tf;
+    const label  = tab === 'inst' ? '기관' : '외국인';
+    if (streak === 0) return '';
+    const isSell = streak < 0;
+    const abs = Math.abs(streak);
+    const subText = isSell
+      ? (abs >= 5 ? '이탈 흐름 · 주의 필요' : '단기 매도 흐름')
+      : (abs >= 5 ? '강한 매집 신호' : '매수 흐름');
+    const bg   = isSell ? '#FEF2F2' : '#F0FDF4';
+    const icBg = isSell ? '#E24B4A' : '#22C55E';
+    const icon = isSell ? 'ti-trending-down' : 'ti-flame';
+    const txtC = isSell ? '#A32D2D' : '#166534';
+    return `<div style="display:flex;align-items:center;gap:10px;background:${bg};border-radius:12px;padding:12px 14px;margin:10px 0 0;">
+  <div style="width:36px;height:36px;border-radius:10px;background:${icBg};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+    <i class="ti ${icon}" style="font-size:18px;color:#fff;"></i>
+  </div>
+  <div style="flex:1;">
+    <div style="font-size:13px;font-weight:700;color:${txtC};">${label} ${abs}일 연속 ${isSell ? '순매도' : '순매수'} 중</div>
+    <div style="font-size:12px;color:${txtC};opacity:0.75;margin-top:2px;">${subText}</div>
+  </div>
+  <i class="ti ti-chevron-right" style="font-size:14px;color:#C7C7CC;"></i>
+</div>`;
+  }
 
-    <div class="tab-row" style="display:flex;padding:10px 16px;gap:6px;background:#fff;border-bottom:0.5px solid #E5E5EA;">
+  // ── 탭 콘텐츠 빌더 ───────────────────────────────────────
+  function buildTabContent(tab) {
+    const total   = tab === 'inst' ? ti : tf;
+    const streak  = tab === 'inst' ? si : sf;
+    const buyDays = tab === 'inst' ? bdi : bdf;
+    const label   = tab === 'inst' ? '기관' : tab === 'both' ? '동반' : '외국인';
+
+    // 요약 3-카드 (동반 탭 별도)
+    const summaryHtml = tab === 'both'
+      ? `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:0 16px 12px;">
+          <div class="card" style="padding:12px 10px;text-align:center;">
+            <div style="font-size:11px;color:#8E8E9A;margin-bottom:4px;">동반 매수일</div>
+            <div style="font-size:20px;font-weight:800;color:#5B5BD6;">${bothBuy}일</div>
+          </div>
+          <div class="card" style="padding:12px 10px;text-align:center;">
+            <div style="font-size:11px;color:#8E8E9A;margin-bottom:4px;">동반 매도일</div>
+            <div style="font-size:20px;font-weight:800;color:#8E8E9A;">${bothSell}일</div>
+          </div>
+          <div class="card" style="padding:12px 10px;text-align:center;">
+            <div style="font-size:11px;color:#8E8E9A;margin-bottom:4px;">전체 기간</div>
+            <div style="font-size:20px;font-weight:800;color:#3C3C43;">${days}일</div>
+          </div>
+        </div>`
+      : `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:0 16px 12px;">
+          <div class="card" style="padding:12px 10px;text-align:center;">
+            <div style="font-size:11px;color:#8E8E9A;margin-bottom:4px;">${days}일 순매수</div>
+            <div style="font-size:18px;font-weight:800;color:${total>=0?'#E24B4A':'#185FA5'};">${total>=0?'+':''}${fmtInv(total,unit)}</div>
+          </div>
+          <div class="card" style="padding:12px 10px;text-align:center;">
+            <div style="font-size:11px;color:#8E8E9A;margin-bottom:4px;">연속 ${streak>=0?'매수':'매도'}일</div>
+            <div style="font-size:20px;font-weight:800;color:#3C3489;">${Math.abs(streak)}일</div>
+          </div>
+          <div class="card" style="padding:12px 10px;text-align:center;">
+            <div style="font-size:11px;color:#8E8E9A;margin-bottom:4px;">매수 우위일</div>
+            <div style="font-size:20px;font-weight:800;color:#E24B4A;">${buyDays}일</div>
+          </div>
+        </div>`;
+
+    // 차트 카드
+    const chartCard = `<div class="section" style="margin-bottom:8px;">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+      <div style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#1A1A2E;">
+        <i class="ti ti-chart-bar" style="font-size:14px;color:#5B5BD6;"></i>일별 ${label} 순매수
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#8E8E9A;">
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:rgba(226,120,120,0.8);margin-right:3px;"></span>순매수</span>
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:rgba(107,159,212,0.75);margin-right:3px;"></span>순매도</span>
+      </div>
+    </div>
+    ${buildSvgChart(tab)}
+    ${buildStreakBox(tab)}
+  </div>
+</div>`;
+
+    // 일별 상세 테이블 (최근 8일)
+    const recentRows = [...rows].reverse().slice(0, 8);
+    const colLabel = tab === 'inst' ? '기관' : tab === 'both' ? '동반' : '외국인';
+    const tableRows = recentRows.map(r => {
+      const activeVal = tab === 'inst' ? r.inst : r.foreign;
+      const barW = Math.min(Math.max(Math.abs(activeVal) / maxAbsAll * 75, 4), 75);
+      const barColor = activeVal >= 0 ? '#E24B4A' : '#185FA5';
+      const valCls = activeVal >= 0 ? 'up' : 'down';
+      return `<div style="display:grid;grid-template-columns:40px 1fr auto;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid #F0F0F5;">
+  <span style="font-size:11px;color:#8E8E9A;">${r.date.slice(5)}</span>
+  <div style="background:#F5F5F7;border-radius:4px;height:6px;overflow:hidden;">
+    <div style="width:${barW}%;height:6px;background:${barColor};border-radius:4px;"></div>
+  </div>
+  <span class="${valCls}" style="font-size:12px;font-weight:700;text-align:right;min-width:64px;">${activeVal>=0?'+':''}${fmtInv(activeVal,unit)}</span>
+</div>`;
+    }).join('');
+
+    const tableCard = `<div class="section">
+  <div class="sec-title"><i class="ti ti-list-details" style="font-size:15px;color:#5B5BD6;"></i>일별 상세 (최근 8일)</div>
+  <div class="card">
+    <div style="display:grid;grid-template-columns:40px 1fr auto;gap:8px;padding-bottom:8px;border-bottom:0.5px solid #E5E5EA;margin-bottom:2px;">
+      <span style="font-size:11px;color:#8E8E9A;font-weight:600;">날짜</span>
+      <span style="font-size:11px;color:#8E8E9A;font-weight:600;">추세</span>
+      <span style="font-size:11px;color:#8E8E9A;font-weight:600;text-align:right;">${colLabel}</span>
+    </div>
+    ${tableRows}
+  </div>
+</div>`;
+
+    return summaryHtml + chartCard + tableCard;
+  }
+
+  // ── 누적 현황 2×2 그리드 ─────────────────────────────────
+  function cumulCell(label, val, sub, iconClass, iconBg, iconColor) {
+    const cls = val >= 0 ? 'up' : 'down';
+    const dispVal = (typeof val === 'number') ? `${val>=0?'+':''}${fmtInv(val,unit)}` : `${val}일`;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:14px 12px;background:#F8F8FA;border-radius:14px;">
+  <div style="flex:1;min-width:0;">
+    <div style="font-size:11px;color:#8E8E9A;margin-bottom:3px;">${label}</div>
+    <div style="font-size:20px;font-weight:800;color:${typeof val==='number'?(val>=0?'#E24B4A':'#185FA5'):'#5B5BD6'};">${dispVal}</div>
+    <div style="font-size:11px;color:#8E8E9A;margin-top:2px;">${sub}</div>
+  </div>
+  <div style="width:44px;height:44px;border-radius:50%;background:${iconBg};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+    <i class="ti ${iconClass}" style="font-size:20px;color:${iconColor};"></i>
+  </div>
+</div>`;
+  }
+
+  const cumulGrid = `<div class="section">
+  <div class="sec-title"><i class="ti ti-calculator" style="font-size:15px;color:#5B5BD6;"></i>누적 현황 (${days}일)</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 16px;">
+    ${cumulCell('외국인 누적', tf, `매수 우위 ${bdf}일`, 'ti-user', '#DBEAFE', '#3B82F6')}
+    ${cumulCell('기관 누적', ti, `매수 우위 ${bdi}일`, 'ti-building-bank', '#FCE7F3', '#DB2777')}
+    <div style="display:flex;align-items:center;gap:10px;padding:14px 12px;background:#F8F8FA;border-radius:14px;">
+      <div style="flex:1;"><div style="font-size:11px;color:#8E8E9A;margin-bottom:3px;">동반 매수일</div><div style="font-size:20px;font-weight:800;color:#5B5BD6;">${bothBuy}일</div><div style="font-size:11px;color:#8E8E9A;margin-top:2px;">전체의 ${Math.round(bothBuy/Math.max(days,1)*100)}%</div></div>
+      <div style="width:44px;height:44px;border-radius:50%;background:#DBEAFE;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ti ti-calendar" style="font-size:20px;color:#3B82F6;"></i></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;padding:14px 12px;background:#F8F8FA;border-radius:14px;">
+      <div style="flex:1;"><div style="font-size:11px;color:#8E8E9A;margin-bottom:3px;">동반 매도일</div><div style="font-size:20px;font-weight:800;color:#185FA5;">${bothSell}일</div><div style="font-size:11px;color:#8E8E9A;margin-top:2px;">전체의 ${Math.round(bothSell/Math.max(days,1)*100)}%</div></div>
+      <div style="width:44px;height:44px;border-radius:50%;background:#FCE7F3;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ti ti-calendar" style="font-size:20px;color:#DB2777;"></i></div>
+    </div>
+  </div>
+</div>`;
+
+  // ── 시스템 판단 ───────────────────────────────────────────
+  const adviceHtml = d.advice ? `<div class="section">
+  <div class="card" style="background:#F0F0FF;border:none;">
+    <div style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#3C3489;margin-bottom:6px;">
+      <i class="ti ti-bulb" style="font-size:15px;color:#F5A623;"></i>시스템 판단
+    </div>
+    <div style="font-size:13px;color:#3C3C43;line-height:1.7;">${d.advice}</div>
+  </div>
+</div>` : '';
+
+  el.innerHTML = `
+    <div style="padding:6px 16px 12px;background:#fff;border-bottom:0.5px solid #E5E5EA;">
+      <span style="font-size:12px;color:#8E8E9A;">KOSPI ${days}일 기준 <i class="ti ti-chevron-down" style="font-size:10px;"></i></span>
+    </div>
+    <div style="display:flex;padding:10px 16px;gap:8px;background:#fff;border-bottom:0.5px solid #E5E5EA;">
       <button id="tab-foreign" class="tab active" onclick="switchSupplyTab('foreign')">외국인</button>
       <button id="tab-inst" class="tab inactive" onclick="switchSupplyTab('inst')">기관</button>
       <button id="tab-both" class="tab inactive" onclick="switchSupplyTab('both')">동반매수</button>
     </div>
-
-    <div id="supply-tab-content">
-      ${buildTabContent('foreign')}
-    </div>
-
-    <div class="section">
-      <div class="sec-title"><i class="ti ti-calculator" style="font-size:15px;color:#5B5BD6;"></i>누적 현황 (${days}일)</div>
-      <div class="cumul-row">
-        <div class="cumul-card"><div class="cumul-label">외국인 누적</div><div class="cumul-val ${tf>=0?'up':'down'}">${tf>=0?'+':''}${fmtInv(tf,unit)}</div><div class="cumul-sub">매수 우위 ${bdf}일</div></div>
-        <div class="cumul-card"><div class="cumul-label">기관 누적</div><div class="cumul-val ${ti>=0?'up':'down'}">${ti>=0?'+':''}${fmtInv(ti,unit)}</div><div class="cumul-sub">매수 우위 ${bdi}일</div></div>
-        <div class="cumul-card"><div class="cumul-label">동반 매수일</div><div class="cumul-val" style="color:#3C3489;">${bothBuy}일</div><div class="cumul-sub">전체의 ${Math.round(bothBuy/days*100)}%</div></div>
-        <div class="cumul-card"><div class="cumul-label">동반 매도일</div><div class="cumul-val" style="color:#8E8E9A;">${bothSell}일</div><div class="cumul-sub">전체의 ${Math.round(bothSell/days*100)}%</div></div>
-      </div>
-    </div>
-
-    ${d.advice ? `<div class="advice-box">
-      <div class="advice-title"><i class="ti ti-bulb" style="font-size:15px;"></i>시스템 판단</div>
-      <div class="advice-text">${d.advice}</div>
-    </div>` : ''}
+    <div style="height:12px;"></div>
+    <div id="supply-tab-content">${buildTabContent('foreign')}</div>
+    ${cumulGrid}
+    ${adviceHtml}
     <div style="height:24px;"></div>`;
 
   window.switchSupplyTab = function(tab) {
     ['foreign','inst','both'].forEach(t => {
       const btn = document.getElementById('tab-'+t);
-      if (btn) { btn.className = 'tab ' + (t===tab?'active':'inactive'); }
+      if (btn) btn.className = 'tab ' + (t === tab ? 'active' : 'inactive');
     });
     document.getElementById('supply-tab-content').innerHTML = buildTabContent(tab);
   };
