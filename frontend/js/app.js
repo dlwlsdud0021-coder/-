@@ -7,6 +7,52 @@ const API = '';  // 같은 서버에서 서빙되므로 빈 문자열
 // ─────────────────────────────────────────────────────────
 // 커스텀 Confirm 모달
 // ─────────────────────────────────────────────────────────
+function showSentimentInfo() {
+  const existing = document.getElementById('_info-modal');
+  if (existing) existing.remove();
+  const el = document.createElement('div');
+  el.id = '_info-modal';
+  el.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);';
+  el.innerHTML = `
+    <div style="width:100%;max-width:430px;background:#fff;border-radius:20px 20px 0 0;padding:24px 20px 36px;animation:slideUp .22s ease;max-height:85vh;overflow-y:auto;">
+      <div style="width:40px;height:4px;background:#E5E5EA;border-radius:4px;margin:0 auto 18px;"></div>
+      <div style="font-size:16px;font-weight:700;color:#1C1C1E;margin-bottom:4px;">투자심리 지수란?</div>
+      <div style="font-size:13px;color:#8E8E9A;line-height:1.6;margin-bottom:18px;">CNN의 Fear &amp; Greed Index와 동일한 방식으로, 8가지 시장 지표를 각각 0~100점으로 정규화한 뒤 가중평균해 산출해요. 숫자가 낮을수록 공포, 높을수록 탐욕이에요.</div>
+
+      ${[
+        { icon:'ti-activity', name:'VKOSPI (공포지수)', w:'20%', desc:'한국판 VIX예요. 옵션 시장이 예상하는 향후 변동성으로, 낮을수록 시장이 안정적이에요. 가장 중요한 지표로 20% 비중을 줬어요.' },
+        { icon:'ti-chart-line', name:'KOSPI 등락률', w:'15%', desc:'당일 KOSPI가 얼마나 올랐는지 내렸는지예요. -3% 이하면 0점, +3% 이상이면 100점으로 환산해요.' },
+        { icon:'ti-user-dollar', name:'외국인 3일 순매수', w:'15%', desc:'외국인이 최근 3거래일간 사고판 금액의 합계예요. 외국인은 시장 방향을 선도하는 경우가 많아 중요하게 봐요.' },
+        { icon:'ti-building-bank', name:'기관 3일 순매수', w:'12%', desc:'국내 기관(펀드·보험·연기금 등)의 3일 순매수예요. 외국인과 함께 수급의 핵심 지표예요.' },
+        { icon:'ti-arrows-up-down', name:'등락비율 ADR', w:'13%', desc:'KOSPI 전체 종목 중 오른 종목 비율이에요. 70% 이상이면 시장 전반이 좋은 상태, 30% 이하면 광범위한 하락이에요.' },
+        { icon:'ti-timeline', name:'60일 고점 대비 위치', w:'10%', desc:'현재 KOSPI가 최근 60일 고점·저점 범위에서 어디쯤 있는지예요. 고점 근처면 탐욕, 저점 근처면 공포예요.' },
+        { icon:'ti-coin', name:'거래대금 vs 20일 평균', w:'8%', desc:'오늘 시장 거래대금이 20일 평균 대비 얼마나 활발한지예요. 거래가 활발하면 관심·참여도가 높다는 의미예요.' },
+        { icon:'ti-wave-sine', name:'시장 변동성 (10일)', w:'7%', desc:'최근 10거래일 KOSPI 일별 등락 표준편차예요. 변동폭이 작을수록 안정적(탐욕), 클수록 불안정(공포)이에요.' },
+      ].map(f => `
+        <div style="display:flex;gap:12px;padding:10px 0;border-bottom:0.5px solid #F5F5F7;">
+          <div style="width:32px;height:32px;border-radius:10px;background:#F0F0F5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="ti ${f.icon}" style="font-size:16px;color:#5B5BD6;"></i>
+          </div>
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+              <span style="font-size:13px;font-weight:600;color:#1C1C1E;">${f.name}</span>
+              <span style="font-size:10px;background:#EEEDFE;color:#5B5BD6;padding:2px 6px;border-radius:4px;font-weight:600;">${f.w}</span>
+            </div>
+            <div style="font-size:12px;color:#8E8E9A;line-height:1.6;">${f.desc}</div>
+          </div>
+        </div>`).join('')}
+
+      <div style="margin-top:16px;background:#FFF8F0;border-radius:12px;padding:12px 14px;">
+        <div style="font-size:12px;font-weight:600;color:#854F0B;margin-bottom:4px;">⚠️ 참고 사항</div>
+        <div style="font-size:12px;color:#854F0B;line-height:1.6;">이 지수는 참고용이에요. 정규화 범위와 가중치는 시장 특성에 맞게 추정한 값으로, 실데이터 백테스트로 지속 개선 중이에요. 투자 결정의 단독 근거로 사용하지 마세요.</div>
+      </div>
+
+      <button onclick="document.getElementById('_info-modal').remove()" style="width:100%;height:48px;margin-top:16px;border-radius:14px;border:none;background:#F2F2F7;color:#3C3C43;font-size:15px;font-weight:600;cursor:pointer;">닫기</button>
+    </div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click', e => { if (e.target === el) el.remove(); });
+}
+
 function showConfirm({ title, message, confirmText = '삭제', cancelText = '취소', onConfirm }) {
   const existing = document.getElementById('_confirm-modal');
   if (existing) existing.remove();
@@ -555,7 +601,10 @@ function renderSentiment(d) {
   el.innerHTML = `
     <!-- 투자심리 지수 -->
     <div class="card" style="margin:12px 0 10px;">
-      <div style="font-size:13px;color:#8E8E9A;text-align:center;margin-bottom:4px;">투자심리 지수</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:4px;">
+        <span style="font-size:13px;color:#8E8E9A;">투자심리 지수</span>
+        <button onclick="showSentimentInfo()" style="width:18px;height:18px;border-radius:50%;background:#F0F0F5;border:none;cursor:pointer;font-size:11px;font-weight:700;color:#8E8E9A;line-height:18px;padding:0;display:flex;align-items:center;justify-content:center;">?</button>
+      </div>
       ${gaugeSVG}
       <div style="border-top:1px solid #F0F0F5;padding-top:12px;margin-top:10px;">
         <div style="font-size:13px;font-weight:700;color:#1C1C1E;margin-bottom:4px;">${detail.title}</div>
