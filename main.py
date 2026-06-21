@@ -833,16 +833,16 @@ def get_watchlist(user=Depends(get_current_user)):
             cur   = pd2.get("current_price", 0) or 0
             chg_pct = pd2.get("change_pct", 0) or 0
             timing  = watchlist_timing(a, item.get("target_price"), item.get("stop_loss"))
-            entry["cur_price"]    = cur
-            entry["change_pct"]   = round(chg_pct, 2)
-            entry["rsi"]          = round(a.get("rsi", 50), 1)
-            entry["gap20"]        = round(a.get("gap20", 100), 1)
-            entry["badges"]       = a.get("badges", [])
-            entry["timing"]       = timing
-        except Exception:
-            pass
+            entry["cur_price"]    = float(cur)
+            entry["change_pct"]   = float(round(chg_pct, 2))
+            entry["rsi"]          = float(round(a.get("rsi", 50), 1))
+            entry["gap20"]        = float(round(a.get("gap20", 100), 1))
+            entry["badges"]       = _to_python(a.get("badges", []))
+            entry["timing"]       = _to_python(timing)
+        except Exception as e:
+            entry["_err"] = str(e)
         enriched.append(entry)
-    return {"watchlist": enriched}
+    return _to_python({"watchlist": enriched})
 
 @app.post("/api/watchlist")
 def add_watchlist(body: WatchlistBody, user=Depends(get_current_user)):

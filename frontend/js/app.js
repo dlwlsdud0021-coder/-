@@ -2012,7 +2012,11 @@ async function loadWatchlist(force) {
     _allWatchlist = d.watchlist || [];
     renderWatchlist();
   } catch(e) {
-    el.innerHTML = `<div class="loading">불러오지 못했습니다</div>`;
+    el.innerHTML = `<div class="loading" style="flex-direction:column;gap:8px;">
+      <span>불러오지 못했습니다</span>
+      <span style="font-size:11px;color:#C7C7CC;">${e.message||''}</span>
+      <button class="btn-secondary" style="margin-top:8px;" onclick="loadWatchlist(true)">다시 시도</button>
+    </div>`;
   }
 }
 
