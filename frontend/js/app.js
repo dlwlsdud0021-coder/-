@@ -603,15 +603,22 @@ function renderSupplyDetail(d, el) {
     // 스트릭 박스 (동반 탭 제외)
     let streakBox = '';
     if (tab !== 'both') {
-      if (streak > 2) {
+      if (streak > 0) {
+        const strength = streak >= 10 ? '강한 매집 신호' : streak >= 5 ? '지속 매집 중' : '매수 흐름';
         streakBox = `<div class="streak-box">
           <div class="streak-icon"><i class="ti ti-flame" style="font-size:20px;"></i></div>
-          <div><div class="streak-title">${label} ${streak}일 연속 순매수 중</div><div class="streak-sub">누적 ${total>=0?'+':''}${fmtInv(total,unit)} · ${streak>=5?'강한 매집 신호':'지속 관찰 필요'}</div></div>
+          <div><div class="streak-title">${label} ${streak}일 연속 순매수 중</div><div class="streak-sub">누적 ${total>=0?'+':''}${fmtInv(total,unit)} · ${strength}</div></div>
         </div>`;
-      } else if (streak < -2) {
+      } else if (streak < 0) {
+        const warn = streak <= -5 ? '이탈 흐름 · 주의 필요' : streak <= -3 ? '매도 지속 · 관찰 필요' : '단기 매도 흐름';
         streakBox = `<div class="streak-box" style="background:#FCEBEB;">
           <div class="streak-icon" style="background:#E24B4A;"><i class="ti ti-trending-down" style="font-size:20px;"></i></div>
-          <div><div class="streak-title" style="color:#A32D2D;">${label} ${Math.abs(streak)}일 연속 순매도 중</div><div class="streak-sub" style="color:#791F1F;">이탈 흐름 · 주의 필요</div></div>
+          <div><div class="streak-title" style="color:#A32D2D;">${label} ${Math.abs(streak)}일 연속 순매도 중</div><div class="streak-sub" style="color:#791F1F;">${warn}</div></div>
+        </div>`;
+      } else {
+        streakBox = `<div class="streak-box" style="background:#F0F0F5;">
+          <div class="streak-icon" style="background:#8E8E9A;"><i class="ti ti-minus" style="font-size:20px;"></i></div>
+          <div><div class="streak-title" style="color:#3C3C43;">${label} 방향 혼조</div><div class="streak-sub" style="color:#6B6B8A;">누적 ${total>=0?'+':''}${fmtInv(total,unit)} · 뚜렷한 방향성 없음</div></div>
         </div>`;
       }
     }
