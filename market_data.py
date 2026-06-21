@@ -437,27 +437,31 @@ def get_current_price(code: str) -> dict:
     except Exception as e:
         _logger.warning(f"[현재가] KIS API 실패({code}): {e}")
 
-    # 2순위: yfinance 실시간 (장중 15분 지연)
+    # 2순위: yfinance (시간외 포함 최신가)
     try:
         import yfinance as yf
         t = yf.Ticker(f"{code}.KS")
+        # prepost=True로 시간외 단일가(애프터) 포함한 최신 가격 조회
+        hist = t.history(period="2d", prepost=True)
         fi = t.fast_info
-        cur = fi.last_price
-        prev = fi.previous_close
-        if cur and prev and cur > 0:
-            chg = cur - prev
-            chg_pct = chg / prev * 100
-            high = getattr(fi, "day_high", None) or 0
-            low  = getattr(fi, "day_low",  None) or 0
-            vol  = getattr(fi, "last_volume", None) or 0
-            return {
-                "current_price": int(cur),
-                "change":        int(chg),
-                "change_pct":    round(chg_pct, 2),
-                "high":          int(high),
-                "low":           int(low),
-                "volume":        int(vol),
-            }
+        prev_close = fi.previous_close
+        if hist is not None and not hist.empty and prev_close and prev_close > 0:
+            cur = float(hist["Close"].iloc[-1])
+            if cur > 0:
+                chg = cur - prev_close
+                chg_pct = chg / prev_close * 100
+                high = float(hist["High"].iloc[-1])
+                low  = float(hist["Low"].iloc[-1])
+                vol  = int(hist["Volume"].iloc[-1])
+                _logger.info(f"[현재가] yfinance 성공({code}): {int(cur)} (시간외 포함)")
+                return {
+                    "current_price": int(cur),
+                    "change":        int(chg),
+                    "change_pct":    round(chg_pct, 2),
+                    "high":          int(high),
+                    "low":           int(low),
+                    "volume":        vol,
+                }
     except Exception as e:
         _logger.warning(f"[현재가] yfinance 실패({code}): {e}")
 
