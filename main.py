@@ -694,25 +694,29 @@ def _calc_sentiment_index() -> dict:
 
 
 def _get_exchange_rates() -> list:
-    """환율 정보 (달러/원, 엔/원, 위안/원)"""
+    """환율 정보 — yfinance 기반 (달러/원, 100엔/원, 위안/원)"""
+    import yfinance as yf
     pairs = [
-        {"code": "FX_USDKRW", "name": "달러/원", "unit": "USD"},
-        {"code": "FX_JPYKRW", "name": "엔/원",   "unit": "JPY"},
-        {"code": "FX_CNYKRW", "name": "위안/원", "unit": "CNY"},
+        {"symbol": "KRW=X",    "name": "달러/원",  "mult": 1},
+        {"symbol": "JPYKRW=X", "name": "100엔/원", "mult": 100},  # yfinance는 1엔 기준 → ×100
+        {"symbol": "CNYKRW=X", "name": "위안/원",  "mult": 1},
     ]
     result = []
     for p in pairs:
         try:
-            url = f"https://m.stock.naver.com/api/stock/{p['code']}/basic"
-            r = _requests.get(url, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
-            if r.status_code != 200: continue
-            d = r.json()
-            from market_data import _parse_naver_num
-            price = float(_parse_naver_num(d.get("closePrice", 0)))
-            chg   = float(_parse_naver_num(d.get("compareToPreviousClosePrice", 0)))
-            chg_pct = float(_parse_naver_num(d.get("fluctuationsRatio", 0)))
-            result.append({"name": p["name"], "unit": p["unit"],
-                           "price": price, "change": chg, "change_pct": chg_pct})
+            t = yf.Ticker(p["symbol"])
+            info = t.fast_info
+            price_raw = getattr(info, "last_price", None) or getattr(info, "regular_market_price", None)
+            prev_raw  = getattr(info, "previous_close", None)
+            if not price_raw: continue
+            price = round(price_raw * p["mult"], 2)
+            if prev_raw and prev_raw > 0:
+                prev  = prev_raw * p["mult"]
+                chg   = round(price - prev, 2)
+                chg_pct = round(chg / prev * 100, 2)
+            else:
+                chg, chg_pct = 0, 0
+            result.append({"name": p["name"], "price": price, "change": chg, "change_pct": chg_pct})
         except: pass
     return result
 
