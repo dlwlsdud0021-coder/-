@@ -2685,14 +2685,6 @@ function renderWatchlistDetail(d, el, code, name) {
       </div>
     </div>
 
-    <!-- TradingView 차트 -->
-    <div class="section" style="margin-top:12px;">
-      <div class="sec-title"><i class="ti ti-chart-candle" style="font-size:15px;color:#5B5BD6;"></i>차트</div>
-      <div style="border-radius:16px;overflow:hidden;background:#131722;">
-        <div id="tv-chart-${code}"></div>
-      </div>
-    </div>
-
     <!-- 타이밍 판정 -->
     ${timingHtml}
 
@@ -2791,47 +2783,6 @@ function renderWatchlistDetail(d, el, code, name) {
       </button>
     </div>`;
 
-  _initTradingViewChart(code, `tv-chart-${code}`);
-}
-
-function _initTradingViewChart(stockCode, containerId) {
-  // KOSPI: KRX:A005930, KOSDAQ: KRX:A035720 (A prefix 필요)
-  const symbol = `KRX:A${stockCode}`;
-  const container = document.getElementById(containerId);
-  if (!container) return;
-
-  function _doInit() {
-    container.innerHTML = '';
-    new TradingView.widget({
-      container_id: containerId,
-      symbol: symbol,
-      interval: 'D',
-      timezone: 'Asia/Seoul',
-      theme: 'light',
-      style: '1',
-      locale: 'kr',
-      enable_publishing: false,
-      hide_side_toolbar: true,
-      hide_top_toolbar: false,
-      save_image: false,
-      height: 300,
-      width: '100%',
-      studies: [],
-      show_popup_button: false,
-      allow_symbol_change: false,
-      hide_legend: false,
-      withdateranges: true,
-    });
-  }
-
-  if (typeof TradingView !== 'undefined') {
-    _doInit();
-  } else {
-    const s = document.createElement('script');
-    s.src = 'https://s3.tradingview.com/tv.js';
-    s.onload = _doInit;
-    document.head.appendChild(s);
-  }
 }
 
 function confirmDeleteWatchlist(code, name) {
@@ -3066,14 +3017,6 @@ function renderScannerDetail(s) {
       </div>` : ''}
     </div>
 
-    <!-- TradingView 차트 -->
-    <div class="section" style="margin-top:8px;">
-      <div class="sec-title"><i class="ti ti-chart-candle" style="font-size:15px;color:#5B5BD6;"></i>차트</div>
-      <div style="border-radius:16px;overflow:hidden;background:#131722;">
-        <div id="tv-sc-${s.code}"></div>
-      </div>
-    </div>
-
     <!-- 매집 신호 점수 투명화 -->
     <div class="section" style="margin-top:8px;">
       <div class="sec-title"><i class="ti ti-radar" style="font-size:15px;color:#5B5BD6;"></i>매집신호 상세 <span style="font-size:11px;color:#8E8E9A;font-weight:400;">(5개 조건 충족 시 신뢰도 높음)</span></div>
@@ -3144,7 +3087,6 @@ function renderScannerDetail(s) {
       <div class="warn-box"><i class="ti ti-alert-circle" style="font-size:14px;flex-shrink:0;"></i>투자 결정은 본인 책임입니다. 이 정보는 참고용이며 투자 권유가 아닙니다.</div>
     </div>`;
 
-  _initTradingViewChart(s.code, `tv-sc-${s.code}`);
 }
 
 function _buildFlowChart(volList, invList) {
