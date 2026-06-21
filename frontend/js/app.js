@@ -2795,7 +2795,8 @@ function renderWatchlistDetail(d, el, code, name) {
 }
 
 function _initTradingViewChart(stockCode, containerId) {
-  const symbol = `KRX:${stockCode}`;
+  // KOSPI: KRX:A005930, KOSDAQ: KRX:A035720 (A prefix 필요)
+  const symbol = `KRX:A${stockCode}`;
   const container = document.getElementById(containerId);
   if (!container) return;
 
@@ -2806,19 +2807,20 @@ function _initTradingViewChart(stockCode, containerId) {
       symbol: symbol,
       interval: 'D',
       timezone: 'Asia/Seoul',
-      theme: 'dark',
+      theme: 'light',
       style: '1',
       locale: 'kr',
-      toolbar_bg: '#131722',
       enable_publishing: false,
       hide_side_toolbar: true,
       hide_top_toolbar: false,
       save_image: false,
-      height: 360,
+      height: 300,
       width: '100%',
-      studies: ['RSI@tv-basicstudies', 'MACD@tv-basicstudies'],
+      studies: [],
       show_popup_button: false,
       allow_symbol_change: false,
+      hide_legend: false,
+      withdateranges: true,
     });
   }
 
