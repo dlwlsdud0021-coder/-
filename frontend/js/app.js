@@ -2083,18 +2083,20 @@ function renderWatchlist() {
 
     const cur = w.cur_price || 0;
 
-    // 목표가·손절가 한 줄 표시
+    // AI 목표가·손절가
     let targetRow = '';
-    if (w.target_price && cur) {
-      const tDist = ((w.target_price - cur) / cur * 100).toFixed(1);
-      const sDist = w.stop_loss ? ((w.stop_loss - cur) / cur * 100).toFixed(1) : null;
-      targetRow = `<div style="display:flex;gap:12px;margin:8px 0 4px;font-size:13px;">
+    const tg = w.targets || {};
+    const tp = tg.target_price, sp2 = tg.stop_price;
+    if (tp && cur) {
+      const tu = tg.target_upside != null ? (tg.target_upside >= 0 ? '+' : '') + tg.target_upside.toFixed(1) : '';
+      const sd = tg.stop_downside != null ? tg.stop_downside.toFixed(1) : '';
+      targetRow = `<div style="display:flex;gap:10px;align-items:center;margin:8px 0 4px;flex-wrap:wrap;">
         <span style="color:#8E8E9A;font-size:12px;">목표가</span>
-        <span style="font-weight:600;color:#27500A;">${fmtNum(w.target_price)}원</span>
-        <span style="color:#27500A;font-size:12px;">(+${tDist}%)</span>
-        ${sDist != null ? `<span style="color:#8E8E9A;font-size:12px;margin-left:4px;">손절가</span>
-        <span style="font-weight:600;color:#A32D2D;">${fmtNum(w.stop_loss)}원</span>
-        <span style="color:#A32D2D;font-size:12px;">(${sDist}%)</span>` : ''}
+        <span style="font-weight:600;color:#27500A;font-size:13px;">${fmtNum(tp)}원</span>
+        ${tu ? `<span style="color:#27500A;font-size:12px;">(${tu}%)</span>` : ''}
+        ${sp2 ? `<span style="color:#8E8E9A;font-size:12px;margin-left:4px;">손절가</span>
+        <span style="font-weight:600;color:#A32D2D;font-size:13px;">${fmtNum(sp2)}원</span>
+        ${sd ? `<span style="color:#A32D2D;font-size:12px;">(${sd}%)</span>` : ''}` : ''}
       </div>`;
     }
 
