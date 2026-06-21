@@ -612,7 +612,7 @@ def stock_news(code: str):
     try:
         tickers = get_all_tickers()
         name = tickers.get(code, code)
-        return {"news": fetch_stock_news(code, name), "name": name}
+        return {"news": fetch_stock_news(name), "name": name}
     except Exception as e:
         return {"news": [], "error": str(e)}
 
@@ -815,7 +815,7 @@ def holding_detail(code: str, user=Depends(get_current_user)):
 
     # 6) 종목 뉴스
     try:
-        news = fetch_stock_news(code, h["name"])
+        news = fetch_stock_news(h["name"])
         analysis["news"] = news[:3]
     except Exception:
         analysis["news"] = []
@@ -907,7 +907,7 @@ def watchlist_detail(code: str, user=Depends(get_current_user)):
                     "inst": int(row.get("기관", 0)),
                 })
         analysis["inv_list"] = inv_list
-        news = fetch_stock_news(code, item.get("name", code))
+        news = fetch_stock_news(item.get("name", code))
         analysis["news"] = news[:3]
     except Exception as e:
         import traceback
@@ -934,7 +934,7 @@ def stock_detail(code: str):
         analysis = analyze_stock(ohlcv, inv)
         pd2 = get_current_price(code)
         analysis["cur_price"] = pd2.get("current_price", 0)
-        news = fetch_stock_news(code, name)
+        news = fetch_stock_news(name)
         return {"code": code, "name": name, "analysis": analysis, "news": news}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
