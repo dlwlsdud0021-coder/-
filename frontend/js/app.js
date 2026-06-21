@@ -1855,7 +1855,7 @@ function renderHoldingDetail(d, el) {
         ${_buildFlowChart(a.vol_list || [], invList)}
         <div style="display:flex;gap:16px;margin-top:10px;font-size:12px;">
           <span style="color:${foreignNet>=0?'#E24B4A':'#185FA5'};font-weight:600;">외국인 3일 ${foreignNet>=0?'+':''}${foreignNet.toLocaleString()}주</span>
-          <span style="color:${instNet>=0?'#F5A623':'#8E4EC6'};font-weight:600;">기관 3일 ${instNet>=0?'+':''}${instNet.toLocaleString()}주</span>
+          <span style="color:${instNet>=0?'#27500A':'#A32D2D'};font-weight:600;">기관 3일 ${instNet>=0?'+':''}${instNet.toLocaleString()}주</span>
         </div>
       </div>
     </div>` : ''}
@@ -2756,7 +2756,7 @@ function renderWatchlistDetail(d, el, code, name) {
         ${_buildFlowChart(a.vol_list || [], invList)}
         <div style="display:flex;gap:16px;margin-top:10px;font-size:12px;">
           <span style="color:${foreignNet>=0?'#E24B4A':'#185FA5'};font-weight:600;">외국인 3일 ${foreignNet>=0?'+':''}${foreignNet.toLocaleString()}주</span>
-          <span style="color:${instNet>=0?'#F5A623':'#8E4EC6'};font-weight:600;">기관 3일 ${instNet>=0?'+':''}${instNet.toLocaleString()}주</span>
+          <span style="color:${instNet>=0?'#27500A':'#A32D2D'};font-weight:600;">기관 3일 ${instNet>=0?'+':''}${instNet.toLocaleString()}주</span>
         </div>
       </div>
     </div>` : ''}
@@ -3148,11 +3148,10 @@ function renderScannerDetail(s) {
 }
 
 function _buildFlowChart(volList, invList) {
-  const n = Math.max(volList.length, invList.length, 1);
+  // 거래량 SVG 바
+  const n = Math.max(volList.length, 1);
   const W = 280, barW = Math.floor((W - (n-1)*4) / n);
-  const H_VOL = 50, H_FLOW = 40;
-
-  // 거래량 바
+  const H_VOL = 50;
   const maxVol = Math.max(...volList.map(d => d.volume), 1);
   const volBars = volList.map((d, i) => {
     const h = Math.max(Math.round(d.volume / maxVol * H_VOL), 2);
@@ -3162,34 +3161,60 @@ function _buildFlowChart(volList, invList) {
       <text x="${x + barW/2}" y="${H_VOL + 11}" text-anchor="middle" font-size="8" fill="#8E8E9A">${label}</text>`;
   }).join('');
 
-  // 외국인·기관 수급 바 (양수=빨강, 음수=파랑)
-  const maxFlow = Math.max(...invList.flatMap(d => [Math.abs(d.foreign), Math.abs(d.inst)]), 1);
-  const midY = H_FLOW / 2;
-  const flowBars = invList.map((d, i) => {
-    const x = i * (barW + 4);
-    const halfW = Math.floor(barW / 2) - 1;
-    const fH = Math.max(Math.round(Math.abs(d.foreign) / maxFlow * midY), 1);
-    const iH = Math.max(Math.round(Math.abs(d.inst) / maxFlow * midY), 1);
-    const fy = d.foreign >= 0 ? midY - fH : midY;
-    const iy = d.inst >= 0 ? midY - iH : midY;
-    return `<rect x="${x}" y="${fy}" width="${halfW}" height="${fH}" rx="1" fill="${d.foreign>=0?'#E24B4A':'#185FA5'}"/>
-      <rect x="${x+halfW+1}" y="${iy}" width="${halfW}" height="${iH}" rx="1" fill="${d.inst>=0?'#F5A623':'#8E4EC6'}"/>`;
-  }).join('');
+  // 외국인·기관 수급 텍스트 카드
+  function buildSupplyRow(label, list, netKey) {
+    if (!list.length) return '';
+    const days = list.map(d => d[netKey] >= 0 ? '▲' : '▼');
+    const buyCnt = days.filter(d => d === '▲').length;
+    const sellCnt = days.length - buyCnt;
+    const net3 = list.slice(-3).reduce((s, d) => s + d[netKey], 0);
+    const isBuy = net3 >= 0;
+    const badge = isBuy
+      ? `<span style="background:#EAF3DE;color:#27500A;font-size:10px;padding:2px 7px;border-radius:5px;font-weight:600;">🟢 매수 우세</span>`
+      : `<span style="background:#FDECEA;color:#A32D2D;font-size:10px;padding:2px 7px;border-radius:5px;font-weight:600;">🔴 매도 우세</span>`;
+    const netAbs = Math.abs(net3).toLocaleString();
+    const desc = isBuy
+      ? `최근 5일 중 ${buyCnt}일 매수 — 사고 있어요`
+      : `최근 5일 중 ${sellCnt}일 매도 — 팔고 있어요`;
+    const arrows = days.map(d =>
+      `<span style="color:${d==='▲'?'#E24B4A':'#185FA5'};font-size:13px;font-weight:700;">${d}</span>`
+    ).join(' ');
+    return `<div style="padding:10px 0;border-bottom:1px solid #F0F0F5;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+        <span style="font-size:13px;font-weight:600;color:#1C1C1E;width:36px;">${label}</span>
+        ${badge}
+        <span style="font-size:12px;color:${isBuy?'#E24B4A':'#185FA5'};margin-left:auto;font-weight:600;">${isBuy?'+':'-'}${netAbs}주</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+        <span style="font-size:10px;color:#8E8E9A;">5일</span>
+        ${arrows}
+      </div>
+      <div style="font-size:11px;color:#8E8E9A;">${desc}</div>
+    </div>`;
+  }
+
+  const fRow = buildSupplyRow('외국인', invList, 'foreign');
+  const iRow = buildSupplyRow('기관', invList, 'inst');
+
+  // 종합 판단
+  const fNet = invList.slice(-3).reduce((s,d) => s+d.foreign, 0);
+  const iNet = invList.slice(-3).reduce((s,d) => s+d.inst, 0);
+  let summary = '';
+  if (fNet > 0 && iNet > 0)
+    summary = '📌 외국인·기관 모두 매수 중 — 수급 신호 긍정적';
+  else if (fNet < 0 && iNet < 0)
+    summary = '📌 외국인·기관 모두 매도 중 — 수급 신호 부정적';
+  else if (fNet > 0)
+    summary = '📌 외국인 매수, 기관 관망 — 혼조세';
+  else
+    summary = '📌 기관 매수, 외국인 관망 — 혼조세';
 
   return `
     <div style="font-size:11px;font-weight:600;color:#3C3C43;margin-bottom:6px;">거래량 추이</div>
     <svg viewBox="0 0 ${W} ${H_VOL+14}" style="width:100%;overflow:visible;">${volBars}</svg>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 6px;font-size:10px;color:#8E8E9A;align-items:center;">
-      <span style="font-weight:600;color:#3C3C43;">외국인·기관 수급</span>
-      <span><span style="display:inline-block;width:8px;height:8px;background:#E24B4A;border-radius:2px;margin-right:3px;"></span>외국인매수</span>
-      <span><span style="display:inline-block;width:8px;height:8px;background:#185FA5;border-radius:2px;margin-right:3px;"></span>외국인매도</span>
-      <span><span style="display:inline-block;width:8px;height:8px;background:#F5A623;border-radius:2px;margin-right:3px;"></span>기관매수</span>
-      <span><span style="display:inline-block;width:8px;height:8px;background:#8E4EC6;border-radius:2px;margin-right:3px;"></span>기관매도</span>
-    </div>
-    <svg viewBox="0 0 ${W} ${H_FLOW}" style="width:100%;overflow:visible;">
-      <line x1="0" y1="${midY}" x2="${W}" y2="${midY}" stroke="#F0F0F5" stroke-width="1"/>
-      ${flowBars}
-    </svg>`;
+    <div style="font-size:11px;font-weight:600;color:#3C3C43;margin:14px 0 4px;">외국인·기관 수급</div>
+    ${fRow}${iRow}
+    ${summary ? `<div style="margin-top:10px;font-size:12px;color:#3C3C43;font-weight:500;">${summary}</div>` : ''}`;
 }
 
 // ─────────────────────────────────────────────────────────
