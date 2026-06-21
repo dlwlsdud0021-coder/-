@@ -320,7 +320,7 @@ def home_data():
         analysis = []
         for item in (analysis_raw or []):
             if isinstance(item, (list, tuple)) and len(item) >= 3:
-                analysis.append({"dot": item[0], "label": item[1], "text": item[2]})
+                analysis.append({"dot": item[0], "label": item[1], "text": item[2], "checkpoints": item[3] if len(item) > 3 else []})
             elif isinstance(item, dict):
                 analysis.append(item)
         forecast = generate_forecast(us_raw, idx, ma)
@@ -411,7 +411,7 @@ def index_detail(name: str):
             analysis_out = []
             for item in (analysis or []):
                 if isinstance(item, (list, tuple)) and len(item) >= 3:
-                    analysis_out.append({"dot": item[0], "label": item[1], "text": item[2]})
+                    analysis_out.append({"dot": item[0], "label": item[1], "text": item[2], "checkpoints": item[3] if len(item) > 3 else []})
                 elif isinstance(item, dict):
                     analysis_out.append(item)
         except Exception:

@@ -1245,7 +1245,28 @@ function renderAnalysisDetail(d, el) {
   <!-- 카드3: 오늘 체크 포인트 -->
   <div style="background:#fff;border-radius:20px;padding:20px;margin-bottom:14px;box-shadow:0 2px 10px rgba(30,30,60,0.04);">
     ${cardHead('📅','#EFEBFC', a2.label||'오늘 체크 포인트', {t:'관심',bg:'#EFEBFC',tx:'#6C5DD3'})}
-    <div style="font-size:19px;font-weight:800;margin:10px 0 14px;">${extractSub(a2.text)||'주요 포인트 확인'}</div>
+    <div style="font-size:19px;font-weight:800;margin:10px 0 16px;">${extractSub(a2.text)||'주요 일정 대기'}</div>
+    ${(() => {
+      const cps = Array.isArray(a2.checkpoints) ? a2.checkpoints : [];
+      if (!cps.length) return '';
+      const impactStyle = (imp) => {
+        if (!imp) return 'background:#EFEBFC;color:#6C5DD3;';
+        if (imp.includes('높')) return 'background:#FFE9ED;color:#FF4D67;';
+        if (imp.includes('중')) return 'background:#FFF3DC;color:#C17B12;';
+        return 'background:#EEEEF3;color:#8B8D9B;';
+      };
+      return cps.map(cp => `
+        <div style="display:flex;gap:14px;padding:14px 0;border-bottom:1px solid #F2F2F7;">
+          <div style="flex-shrink:0;width:38px;font-size:11.5px;font-weight:700;color:#8B8D9B;padding-top:2px;">${cp.time||''}</div>
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+              <div style="font-size:14px;font-weight:700;">${cp.title||''}</div>
+              ${cp.impact ? `<span style="font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:8px;${impactStyle(cp.impact)}">영향도 ${cp.impact}</span>` : ''}
+            </div>
+            <div style="font-size:12.5px;color:#6B6D7A;line-height:1.5;">${cp.desc||''}</div>
+          </div>
+        </div>`).join('');
+    })()}
     ${aiBox(a2.text)}
   </div>
 

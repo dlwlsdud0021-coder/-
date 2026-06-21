@@ -279,26 +279,26 @@ def analyze_us_impact(us_data: dict, kr_data: dict, ma: dict, kp_hist=None) -> l
 
     # 장중 vs 마감/주말 프롬프트 분기
     if phase == "open":
-        context_prompt = "지금은 한국 증시 장중(9:00~15:30)입니다. 투자자가 지금 이 순간 어떤 신호를 주목해야 하는지, 구체적 수치 기준과 함께 알려주세요."
-        section3_title = "지금 당장 봐야 할 것"
-        section3_tag   = "지금봐야할것"
-        section3_prompt = (
-            "[지금봐야할것]\n"
-            "소제목: (지금 장중 핵심 확인 포인트 한 줄)\n"
-            "설명: (외국인 수급·지수 레벨·거래량 중 지금 가장 중요한 2가지 신호와 판단 기준. 구체적 수치 기준 포함 2~3문장.)\n"
-            "핵심판단: ('X가 Y를 돌파/지지하면 매수 우위, 실패하면 조정 신호' 식으로 조건을 1문장으로 명확히.)\n"
-        )
+        context_prompt = "지금은 한국 증시 장중(9:00~15:30)입니다."
     else:
-        context_prompt = "지금은 한국 증시 장 마감 후입니다. 오늘을 총결산하고 내일을 준비하는 분석을 해주세요."
-        section3_title = "오늘 결론 & 내일 준비"
-        section3_tag   = "오늘결론"
-        section3_prompt = (
-            "[오늘결론]\n"
-            "소제목: (오늘 KOSPI 한 줄 결론)\n"
-            "설명: (오늘 KOSPI 등락 수치, 이격도, 5일 수익률을 언급하며 오늘 장 성격(과열/정상/약세) 진단. "
-            "내일 핵심 변수(지지선·저항선 수치 포함) 2가지를 2~4문장으로.)\n"
-            "핵심판단: (내일 장에서 이 수준을 지키면 긍정, 이탈하면 주의라는 식으로 구체적 가격 기준 제시.)\n"
-        )
+        context_prompt = "지금은 한국 증시 장 마감 후입니다."
+
+    section3_title = "오늘 체크 포인트"
+    section3_tag   = "체크포인트"
+    section3_prompt = (
+        "[체크포인트]\n"
+        "오늘(한국 날짜 기준) 투자에 영향을 줄 수 있는 주요 경제 일정·이벤트를 2~4개 나열하세요.\n"
+        "예: 미국 연준 발표, 국내외 기업 실적, 경제지표 발표, 외환·금리 변동 등.\n"
+        "각 항목을 아래 형식으로 작성 (한 줄에 하나, | 로 구분):\n"
+        "시간: HH:MM | 제목: (이벤트명 15자 이내) | 설명: (핵심 포인트 50자 이내) | 영향도: 높음/중간/낮음\n"
+        "주의사항:\n"
+        "- 일정을 모르면 현재 시장 상황에서 주목해야 할 기술적 포인트를 일정 형식으로 작성\n"
+        "- '없음'이나 빈 줄 금지, 반드시 2개 이상 작성\n"
+        "그리고 아래에 AI 종합 코멘트도 작성하세요:\n"
+        "소제목: (오늘 핵심 체크포인트 한 줄 요약)\n"
+        "설명: (위 일정들이 시장에 미칠 영향과 대응 전략 3~4문장)\n"
+        "핵심판단: (오늘 가장 중요한 리스크 또는 기회 1문장)\n"
+    )
 
     # 과열/침체 판단
     overheated = disp > 108 if disp else False
@@ -374,10 +374,31 @@ def analyze_us_impact(us_data: dict, kr_data: dict, ma: dict, kp_hist=None) -> l
                 )
             return "".join(parts)
 
-        tag3 = section3_tag
         us_t,   us_d,   us_j   = _parse_fields(_ext_section("미국영향"))
         tech_t, tech_d, tech_j = _parse_fields(_ext_section("기술분석"))
-        pt_t,   pt_d,   pt_j   = _parse_fields(_ext_section(tag3))
+        pt_t,   pt_d,   pt_j   = _parse_fields(_ext_section("체크포인트"))
+
+        # 체크포인트 구조화 파싱
+        def _parse_checkpoints(block):
+            items = []
+            for line in block.split("\n"):
+                line = line.strip()
+                if not line or "소제목" in line or "설명" in line or "핵심판단" in line:
+                    continue
+                t = re.search(r"시간[:：]\s*(\S+)", line)
+                ti = re.search(r"제목[:：]\s*([^|]+)", line)
+                de = re.search(r"설명[:：]\s*([^|]+)", line)
+                im = re.search(r"영향도[:：]\s*(\S+)", line)
+                if ti:
+                    items.append({
+                        "time":   t.group(1).strip()  if t  else "",
+                        "title":  ti.group(1).strip(),
+                        "desc":   de.group(1).strip()  if de else "",
+                        "impact": im.group(1).strip()  if im else "중간",
+                    })
+            return items
+
+        checkpoints = _parse_checkpoints(_ext_section("체크포인트"))
 
         # 판단 색상 (방향에 따라)
         us_clr   = "#E24B4A" if sp_pct >= 0 else "#185FA5"
@@ -385,9 +406,9 @@ def analyze_us_impact(us_data: dict, kr_data: dict, ma: dict, kp_hist=None) -> l
 
         if us_d and tech_d:
             return [
-                ("dot-blue",   "미국 증시 영향",    _fmt(us_t,   us_d,   us_j,   us_clr,   "🌐")),
-                ("dot-orange", "이동평균선 분석",   _fmt(tech_t, tech_d, tech_j, tech_clr, "📊")),
-                ("dot-green",  section3_title,       _fmt(pt_t,   pt_d,   pt_j,   "#5B5BD6", "🎯")),
+                ("dot-blue",   "미국 증시 영향",  _fmt(us_t,   us_d,   us_j,   us_clr,   "🌐"), []),
+                ("dot-orange", "이동평균선 분석", _fmt(tech_t, tech_d, tech_j, tech_clr, "📊"), []),
+                ("dot-green",  section3_title,     _fmt(pt_t,   pt_d,   pt_j,   "#5B5BD6", "🎯"), checkpoints),
             ]
 
     # ── Rule-based 폴백 ──
@@ -535,9 +556,9 @@ def _rule_analysis(sp_pct, nd_pct, kp_pct, kp_cur, kd_pct,
         pt_judge = "장 시작 전 아시아 선물 + 환율 동향을 확인하세요."
 
     return [
-        ("dot-blue",   "미국 증시 영향",  _card("미국 증시 → 한국 영향",  us_desc,   us_judge,   us_clr,   "🌐")),
-        ("dot-orange", "이동평균선 분석", _card("KOSPI 기술적 위치",       tech_desc, tech_judge, tech_clr, "📊")),
-        ("dot-green",  section3_title,    _card(section3_title,            pt_desc,   pt_judge,   "#5B5BD6","🎯")),
+        ("dot-blue",   "미국 증시 영향",  _card("미국 증시 → 한국 영향",  us_desc,   us_judge,   us_clr,   "🌐"), []),
+        ("dot-orange", "이동평균선 분석", _card("KOSPI 기술적 위치",       tech_desc, tech_judge, tech_clr, "📊"), []),
+        ("dot-green",  "오늘 체크 포인트", _card("오늘 체크 포인트",       pt_desc,   pt_judge,   "#5B5BD6","🎯"), []),
     ]
 
 
