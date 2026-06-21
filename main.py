@@ -968,16 +968,17 @@ def stock_detail(code: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 # ─────────────────────────────────────────────────────────
-# 매집 스캐너 API
+# 매집 스캐너 API — 백그라운드 계산, 캐시 즉시 반환
 # ─────────────────────────────────────────────────────────
-_scanner_cache = {"data": None, "ts": 0}
+import threading as _threading
+_scanner_cache = {"data": None, "ts": 0, "running": False}
 
-@app.get("/api/scanner")
-def scanner():
+def _run_scanner():
+    """백그라운드 스레드에서 스캐너 계산 실행"""
     import time
-    now = time.time()
-    if _scanner_cache["data"] and now - _scanner_cache["ts"] < 3600:
-        return _scanner_cache["data"]
+    if _scanner_cache["running"]:
+        return
+    _scanner_cache["running"] = True
     try:
         stocks = get_top_stocks(100)
         results = []
@@ -989,25 +990,40 @@ def scanner():
                 if a["score"] >= 3:
                     pd2 = get_current_price(s["code"])
                     price = pd2.get("current_price", 0) or 0
-                    # 주말/장마감 시 OHLCV 마지막 종가 폴백
                     if not price and ohlcv is not None and not ohlcv.empty:
                         price = float(ohlcv["close"].iloc[-1])
                     change_pct = pd2.get("change_pct", 0) or 0
                     results.append(_to_python({
                         "code": s["code"], "name": s["name"],
-                        "price": price,
-                        "change_pct": change_pct,
-                        **a
+                        "price": price, "change_pct": change_pct, **a
                     }))
             except Exception:
                 continue
         results.sort(key=lambda x: (x["score"], x.get("volume_ratio", 0)), reverse=True)
-        data = {"results": results[:20]}
-        _scanner_cache["data"] = data
-        _scanner_cache["ts"] = now
-        return data
+        _scanner_cache["data"] = {"results": results[:20]}
+        _scanner_cache["ts"] = time.time()
     except Exception as e:
-        return {"results": [], "error": str(e)}
+        if not _scanner_cache["data"]:
+            _scanner_cache["data"] = {"results": [], "error": str(e)}
+    finally:
+        _scanner_cache["running"] = False
+
+@app.get("/api/scanner")
+def get_scanner():
+    import time
+    now = time.time()
+    cache_age = now - _scanner_cache["ts"]
+    # 캐시 유효(1시간)하면 즉시 반환
+    if _scanner_cache["data"] and cache_age < 3600:
+        return _scanner_cache["data"]
+    # 캐시 없거나 만료 → 백그라운드 계산 시작
+    if not _scanner_cache["running"]:
+        t = _threading.Thread(target=_run_scanner, daemon=True)
+        t.start()
+    # 계산 중이면 stale 캐시 또는 로딩 상태 반환
+    if _scanner_cache["data"]:
+        return _scanner_cache["data"]
+    return {"results": [], "loading": True}
 
 # ─────────────────────────────────────────────────────────
 # 정적 파일 서빙 (프론트엔드)

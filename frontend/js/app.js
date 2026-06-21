@@ -2533,6 +2533,7 @@ async function deleteWatchlist(code, name) {
 // 매집 스캐너
 // ─────────────────────────────────────────────────────────
 let _scannerLoaded = false;
+let _scannerPollTimer = null;
 async function loadScanner(force) {
   if (_scannerLoaded && !force) return;
   _scannerLoaded = true;
@@ -2540,6 +2541,13 @@ async function loadScanner(force) {
   el.innerHTML = '<div class="loading"><div class="spinner"></div> 스캔 중...</div>';
   try {
     const d = await api('GET', '/api/scanner');
+    if (d.loading) {
+      // 백그라운드 계산 중 — 10초 후 재시도
+      el.innerHTML = '<div class="loading"><div class="spinner"></div> 종목 분석 중... (1~2분 소요)</div>';
+      clearTimeout(_scannerPollTimer);
+      _scannerPollTimer = setTimeout(() => { _scannerLoaded = false; loadScanner(true); }, 10000);
+      return;
+    }
     renderScanner(d, el);
   } catch(e) {
     el.innerHTML = `<div class="loading">스캔 데이터를 불러오지 못했습니다</div>`;
