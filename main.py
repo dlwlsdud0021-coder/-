@@ -896,16 +896,18 @@ def get_sentiment(force: bool = False):
         print("[시황] 캐시 반환")
         return _sentiment_cache["data"]
     try:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=7) as pool:
             f_sent   = pool.submit(_calc_sentiment_index)
             f_fx     = pool.submit(_get_exchange_rates)
             f_fut    = pool.submit(_get_us_futures)
+            f_us     = pool.submit(get_us_indices)
             f_sector = pool.submit(get_sector_performance)
             f_netbuy = pool.submit(_get_top_net_buy, 5)
             f_vol    = pool.submit(_get_top_volume, 5)
             sentiment  = f_sent.result(timeout=30)
             fx         = f_fx.result(timeout=15)
             futures    = f_fut.result(timeout=15)
+            us_indices = f_us.result(timeout=15)
             sectors    = f_sector.result(timeout=25)
             net_buy    = f_netbuy.result(timeout=25)
             top_volume = f_vol.result(timeout=25)
@@ -925,6 +927,7 @@ def get_sentiment(force: bool = False):
             "sentiment":    sentiment,
             "fx":           fx,
             "us_futures":   futures,
+            "us_indices":   us_indices,
             "sectors":      sectors,
             "net_buy":      net_buy,
             "top_volume":   top_volume,

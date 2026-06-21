@@ -702,6 +702,13 @@ function renderSentiment(d) {
   const fx = d.fx || [];
   const fxGrid = fx.length ? fx.map(f => grid3Item(f.name, f.price, f.change_pct)).join('') : '';
 
+  // 미국 지수 (실제 종가)
+  const usIdx = d.us_indices || {};
+  const usIdxItems = [['S&P500','S&P500'],['나스닥','나스닥'],['다우','다우']]
+    .filter(([k]) => usIdx[k])
+    .map(([k, label]) => grid3Item(label, usIdx[k].current, usIdx[k].change_pct));
+  const usIdxGrid = usIdxItems.join('');
+
   // 미국 선물
   const futures = d.us_futures || [];
   const futGrid = futures.length ? futures.map(f => grid3Item(f.name, f.price, f.change_pct)).join('') : '';
@@ -804,6 +811,12 @@ function renderSentiment(d) {
     ${factorHtml ? card(`
       ${secHead('📊', '구성 지표', `<div style="font-size:12px;color:#8B8D9B;font-weight:600;">${factorDetails.length}개</div>`)}
       ${factorHtml}
+    `) : ''}
+
+    <!-- 미국 지수 -->
+    ${usIdxGrid ? card(`
+      ${secHead('🇺🇸', '미국 지수')}
+      <div style="display:flex;gap:0;text-align:center;">${usIdxGrid}</div>
     `) : ''}
 
     <!-- 환율 -->
