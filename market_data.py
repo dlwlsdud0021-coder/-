@@ -413,8 +413,13 @@ def get_ohlcv(code: str, days: int = 120) -> pd.DataFrame:
     return pd.DataFrame()
 
 
+def _parse_naver_num(val) -> float:
+    if not val:
+        return 0.0
+    return float(str(val).replace(",", "") or 0)
+
 def _naver_current_price(code: str) -> dict:
-    """네이버 모바일 주식 API — 시간외 단일가 포함 최신가"""
+    """네이버 모바일 주식 API — 시간외 단일가 우선, 없으면 정규장 종가"""
     try:
         import requests as _req
         url = f"https://m.stock.naver.com/api/stock/{code}/basic"
@@ -422,22 +427,40 @@ def _naver_current_price(code: str) -> dict:
         if r.status_code != 200:
             return {}
         d = r.json()
-        cur = int(d.get("closePrice", "0").replace(",", "") or 0)
-        prev = int(d.get("compareToPreviousClosePrice", "0").replace(",", "") or 0)
-        chg_pct = float(d.get("fluctuationsRatio", 0) or 0)
-        high = int(d.get("highPrice", "0").replace(",", "") or 0)
-        low  = int(d.get("lowPrice", "0").replace(",", "") or 0)
-        vol  = int(d.get("accumulatedTradingVolume", "0").replace(",", "") or 0)
-        if cur > 0:
-            _logger.info(f"[현재가] 네이버 성공({code}): {cur}")
+        regular_price = int(_parse_naver_num(d.get("closePrice")))
+        regular_chg   = int(_parse_naver_num(d.get("compareToPreviousClosePrice")))
+        regular_pct   = float(d.get("fluctuationsRatio") or 0)
+        high = int(_parse_naver_num(d.get("highPrice")))
+        low  = int(_parse_naver_num(d.get("lowPrice")))
+        vol  = int(_parse_naver_num(d.get("accumulatedTradingVolume")))
+        if regular_price <= 0:
+            return {}
+        # 시간외 단일가 확인
+        over = d.get("overMarketPriceInfo") or {}
+        over_price = int(_parse_naver_num(over.get("overPrice"))) if over else 0
+        over_chg   = int(_parse_naver_num(over.get("compareToPreviousClosePrice"))) if over else 0
+        over_pct   = float(over.get("fluctuationsRatio") or 0) if over else 0
+        over_status = over.get("overMarketStatus", "") if over else ""
+        # 시간외 거래 완료되고 가격 있으면 시간외 종가 사용
+        if over_price > 0 and over_status == "CLOSE":
+            _logger.info(f"[현재가] 네이버 시간외 성공({code}): {over_price} (정규장: {regular_price})")
             return {
-                "current_price": cur,
-                "change":        prev,
-                "change_pct":    chg_pct,
+                "current_price": over_price,
+                "change":        over_chg,
+                "change_pct":    over_pct,
                 "high":          high,
                 "low":           low,
                 "volume":        vol,
             }
+        _logger.info(f"[현재가] 네이버 정규장({code}): {regular_price}")
+        return {
+            "current_price": regular_price,
+            "change":        regular_chg,
+            "change_pct":    regular_pct,
+            "high":          high,
+            "low":           low,
+            "volume":        vol,
+        }
     except Exception as e:
         _logger.warning(f"[현재가] 네이버 실패({code}): {e}")
     return {}
