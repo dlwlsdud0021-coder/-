@@ -492,21 +492,31 @@ function buildInvestorSection(investor) {
   if (!investor || !investor.length) return '';
   const unit = investor[0]?.unit || '억';
   const maxAbs = Math.max(...investor.map(r => Math.max(Math.abs(r.foreign||0), Math.abs(r.inst||0))), 1);
-  const BAR_MAX = 45; // 한 쪽 최대 바 너비 (%)
+  const HALF = 100; // 중앙 기준 한쪽 최대 px
+
+  // 파랑=외국인, 핑크=기관
+  const F_COLOR = '#7B8CE8';
+  const I_COLOR = '#F47B8C';
 
   const rows = [...investor].reverse().map(r => {
     const fv = r.foreign || 0, iv = r.inst || 0;
-    const fw = Math.min(Math.abs(fv) / maxAbs * BAR_MAX, BAR_MAX).toFixed(1);
-    const iw = Math.min(Math.abs(iv) / maxAbs * BAR_MAX, BAR_MAX).toFixed(1);
-    const fColor = fv >= 0 ? 'rgba(226,100,100,0.75)' : 'rgba(90,140,200,0.75)';
-    const iColor = iv >= 0 ? 'rgba(226,120,140,0.80)' : 'rgba(110,155,210,0.65)';
+    const fw = Math.min(Math.abs(fv) / maxAbs * HALF, HALF).toFixed(1);
+    const iw = Math.min(Math.abs(iv) / maxAbs * HALF, HALF).toFixed(1);
+    // 음수=왼쪽, 양수=오른쪽 포지션
+    const fPos = fv < 0
+      ? `right:calc(50% + 0px);width:${fw}px;border-radius:3px 0 0 3px;`
+      : `left:calc(50% + 0px);width:${fw}px;border-radius:0 3px 3px 0;`;
+    const iPos = iv < 0
+      ? `right:calc(50% + 0px);width:${iw}px;border-radius:3px 0 0 3px;`
+      : `left:calc(50% + 0px);width:${iw}px;border-radius:0 3px 3px 0;`;
     const fCls = fv >= 0 ? 'up' : 'down';
     const iCls = iv >= 0 ? 'up' : 'down';
-    return `<div style="display:grid;grid-template-columns:38px 1fr 64px 64px;align-items:center;gap:6px;padding:8px 0;border-bottom:0.5px solid #F0F0F5;">
-  <span style="font-size:11px;color:#8E8E9A;">${r.date.slice(5)}</span>
-  <div style="display:flex;align-items:center;gap:2px;height:12px;">
-    <div style="width:${fw}%;height:7px;background:${fColor};border-radius:0 3px 3px 0;min-width:2px;"></div>
-    <div style="width:${iw}%;height:7px;background:${iColor};border-radius:0 3px 3px 0;min-width:2px;"></div>
+    return `<div style="display:grid;grid-template-columns:36px 1fr 64px 60px;align-items:center;gap:4px;padding:9px 0;border-bottom:1px solid #F2F2F7;">
+  <span style="font-size:11px;color:#8B8D9B;font-weight:500;">${r.date.slice(5)}</span>
+  <div style="position:relative;height:26px;">
+    <div style="position:absolute;left:50%;top:50%;transform:translateY(-50%);width:1px;height:100%;background:#EEEEF3;"></div>
+    <div style="position:absolute;top:3px;height:9px;${fPos}background:${F_COLOR};"></div>
+    <div style="position:absolute;bottom:3px;height:9px;${iPos}background:${I_COLOR};"></div>
   </div>
   <span class="${fCls}" style="font-size:11px;font-weight:700;text-align:right;">${fv>=0?'+':''}${fmtInv(fv,unit)}</span>
   <span class="${iCls}" style="font-size:11px;font-weight:700;text-align:right;">${iv>=0?'+':''}${fmtInv(iv,unit)}</span>
@@ -514,11 +524,11 @@ function buildInvestorSection(investor) {
   }).join('');
 
   return `<div class="section">
-  <div class="sec-title" style="display:flex;align-items:center;cursor:pointer;" onclick="openSupplyDetail()">
+  <div class="sec-title" style="display:flex;align-items:center;">
     <i class="ti ti-clock" style="font-size:15px;color:#5B5BD6;"></i>외국인·기관 수급 (5일)
     <span style="display:flex;align-items:center;gap:8px;margin-left:8px;font-size:11px;font-weight:400;color:#8E8E9A;">
-      <span style="display:flex;align-items:center;gap:3px;"><span style="width:7px;height:7px;border-radius:50%;background:rgba(90,140,200,0.8);display:inline-block;"></span>외국인</span>
-      <span style="display:flex;align-items:center;gap:3px;"><span style="width:7px;height:7px;border-radius:50%;background:rgba(226,120,140,0.85);display:inline-block;"></span>기관</span>
+      <span style="display:flex;align-items:center;gap:3px;"><span style="width:7px;height:7px;border-radius:50%;background:${F_COLOR};display:inline-block;"></span>외국인</span>
+      <span style="display:flex;align-items:center;gap:3px;"><span style="width:7px;height:7px;border-radius:50%;background:${I_COLOR};display:inline-block;"></span>기관</span>
     </span>
     <span style="margin-left:auto;font-size:10px;color:#AEAEB2;">금액 단위: 억원</span>
   </div>
