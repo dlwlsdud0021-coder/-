@@ -445,8 +445,8 @@ def _naver_current_price(code: str) -> dict:
         over_chg   = int(_parse_naver_num(over.get("compareToPreviousClosePrice"))) if over else 0
         over_pct   = float(over.get("fluctuationsRatio") or 0) if over else 0
         over_status = over.get("overMarketStatus", "") if over else ""
-        # 시간외 거래 완료되고 가격 있으면 시간외 종가 사용
-        if over_price > 0 and over_status == "CLOSE":
+        # 시간외 가격 있으면 우선 사용 (PREOPEN=장전, OPEN=진행중, CLOSE=종료)
+        if over_price > 0 and over_status in ("PREOPEN", "OPEN", "CLOSE"):
             _logger.info(f"[현재가] 네이버 시간외 성공({code}): {over_price} (정규장: {regular_price})")
             return {
                 "current_price": over_price,
