@@ -446,15 +446,15 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
   <div id="holding-add-form" style="display:none;">
     <div class="add-form">
       <h3>종목 추가</h3>
-      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-        <div class="search-wrap" style="flex:2;min-width:120px;margin-bottom:0;">
-          <input id="h-search" class="input-field" type="text" placeholder="종목명 검색" oninput="searchStock('h')" autocomplete="off" style="margin-bottom:0;width:100%;box-sizing:border-box;">
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap;">
+        <div class="search-wrap" style="flex:2;min-width:0;margin-bottom:0;">
+          <input id="h-search" class="input-field" type="text" placeholder="종목명" oninput="searchStock('h')" autocomplete="off" style="margin-bottom:0;width:100%;box-sizing:border-box;">
           <div id="h-search-results" class="search-results" style="display:none;"></div>
         </div>
         <input id="h-code" type="hidden">
-        <input id="h-price" class="input-field" type="number" placeholder="평단가" style="flex:1.5;min-width:80px;margin-bottom:0;box-sizing:border-box;">
-        <input id="h-qty" class="input-field" type="number" placeholder="수량" style="flex:1;min-width:60px;margin-bottom:0;box-sizing:border-box;">
-        <button class="btn-primary" style="flex-shrink:0;padding:10px 14px;white-space:nowrap;" onclick="addHolding()">추가</button>
+        <input id="h-price" class="input-field" type="number" placeholder="평단가" style="flex:1.5;min-width:0;width:72px;margin-bottom:0;box-sizing:border-box;">
+        <input id="h-qty" class="input-field" type="number" placeholder="수량" style="flex:1;min-width:0;width:54px;margin-bottom:0;box-sizing:border-box;">
+        <button class="btn-primary" style="flex-shrink:0;padding:10px 12px;white-space:nowrap;" onclick="addHolding()">추가</button>
         <button class="btn-secondary" style="flex-shrink:0;padding:10px 10px;white-space:nowrap;" onclick="toggleAddHolding()">취소</button>
       </div>
     </div>
@@ -540,9 +540,9 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
   <div id="watchlist-add-form" style="display:none;">
     <div class="add-form">
       <h3>관심종목 추가</h3>
-      <div style="display:flex;gap:6px;align-items:flex-start;">
-        <div class="search-wrap" style="flex:1;margin-bottom:0;">
-          <input id="w-search" class="input-field" type="text" placeholder="종목명 검색" oninput="searchStock('w')" autocomplete="off" style="margin-bottom:0;">
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap;">
+        <div class="search-wrap" style="flex:1;min-width:0;margin-bottom:0;">
+          <input id="w-search" class="input-field" type="text" placeholder="종목명 검색" oninput="searchStock('w')" autocomplete="off" style="margin-bottom:0;width:100%;box-sizing:border-box;">
           <div id="w-search-results" class="search-results" style="display:none;"></div>
         </div>
         <input id="w-code" type="hidden">
@@ -627,6 +627,6 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
   </button>
 </nav>
 
-<script src="/js/app.js?v=20260621l"></script>
+<script src="/js/app.js?v=20260621m"></script>
 </body>
 </html>
