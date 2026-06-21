@@ -3615,7 +3615,7 @@ async function switchSupplyDays(code, days) {
   if (!card) return;
   card.style.opacity = '0.5';
   try {
-    const res = await apiFetch(`/api/stock/${code}/investor?days=${days}`);
+    const res = await api('GET', `/api/stock/${code}/investor?days=${days}`);
     const newInvList = res.inv_list || [];
     const inner = card.querySelector('#supply-days-inner');
     if (inner) inner.innerHTML = _buildSupplyInner(newInvList, days);
