@@ -1190,7 +1190,7 @@ def holding_detail(code: str, user=Depends(get_current_user)):
         print(f"[HoldingDetail] targets 계산 실패({code}): {e}")
         analysis.setdefault("targets", {})
 
-    # 4) 수급 일별 데이터
+    # 4) 수급 일별 데이터 + 거래량 리스트
     try:
         inv_list = []
         if ohlcv is not None:
@@ -1203,8 +1203,15 @@ def holding_detail(code: str, user=Depends(get_current_user)):
                         "inst":    int(row.get("기관", 0)),
                     })
         analysis["inv_list"] = inv_list
+        # 5일 거래량 리스트
+        vol_list = []
+        if ohlcv is not None and not ohlcv.empty:
+            for dt, row in ohlcv.tail(5).iterrows():
+                vol_list.append({"date": str(dt)[:10], "volume": int(row.get("volume", 0))})
+        analysis["vol_list"] = vol_list
     except Exception as e:
         analysis["inv_list"] = []
+        analysis["vol_list"] = []
 
     # 5) OHLCV 차트 데이터
     try:
@@ -1339,6 +1346,7 @@ def watchlist_detail(code: str, user=Depends(get_current_user)):
     analysis.setdefault("targets", {})
     analysis.setdefault("timing", {})
     analysis.setdefault("inv_list", [])
+    analysis.setdefault("vol_list", [])
     analysis.setdefault("news", [])
     return _to_python({"item": item, "analysis": analysis})
 
