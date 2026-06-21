@@ -254,7 +254,7 @@ def classify_sentiment(text: str) -> dict:
     if pos > 0 and neg > 0 and abs(score) <= 2:
         # neg 키워드 개수가 pos보다 훨씬 많으면 negative (예: 급등락 → 급등 1개지만 neg 많은 경우)
         if neg >= pos * 2:
-            pass  # negative 경로로 fall-through
+            return {"sentiment": "negative", "label": "부정", "badge_type": "sell",    "score": score}
         else:
             return {"sentiment": "mixed",    "label": "혼조", "badge_type": "warn",    "score": score}
     elif score >= 2:
