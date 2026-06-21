@@ -507,95 +507,310 @@ def market_data():
         return {"error": str(e)}
 
 # ─────────────────────────────────────────────────────────
-# 시황 API (투자심리지수 + 뉴스 + AI분석)
+# ─────────────────────────────────────────────────────────
+# 시황 API — 투자심리지수(8요소) + 시장 오버뷰
 # ─────────────────────────────────────────────────────────
 def _calc_sentiment_index() -> dict:
-    """한국 시장 투자심리지수 계산 (0~100)"""
-    score = 50  # 기본값
-    factors = []
+    """한국 시장 투자심리지수 (CNN Fear & Greed 방식, 8요소, 0~100)"""
+    from market_data import PYKRX_OK
+    import pykrx.stock as krx_s
+    score = 50
+    factor_details = []  # {"name", "value", "contribution", "direction"}
+
+    # ── 1. KOSPI 등락률 (±15) ──────────────────────────
     try:
         idx = get_index_data()
         kospi = next((x for x in (idx or []) if x.get("name") == "KOSPI"), None)
         if kospi:
-            chg = kospi.get("change_pct", 0) or 0
-            score += chg * 3
-            if chg > 0: factors.append(f"KOSPI {chg:+.2f}% 상승")
-            elif chg < 0: factors.append(f"KOSPI {chg:+.2f}% 하락")
+            chg = float(kospi.get("change_pct", 0) or 0)
+            contrib = max(-15, min(15, chg * 3))
+            score += contrib
+            factor_details.append({"name": "KOSPI 등락률", "value": f"{chg:+.2f}%",
+                "contribution": contrib, "direction": "up" if contrib > 0 else "down" if contrib < 0 else "neutral"})
+    except: pass
+
+    # ── 2. 외국인 3일 순매수 (±12) ─────────────────────
+    inv_data = None
+    try:
+        inv_data = get_kospi_investor(days=10)
     except: pass
     try:
-        inv = get_kospi_investor(days=5)
-        if inv is not None and not inv.empty:
-            f_net = int(inv["외국인"].tail(3).sum()) if "외국인" in inv.columns else 0
-            i_net = int(inv["기관"].tail(3).sum()) if "기관" in inv.columns else 0
-            if f_net > 0: score += 8; factors.append("외국인 3일 순매수")
-            elif f_net < 0: score -= 8; factors.append("외국인 3일 순매도")
-            if i_net > 0: score += 5; factors.append("기관 3일 순매수")
-            elif i_net < 0: score -= 5; factors.append("기관 3일 순매도")
+        if inv_data is not None and not inv_data.empty and "외국인" in inv_data.columns:
+            f_net = int(inv_data["외국인"].tail(3).sum())
+            contrib = 12 if f_net > 0 else -12 if f_net < 0 else 0
+            score += contrib
+            val = f"{f_net/1e8:+.0f}억" if abs(f_net) >= 1e8 else f"{f_net/1e4:+.0f}만"
+            factor_details.append({"name": "외국인 3일 순매수", "value": val,
+                "contribution": contrib, "direction": "up" if contrib > 0 else "down"})
+    except: pass
+
+    # ── 3. 기관 3일 순매수 (±10) ───────────────────────
+    try:
+        if inv_data is not None and not inv_data.empty and "기관합계" in inv_data.columns:
+            i_net = int(inv_data["기관합계"].tail(3).sum())
+        elif inv_data is not None and not inv_data.empty and "기관" in inv_data.columns:
+            i_net = int(inv_data["기관"].tail(3).sum())
+        else:
+            i_net = 0
+        if i_net != 0:
+            contrib = 10 if i_net > 0 else -10
+            score += contrib
+            val = f"{i_net/1e8:+.0f}억" if abs(i_net) >= 1e8 else f"{i_net/1e4:+.0f}만"
+            factor_details.append({"name": "기관 3일 순매수", "value": val,
+                "contribution": contrib, "direction": "up" if contrib > 0 else "down"})
+    except: pass
+
+    # ── 4. KOSPI vs MA20 위치 (±10) ────────────────────
+    ohlcv_kospi = None
+    try:
+        ohlcv_kospi = get_index_ohlcv_history("KOSPI", days=60)
     except: pass
     try:
-        ohlcv = get_index_ohlcv_history("KOSPI", days=20)
-        if ohlcv is not None and not ohlcv.empty and len(ohlcv) >= 5:
-            closes = ohlcv["close"].values if "close" in ohlcv.columns else ohlcv.iloc[:, 3].values
-            ma5 = float(closes[-5:].mean())
+        if ohlcv_kospi is not None and not ohlcv_kospi.empty and len(ohlcv_kospi) >= 20:
+            closes = ohlcv_kospi["close"].values if "close" in ohlcv_kospi.columns else ohlcv_kospi.iloc[:, 3].values
+            ma20 = float(closes[-20:].mean())
             cur = float(closes[-1])
-            if cur > ma5: score += 7; factors.append("KOSPI 5일 이평 위")
-            else: score -= 7; factors.append("KOSPI 5일 이평 아래")
+            pct_from_ma = (cur - ma20) / ma20 * 100
+            contrib = max(-10, min(10, pct_from_ma * 2))
+            score += contrib
+            factor_details.append({"name": "KOSPI vs MA20", "value": f"{pct_from_ma:+.1f}%",
+                "contribution": contrib, "direction": "up" if contrib > 0 else "down"})
     except: pass
+
+    # ── 5. 등락비율 ADR (±12) ──────────────────────────
+    try:
+        if PYKRX_OK:
+            from market_data import _last_trading_date
+            tdate = _last_trading_date()
+            df_ohlcv = krx_s.get_market_ohlcv_by_ticker(tdate, market="KOSPI")
+            if df_ohlcv is not None and not df_ohlcv.empty:
+                # 등락 비율: 상승 종목 수 / 전체 (종가 > 전일종가면 양수 변동)
+                chg_col = "등락률" if "등락률" in df_ohlcv.columns else None
+                if chg_col:
+                    up = (df_ohlcv[chg_col] > 0).sum()
+                    dn = (df_ohlcv[chg_col] < 0).sum()
+                    total = up + dn
+                    if total > 0:
+                        adr = up / total * 100
+                        contrib = max(-12, min(12, (adr - 50) * 0.24))
+                        score += contrib
+                        factor_details.append({"name": "등락비율(ADR)", "value": f"{adr:.0f}%",
+                            "contribution": contrib, "direction": "up" if adr > 50 else "down"})
+    except: pass
+
+    # ── 6. 거래대금 vs 5일 평균 (±8) ───────────────────
+    try:
+        if ohlcv_kospi is not None and not ohlcv_kospi.empty and len(ohlcv_kospi) >= 6:
+            vol_col = "volume" if "volume" in ohlcv_kospi.columns else None
+            if vol_col is None:
+                for c in ohlcv_kospi.columns:
+                    if "거래" in str(c) or "vol" in str(c).lower():
+                        vol_col = c; break
+            if vol_col:
+                vols = ohlcv_kospi[vol_col].values
+                avg5 = float(vols[-6:-1].mean())
+                today_vol = float(vols[-1])
+                if avg5 > 0:
+                    ratio = today_vol / avg5
+                    contrib = 8 if ratio > 1.2 else -4 if ratio < 0.7 else 0
+                    score += contrib
+                    factor_details.append({"name": "거래대금 vs 5일평균", "value": f"{ratio:.1f}배",
+                        "contribution": contrib, "direction": "up" if contrib > 0 else "down" if contrib < 0 else "neutral"})
+    except: pass
+
+    # ── 7. 신고가/신저가 비율 (±10) ────────────────────
+    try:
+        if PYKRX_OK:
+            from market_data import _last_trading_date, _ndays_ago
+            tdate = _last_trading_date()
+            prev52 = _ndays_ago(252)
+            df_52 = krx_s.get_market_ohlcv_by_ticker(tdate, market="KOSPI")
+            # pykrx로 52주 고저 비교가 어려우므로 20일 고저 비율로 대체
+            if df_52 is not None and not df_52.empty:
+                high_col = "고가" if "고가" in df_52.columns else None
+                low_col  = "저가" if "저가" in df_52.columns else None
+                close_col = "종가" if "종가" in df_52.columns else None
+                if high_col and low_col and close_col:
+                    new_high = ((df_52[close_col] >= df_52[high_col] * 0.99)).sum()
+                    new_low  = ((df_52[close_col] <= df_52[low_col] * 1.01)).sum()
+                    ratio = (new_high - new_low) / max(new_high + new_low, 1) * 100
+                    contrib = max(-10, min(10, ratio * 0.1))
+                    score += contrib
+                    factor_details.append({"name": "신고가/신저가", "value": f"신고 {new_high}·신저 {new_low}",
+                        "contribution": contrib, "direction": "up" if contrib > 0 else "down"})
+    except: pass
+
+    # ── 8. 시장 변동성 역방향 (±8) ─────────────────────
+    try:
+        if ohlcv_kospi is not None and not ohlcv_kospi.empty and len(ohlcv_kospi) >= 10:
+            import numpy as np
+            closes = ohlcv_kospi["close"].values if "close" in ohlcv_kospi.columns else ohlcv_kospi.iloc[:, 3].values
+            returns = np.diff(closes[-11:]) / closes[-11:-1] * 100
+            vol = float(np.std(returns))
+            # 변동성 낮을수록 안정 → 탐욕, 높을수록 공포
+            contrib = 8 if vol < 0.5 else 4 if vol < 1.0 else -4 if vol < 2.0 else -8
+            score += contrib
+            factor_details.append({"name": "시장 변동성(10일)", "value": f"{vol:.2f}%",
+                "contribution": contrib, "direction": "up" if contrib > 0 else "down"})
+    except: pass
+
     score = max(0, min(100, round(score)))
-    if score >= 75: label, desc, color = "극단적 탐욕", "시장이 과열 상태예요. 단기 조정 가능성이 높아요.", "#E24B4A"
-    elif score >= 55: label, desc, color = "탐욕", "투자자들이 적극적으로 매수하고 있어요.", "#F5A623"
-    elif score >= 45: label, desc, color = "중립", "시장이 균형 잡힌 상태예요.", "#8E8E9A"
-    elif score >= 25: label, desc, color = "공포", "투자자들이 불안해하며 매도하고 있어요.", "#5B5BD6"
-    else: label, desc, color = "극단적 공포", "시장이 패닉 상태예요. 역발상으로 매수 기회일 수 있어요.", "#27500A"
-    return {"score": score, "label": label, "desc": desc, "color": color, "factors": factors}
+    if score >= 75:   label, color = "극단적 탐욕", "#E24B4A"
+    elif score >= 60: label, color = "탐욕",       "#F5A623"
+    elif score >= 40: label, color = "중립",       "#8E8E9A"
+    elif score >= 25: label, color = "공포",       "#5B5BD6"
+    else:             label, color = "극단적 공포","#27500A"
+
+    # 요약 팩터 텍스트 (UI용)
+    factors_summary = [f["name"] + " " + f["value"] for f in factor_details[:4]]
+    return {
+        "score": score, "label": label, "color": color,
+        "factors": factors_summary,
+        "factor_details": factor_details,  # 상세 (게이지 분해 표시용)
+    }
+
+
+def _get_exchange_rates() -> list:
+    """환율 정보 (달러/원, 엔/원, 위안/원)"""
+    pairs = [
+        {"code": "FX_USDKRW", "name": "달러/원", "unit": "USD"},
+        {"code": "FX_JPYKRW", "name": "엔/원",   "unit": "JPY"},
+        {"code": "FX_CNYKRW", "name": "위안/원", "unit": "CNY"},
+    ]
+    result = []
+    for p in pairs:
+        try:
+            url = f"https://m.stock.naver.com/api/stock/{p['code']}/basic"
+            r = _requests.get(url, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
+            if r.status_code != 200: continue
+            d = r.json()
+            from market_data import _parse_naver_num
+            price = float(_parse_naver_num(d.get("closePrice", 0)))
+            chg   = float(_parse_naver_num(d.get("compareToPreviousClosePrice", 0)))
+            chg_pct = float(_parse_naver_num(d.get("fluctuationsRatio", 0)))
+            result.append({"name": p["name"], "unit": p["unit"],
+                           "price": price, "change": chg, "change_pct": chg_pct})
+        except: pass
+    return result
+
+
+def _get_us_futures() -> list:
+    """미국 선물 (S&P500, 나스닥, 다우)"""
+    futures = [
+        {"symbol": "ES=F", "name": "S&P500 선물"},
+        {"symbol": "NQ=F", "name": "나스닥 선물"},
+        {"symbol": "YM=F", "name": "다우 선물"},
+    ]
+    result = []
+    for f in futures:
+        try:
+            import yfinance as yf
+            t = yf.Ticker(f["symbol"])
+            info = t.fast_info
+            price = getattr(info, "last_price", None) or getattr(info, "regular_market_price", None)
+            prev  = getattr(info, "previous_close", None)
+            if price and prev and prev > 0:
+                chg = price - prev
+                chg_pct = chg / prev * 100
+                result.append({"name": f["name"], "symbol": f["symbol"],
+                               "price": round(price, 2), "change": round(chg, 2),
+                               "change_pct": round(chg_pct, 2)})
+        except: pass
+    return result
+
+
+def _get_top_net_buy(n: int = 5) -> dict:
+    """외국인·기관 당일 순매수 TOP N"""
+    from market_data import PYKRX_OK, _last_trading_date, get_stock_name
+    if not PYKRX_OK:
+        return {"foreign": [], "institution": []}
+    try:
+        import pykrx.stock as krx_s
+        tdate = _last_trading_date()
+        df = krx_s.get_market_trading_value_by_ticker(tdate, tdate, "KOSPI")
+        if df is None or df.empty:
+            return {"foreign": [], "institution": []}
+        foreign_col = next((c for c in df.columns if "외국인" in str(c)), None)
+        inst_col    = next((c for c in df.columns if "기관합계" in str(c) or ("기관" in str(c) and "합계" in str(c))), None)
+        if not inst_col:
+            inst_col = next((c for c in df.columns if "기관" in str(c)), None)
+
+        def top_n(col):
+            if not col or col not in df.columns: return []
+            s = df[col].dropna()
+            top = s.nlargest(n)
+            out = []
+            for code, val in top.items():
+                name = get_stock_name(str(code)) or str(code)
+                out.append({"code": str(code), "name": name,
+                            "value": int(val), "value_str": f"{int(val)/1e8:.0f}억"})
+            return out
+
+        return {"foreign": top_n(foreign_col), "institution": top_n(inst_col)}
+    except Exception as e:
+        _logger.warning(f"[시황] 순매수 TOP 실패: {e}")
+        return {"foreign": [], "institution": []}
+
+
+def _get_top_volume(n: int = 5) -> list:
+    """거래대금 상위 종목"""
+    from market_data import PYKRX_OK, _last_trading_date, get_stock_name
+    if not PYKRX_OK:
+        return []
+    try:
+        import pykrx.stock as krx_s
+        tdate = _last_trading_date()
+        df = krx_s.get_market_ohlcv_by_ticker(tdate, market="KOSPI")
+        if df is None or df.empty:
+            return []
+        val_col = next((c for c in df.columns if "거래대금" in str(c)), None)
+        chg_col = next((c for c in df.columns if "등락률" in str(c)), None)
+        close_col = next((c for c in df.columns if "종가" in str(c)), None)
+        if not val_col: return []
+        top = df[val_col].nlargest(n)
+        result = []
+        for code, val in top.items():
+            name = get_stock_name(str(code)) or str(code)
+            chg  = float(df.loc[code, chg_col]) if chg_col and code in df.index else 0
+            price = int(df.loc[code, close_col]) if close_col and code in df.index else 0
+            result.append({"code": str(code), "name": name, "price": price,
+                           "change_pct": round(chg, 2), "value": int(val),
+                           "value_str": f"{int(val)/1e8:.0f}억"})
+        return result
+    except Exception as e:
+        _logger.warning(f"[시황] 거래대금 TOP 실패: {e}")
+        return []
+
 
 @app.get("/api/sentiment")
 def get_sentiment():
+    import concurrent.futures
     try:
-        sentiment = _calc_sentiment_index()
-        raw = fetch_market_news(max_items=10)
-        ranked = rank_by_importance(raw)[:5]
-        news_list = []
-        for item in ranked:
-            s = classify_sentiment((item.get("title","")) + " " + (item.get("summary","")))
-            news_list.append({
-                "title":   item.get("title",""),
-                "summary": item.get("summary",""),
-                "source":  item.get("source",""),
-                "published": item.get("published",""),
-                "link":    item.get("link",""),
-                "sentiment": s["sentiment"],
-                "label":   s["label"],
-            })
-        # AI 종합 분석
-        ai_analysis = ""
-        try:
-            headlines = "\n".join([f"- {n['title']}" for n in news_list])
-            pos = sum(1 for n in news_list if n["sentiment"] == "positive")
-            neg = sum(1 for n in news_list if n["sentiment"] == "negative")
-            tone = "긍정적" if pos > neg else "부정적" if neg > pos else "혼조"
-            from news import _call_gemini
-            prompt = f"""오늘 한국 주식시장 주요 뉴스 {len(news_list)}개를 분석해줘.
-
-뉴스 목록:
-{headlines}
-
-투자심리지수: {sentiment['score']}점 ({sentiment['label']})
-전체 뉴스 감성: {tone} ({pos}개 긍정, {neg}개 부정)
-
-다음 형식으로 시장 분석을 작성해줘 (친근하고 자세하게, 존댓말):
-1. 오늘 시장 전체 분위기 (2~3문장)
-2. 주목할 섹터나 테마 (1~2개)
-3. 투자자 대응 전략 (2~3문장)
-
-200자 이내로 핵심만."""
-            ai_analysis = _call_gemini(prompt) or ""
-        except Exception as _ae:
-            _logger.warning(f"[시황] AI 분석 실패: {_ae}")
-        return {"sentiment": sentiment, "news": news_list, "ai_analysis": ai_analysis}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
+            f_sent   = pool.submit(_calc_sentiment_index)
+            f_fx     = pool.submit(_get_exchange_rates)
+            f_fut    = pool.submit(_get_us_futures)
+            f_sector = pool.submit(get_sector_performance)
+            f_netbuy = pool.submit(_get_top_net_buy, 5)
+            f_vol    = pool.submit(_get_top_volume, 5)
+            sentiment  = f_sent.result(timeout=30)
+            fx         = f_fx.result(timeout=10)
+            futures    = f_fut.result(timeout=10)
+            sectors    = f_sector.result(timeout=20)
+            net_buy    = f_netbuy.result(timeout=20)
+            top_volume = f_vol.result(timeout=20)
+        return _to_python({
+            "sentiment":  sentiment,
+            "fx":         fx,
+            "us_futures": futures,
+            "sectors":    sectors,
+            "net_buy":    net_buy,
+            "top_volume": top_volume,
+        })
     except Exception as e:
-        return {"sentiment": {"score": 50, "label": "중립", "desc": "", "color": "#8E8E9A", "factors": []},
-                "news": [], "ai_analysis": "", "error": str(e)}
+        _logger.error(f"[시황] API 오류: {e}")
+        return {"sentiment": {"score": 50, "label": "중립", "color": "#8E8E9A", "factors": [], "factor_details": []},
+                "fx": [], "us_futures": [], "sectors": [], "net_buy": {"foreign":[],"institution":[]}, "top_volume": []}
 
 # ─────────────────────────────────────────────────────────
 # 뉴스 API

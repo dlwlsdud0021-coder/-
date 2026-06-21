@@ -459,77 +459,134 @@ function renderSentiment(d) {
   const s = d.sentiment || {};
   const score = s.score ?? 50;
   const label = s.label || '중립';
-  const desc  = s.desc  || '';
   const color = s.color || '#8E8E9A';
-  const factors = s.factors || [];
+  const factorDetails = s.factor_details || [];
 
   const gaugeSVG = buildGaugeSVG(score, color, label);
 
-  // 점수별 설명 상세
   const detailMap = [
-    { min:75, title:'극단적 탐욕 — 조심할 때예요', body:'시장 참여자 대부분이 낙관적이에요. 이런 상황에서는 주가가 실제 가치보다 높게 형성되는 경우가 많아요. 신규 매수보다는 보유 종목 수익 실현을 고려해보세요. 역사적으로 "모두가 사고 싶을 때가 팔 때"인 경우가 많았어요.' },
-    { min:55, title:'탐욕 — 시장이 달아오르고 있어요', body:'투자자들이 적극적으로 매수에 나서고 있어요. 상승 모멘텀이 유지되고 있지만, 과열 구간 진입 전 분할 매도로 수익을 일부 챙기는 전략도 고려해볼 만해요.' },
-    { min:45, title:'중립 — 균형 잡힌 시장이에요', body:'시장이 뚜렷한 방향 없이 보합세를 보이고 있어요. 관심 종목을 차분히 분석하고 매수 기회를 탐색하기 좋은 시기예요. 급하게 결정하기보다는 기다리는 전략이 유리해요.' },
-    { min:25, title:'공포 — 투자자들이 불안해하고 있어요', body:'시장 참여자들이 손실을 두려워하며 매도하고 있어요. 하지만 이런 공포가 극에 달할 때가 종종 좋은 매수 기회가 됐어요. 우량 종목 위주로 분할 매수 전략을 검토해보세요.' },
-    { min:0,  title:'극단적 공포 — 패닉 상태예요', body:'시장이 극도의 공포 상태예요. 단기적으로 변동성이 크지만, 역사적으로 이런 극단적 공포 구간 이후 강한 반등이 나온 경우가 많았어요. 장기 투자 관점에서 분할 매수를 고려해볼 시기예요.' },
+    { min:75, title:'극단적 탐욕 — 조심할 때예요', body:'시장 참여자 대부분이 낙관적이에요. 주가가 실제 가치보다 높게 형성되는 경우가 많으니 신규 매수보다는 보유 종목 수익 실현을 고려해보세요.' },
+    { min:60, title:'탐욕 — 시장이 달아오르고 있어요', body:'투자자들이 적극적으로 매수에 나서고 있어요. 상승 모멘텀이 유지되고 있지만 과열 구간 진입 전 분할 매도로 수익을 일부 챙기는 전략을 고려해보세요.' },
+    { min:40, title:'중립 — 균형 잡힌 시장이에요', body:'시장이 뚜렷한 방향 없이 보합세를 보이고 있어요. 관심 종목을 차분히 분석하고 매수 기회를 탐색하기 좋은 시기예요.' },
+    { min:25, title:'공포 — 투자자들이 불안해하고 있어요', body:'시장 참여자들이 손실을 두려워하며 매도하고 있어요. 하지만 이런 공포 구간이 종종 좋은 매수 기회가 됐어요. 우량 종목 위주로 분할 매수를 검토해보세요.' },
+    { min:0,  title:'극단적 공포 — 패닉 상태예요', body:'시장이 극도의 공포 상태예요. 단기 변동성이 크지만 역사적으로 극단적 공포 구간 이후 강한 반등이 나온 경우가 많았어요.' },
   ];
   const detail = detailMap.find(x => score >= x.min) || detailMap[detailMap.length-1];
 
-  // 뉴스 카드
-  const news = d.news || [];
-  const newsHtml = news.map((n, i) => {
-    const bdgCls = n.sentiment === 'positive' ? 'badge-pos' : n.sentiment === 'negative' ? 'badge-neg' : 'badge-mix';
-    const lbl = n.label || (n.sentiment === 'positive' ? '긍정' : n.sentiment === 'negative' ? '부정' : '혼조');
-    const summary = n.summary ? n.summary.slice(0, 100) + (n.summary.length > 100 ? '...' : '') : '';
-    const src = [n.source, n.published ? n.published.slice(0,5) : ''].filter(Boolean).join(' · ');
-    return `<div class="card" style="margin-bottom:10px;cursor:pointer;" onclick="openNewsDetailFromSentiment(${i})">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
-        <span class="badge ${bdgCls}" style="font-size:11px;">${lbl}</span>
-        <span style="font-size:11px;color:#8E8E9A;margin-left:auto;">${src}</span>
+  // 8요소 분해 표
+  const factorHtml = factorDetails.length ? factorDetails.map(f => {
+    const ic = f.direction === 'up' ? '#27AE60' : f.direction === 'down' ? '#E24B4A' : '#8E8E9A';
+    const arrow = f.direction === 'up' ? '▲' : f.direction === 'down' ? '▼' : '–';
+    const bar = Math.abs(f.contribution || 0);
+    const barMax = 15;
+    const barW = Math.round(bar / barMax * 100);
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid #F5F5F7;">
+      <div style="flex:1;font-size:12px;color:#3C3C43;">${f.name}</div>
+      <div style="font-size:11px;color:#8E8E9A;min-width:52px;text-align:right;">${f.value||''}</div>
+      <div style="width:40px;height:4px;background:#F0F0F5;border-radius:2px;overflow:hidden;">
+        <div style="height:100%;width:${barW}%;background:${ic};border-radius:2px;"></div>
       </div>
-      <div style="font-size:14px;font-weight:700;color:#1C1C1E;line-height:1.5;margin-bottom:${summary?'6px':'0'};">${n.title||''}</div>
-      ${summary ? `<div style="font-size:12px;color:#8E8E9A;line-height:1.6;">${summary}</div>` : ''}
+      <span style="font-size:11px;color:${ic};font-weight:700;min-width:14px;">${arrow}</span>
     </div>`;
-  }).join('');
+  }).join('') : '';
 
-  // AI 종합 분석
-  const aiHtml = d.ai_analysis ? `
-    <div class="card" style="margin-bottom:12px;background:linear-gradient(135deg,#F5F3FF,#EEF2FF);">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
-        <i class="ti ti-sparkles" style="font-size:15px;color:#5B5BD6;"></i>
-        <span style="font-size:14px;font-weight:700;color:#5B5BD6;">AI 시황 분석</span>
-      </div>
-      <div style="font-size:13px;color:#3C3C43;line-height:1.8;white-space:pre-line;">${d.ai_analysis}</div>
-    </div>` : '';
+  // 환율
+  const fx = d.fx || [];
+  const fxHtml = fx.length ? fx.map(f => {
+    const up = f.change_pct >= 0;
+    const cls = up ? 'up' : 'down';
+    return `<div style="flex:1;text-align:center;">
+      <div style="font-size:11px;color:#8E8E9A;margin-bottom:3px;">${f.name}</div>
+      <div style="font-size:15px;font-weight:700;color:#1C1C1E;">${f.price?.toLocaleString()}</div>
+      <div style="font-size:11px;class:${cls};color:${up?'#E24B4A':'#185FA5'};">${up?'+':''}${f.change_pct?.toFixed(2)}%</div>
+    </div>`;
+  }).join('<div style="width:1px;background:#F0F0F5;"></div>') : '';
+
+  // 미국 선물
+  const futures = d.us_futures || [];
+  const futHtml = futures.length ? futures.map(f => {
+    const up = f.change_pct >= 0;
+    return `<div style="flex:1;text-align:center;">
+      <div style="font-size:10px;color:#8E8E9A;margin-bottom:3px;">${f.name}</div>
+      <div style="font-size:14px;font-weight:700;color:#1C1C1E;">${f.price?.toLocaleString()}</div>
+      <div style="font-size:11px;color:${up?'#E24B4A':'#185FA5'};">${up?'+':''}${f.change_pct?.toFixed(2)}%</div>
+    </div>`;
+  }).join('<div style="width:1px;background:#F0F0F5;"></div>') : '';
+
+  // 업종별 등락
+  const sectors = d.sectors || [];
+  const secHtml = sectors.length ? sectors.map(s2 => {
+    const up = s2.pct >= 0;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid #F5F5F7;">
+      <div style="flex:1;font-size:13px;color:#1C1C1E;">${s2.name}</div>
+      <div style="font-size:13px;font-weight:700;color:${up?'#E24B4A':'#185FA5'};">${up?'+':''}${s2.pct?.toFixed(2)}%</div>
+    </div>`;
+  }).join('') : '<div style="font-size:13px;color:#8E8E9A;padding:10px 0;">데이터 없음</div>';
+
+  // 순매수 TOP5
+  const nb = d.net_buy || {};
+  function netBuyRows(list) {
+    if (!list || !list.length) return '<div style="font-size:12px;color:#8E8E9A;padding:8px 0;">데이터 없음</div>';
+    return list.map((item, i) => `
+      <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid #F5F5F7;">
+        <div style="width:18px;font-size:11px;color:#8E8E9A;font-weight:700;">${i+1}</div>
+        <div style="flex:1;font-size:13px;color:#1C1C1E;">${item.name}</div>
+        <div style="font-size:12px;font-weight:700;color:#E24B4A;">+${item.value_str}</div>
+      </div>`).join('');
+  }
+
+  // 거래대금 상위
+  const topVol = d.top_volume || [];
+  const volHtml = topVol.length ? topVol.map((item, i) => {
+    const up = item.change_pct >= 0;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid #F5F5F7;">
+      <div style="width:18px;font-size:11px;color:#8E8E9A;font-weight:700;">${i+1}</div>
+      <div style="flex:1;font-size:13px;color:#1C1C1E;">${item.name}</div>
+      <div style="font-size:11px;color:${up?'#E24B4A':'#185FA5'};min-width:44px;text-align:right;">${up?'+':''}${item.change_pct?.toFixed(1)}%</div>
+      <div style="font-size:11px;color:#8E8E9A;min-width:36px;text-align:right;">${item.value_str}</div>
+    </div>`;
+  }).join('') : '<div style="font-size:12px;color:#8E8E9A;padding:8px 0;">데이터 없음</div>';
+
+  const secLabel = (title) => `<div style="font-size:13px;font-weight:700;color:#1C1C1E;margin:16px 0 8px;">${title}</div>`;
 
   el.innerHTML = `
     <!-- 투자심리 지수 -->
     <div class="card" style="margin:12px 0 10px;">
       <div style="font-size:13px;color:#8E8E9A;text-align:center;margin-bottom:4px;">투자심리 지수</div>
       ${gaugeSVG}
-      ${factors.length ? `<div style="text-align:center;font-size:11px;color:#8E8E9A;margin:6px 0 0;">${factors.slice(0,2).join(' · ')}</div>` : ''}
-      <!-- 설명 -->
-      <div style="border-top:1px solid #F0F0F5;padding-top:12px;margin-top:14px;">
-        <div style="font-size:13px;font-weight:700;color:#1C1C1E;margin-bottom:6px;">${detail.title}</div>
-        <div style="font-size:13px;color:#3C3C43;line-height:1.75;">${detail.body}</div>
+      <div style="border-top:1px solid #F0F0F5;padding-top:12px;margin-top:10px;">
+        <div style="font-size:13px;font-weight:700;color:#1C1C1E;margin-bottom:4px;">${detail.title}</div>
+        <div style="font-size:12px;color:#8E8E9A;line-height:1.7;margin-bottom:12px;">${detail.body}</div>
+        ${factorHtml ? `<div style="font-size:11px;font-weight:600;color:#8E8E9A;margin-bottom:6px;">구성 지표 (8개)</div>${factorHtml}` : ''}
       </div>
     </div>
 
-    <!-- 오늘의 주요 뉴스 -->
-    <div style="font-size:13px;font-weight:700;color:#1C1C1E;margin:16px 0 8px;">오늘의 주요 뉴스</div>
-    ${newsHtml || '<div class="empty-state">뉴스가 없습니다</div>'}
+    <!-- 환율 -->
+    ${fxHtml ? `${secLabel('환율')}
+    <div class="card" style="margin-bottom:10px;">
+      <div style="display:flex;align-items:stretch;gap:0;">${fxHtml}</div>
+    </div>` : ''}
 
-    <!-- AI 종합 분석 -->
-    <div style="font-size:13px;font-weight:700;color:#1C1C1E;margin:16px 0 8px;">AI 시황 분석</div>
-    ${aiHtml || `<div class="card" style="margin-bottom:12px;color:#8E8E9A;font-size:13px;text-align:center;padding:20px;">AI 분석을 불러오는 중이에요...</div>`}
+    <!-- 미국 선물 -->
+    ${futHtml ? `${secLabel('미국 선물')}
+    <div class="card" style="margin-bottom:10px;">
+      <div style="display:flex;align-items:stretch;gap:0;">${futHtml}</div>
+    </div>` : ''}
+
+    <!-- 업종별 등락 -->
+    ${secLabel('업종별 등락')}
+    <div class="card" style="margin-bottom:10px;">${secHtml}</div>
+
+    <!-- 외국인·기관 순매수 TOP5 -->
+    ${secLabel('외국인 순매수 TOP 5')}
+    <div class="card" style="margin-bottom:10px;">${netBuyRows(nb.foreign)}</div>
+    ${secLabel('기관 순매수 TOP 5')}
+    <div class="card" style="margin-bottom:10px;">${netBuyRows(nb.institution)}</div>
+
+    <!-- 거래대금 상위 -->
+    ${secLabel('거래대금 상위 5')}
+    <div class="card" style="margin-bottom:24px;">${volHtml}</div>
   `;
-
-  // 뉴스 상세용 전역 저장
-  _allNews = news;
-}
-
-function openNewsDetailFromSentiment(i) {
-  openNewsDetail(i);
 }
 
 // ─────────────────────────────────────────────────────────
