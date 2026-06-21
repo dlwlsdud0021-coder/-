@@ -2383,10 +2383,21 @@ function renderWatchlistDetail(d, el, code, name) {
   // 뉴스는 비동기 로드 (loadWatchlistDetailNews)
   const newsHtml = '';
 
-  // 시스템 판단 텍스트
-  const rsiSummary = rsiVal !== null ? (rsiVal <= 30 ? `RSI ${rsiVal} 과매도 — 반등 시도 가능` : rsiVal >= 70 ? `RSI ${rsiVal} 과열 — 단기 조정 주의` : `RSI ${rsiVal} 정상 범위`) : '';
-  const bollSummary = bollPos <= 0.2 ? '볼린저 하단 지지 중' : bollPos >= 0.8 ? '볼린저 상단 — 저항 주의' : '볼린저 중간 구간';
-  const systemText = [rsiSummary, bollSummary].filter(Boolean).join(' · ');
+  // 시스템 판단 텍스트 (보유종목과 동일한 상세 분석)
+  const systemLines = [];
+  if (rsiVal !== null) {
+    const rsiStr = rsiVal <= 30 ? `RSI ${rsiVal}로 과매도 근접` : rsiVal >= 70 ? `RSI ${rsiVal}로 과열 구간` : `RSI ${rsiVal}로 정상 범위`;
+    systemLines.push(rsiStr + (bollPos <= 0.2 ? ', 볼린저 하단 지지 시도 중이에요.' : bollPos >= 0.8 ? ', 볼린저 상단 저항 구간이에요.' : ', 볼린저 중간 구간이에요.'));
+  }
+  if (foreignNet < 0 && instNet < 0) systemLines.push('외국인·기관 모두 매도 중으로 수급 신호가 부정적이에요.');
+  else if (foreignNet > 0 && instNet > 0) systemLines.push('외국인·기관 모두 순매수로 수급이 우호적이에요.');
+  else if (foreignNet > 0) systemLines.push('외국인 순매수, 기관은 관망세예요.');
+  else if (instNet > 0) systemLines.push('기관 순매수, 외국인은 관망세예요.');
+  if (ma20Val && curPrice) {
+    const d20 = (curPrice - ma20Val) / ma20Val * 100;
+    systemLines.push(`20일선(${fmtNum(Math.round(ma20Val))}원) ${d20 >= 0 ? '위에서 유지된다면 단기 반등 가능성이 있어요.' : '아래로 이탈해 추세 회복 여부를 지켜봐야 해요.'}`);
+  }
+  if (verdict) systemLines.push(verdict);
 
   el.innerHTML = `
     <!-- 히어로 카드 (흰색) -->
@@ -2503,12 +2514,12 @@ function renderWatchlistDetail(d, el, code, name) {
     </div>
 
     <!-- 시스템 판단 -->
-    ${systemText ? `<div class="section">
+    ${systemLines.length ? `<div class="section">
       <div class="card" style="background:#FFFBF0;border:1px solid #F5E6B2;">
         <div style="font-size:13px;font-weight:700;color:#8B6914;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
-          <span style="font-size:16px;">☀️</span> 시스템 판단
+          <span style="font-size:15px;">☀️</span> 시스템 판단
         </div>
-        <div style="font-size:13px;color:#3C3C43;line-height:1.7;">${systemText}</div>
+        <div style="font-size:13px;color:#3C3C43;line-height:1.8;">${systemLines.join('<br>')}</div>
       </div>
     </div>` : ''}
 
