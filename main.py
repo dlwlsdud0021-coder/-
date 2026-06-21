@@ -512,8 +512,8 @@ def market_data():
 @app.get("/api/news")
 def market_news():
     try:
-        raw = fetch_market_news(max_items=12)
-        ranked = rank_by_importance(raw)[:8]
+        raw = fetch_market_news(max_items=8)
+        ranked = rank_by_importance(raw)[:5]
         # 상위 5개는 Gemini AI 분석 포함, 나머지는 기본 분류만
         enriched = enrich_top10_summaries(ranked)
         return {"news": enriched}
