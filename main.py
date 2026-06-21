@@ -514,9 +514,22 @@ def market_news():
     try:
         raw = fetch_market_news(max_items=8)
         ranked = rank_by_importance(raw)[:5]
-        # 상위 5개는 Gemini AI 분석 포함, 나머지는 기본 분류만
-        enriched = enrich_top10_summaries(ranked)
-        return {"news": enriched}
+        # Gemini 제거 — 감성분류(빠름)만 수행
+        result = []
+        for item in ranked:
+            title   = item.get("title", "")
+            summary = item.get("summary", "")
+            sentiment_info = classify_sentiment(title + " " + summary)
+            category = item.get("category") or classify_category(title, summary)
+            result.append({
+                **item,
+                "category":        category,
+                "sentiment":       sentiment_info["sentiment"],
+                "sentiment_label": sentiment_info["label"],
+                "label":           sentiment_info["label"],
+                "badge_type":      sentiment_info["badge_type"],
+            })
+        return {"news": result}
     except Exception as e:
         return {"news": [], "error": str(e)}
 

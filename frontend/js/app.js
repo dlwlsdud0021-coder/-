@@ -371,11 +371,15 @@ async function loadNews(force) {
   const el = document.getElementById('news-content');
   el.innerHTML = '<div class="loading"><div class="spinner"></div> 뉴스 불러오는 중...</div>';
   try {
-    const d = await api('GET', '/api/news');
+    const d = await api('GET', '/api/news', null, 90000);
     _allNews = d.news || [];
     renderNews();
   } catch(e) {
-    el.innerHTML = `<div class="loading">뉴스를 불러오지 못했습니다</div>`;
+    el.innerHTML = `<div class="loading" style="flex-direction:column;gap:8px;">
+      <span>뉴스를 불러오지 못했습니다</span>
+      <span style="font-size:11px;color:#C7C7CC;">${e.message||''}</span>
+      <button class="btn-secondary" style="margin-top:8px;" onclick="loadNews(true)">다시 시도</button>
+    </div>`;
   }
 }
 
