@@ -2176,12 +2176,21 @@ async function addWatchlist() {
   const code = document.getElementById('w-code').value;
   const name = document.getElementById('w-search').value.trim();
   if (!code || !name) { alert('종목을 검색해서 선택하세요'); return; }
+  const sel = document.getElementById('w-group-select').value;
+  const newG = document.getElementById('w-group-new').value.trim();
+  const group_name = (sel === '__new__' ? newG : sel) || '기본';
+  if (sel === '__new__' && !newG) { alert('새 그룹명을 입력하세요'); return; }
   try {
-    await api('POST', '/api/watchlist', { code, name });
+    await api('POST', '/api/watchlist', { code, name, group_name });
     toggleAddWatchlist();
     _watchlistLoaded = false;
     loadWatchlist(true);
   } catch(e) { alert(e.message); }
+}
+
+function onWatchlistGroupSelect(val) {
+  const inp = document.getElementById('w-group-new');
+  inp.style.display = val === '__new__' ? '' : 'none';
 }
 
 // ─────────────────────────────────────────────────────────
@@ -2189,11 +2198,51 @@ async function addWatchlist() {
 // ─────────────────────────────────────────────────────────
 function renderWatchlistFromData(d) {
   _allWatchlist = d.watchlist || [];
+  _watchlistAlertCount = d.alert_count || 0;
+  _renderGroupTabs(d.groups || []);
+  _updateAlertBadge();
   renderWatchlist();
 }
 
 let _watchlistLoaded = false;
 let _watchlistFilter = '전체';
+let _watchlistGroupFilter = '전체';
+let _watchlistAlertCount = 0;
+
+function _updateAlertBadge() {
+  const badge = document.getElementById('watchlist-alert-badge');
+  if (!badge) return;
+  badge.style.display = _watchlistAlertCount > 0 ? '' : 'none';
+}
+
+function _renderGroupTabs(groups) {
+  const el = document.getElementById('watchlist-group-tabs');
+  if (!el) return;
+  const all = ['전체', ...groups.filter(g => g && g !== '기본').concat(groups.includes('기본') ? ['기본'] : [])];
+  // deduplicate
+  const uniq = [...new Set(all)];
+  el.innerHTML = uniq.map((g, i) =>
+    `<button class="tab ${i === 0 && _watchlistGroupFilter === '전체' ? 'active' : (_watchlistGroupFilter === g ? 'active' : 'inactive')}"
+      onclick="filterWatchlistGroup('${g}', this)">${g}</button>`
+  ).join('');
+
+  // 그룹 추가 폼 select 업데이트
+  const sel = document.getElementById('w-group-select');
+  if (sel) {
+    const existing = uniq.filter(g => g !== '전체');
+    sel.innerHTML = existing.map(g => `<option value="${g}">${g}</option>`).join('')
+      + '<option value="__new__">+ 새 그룹 만들기</option>';
+  }
+}
+
+function filterWatchlistGroup(group, btn) {
+  _watchlistGroupFilter = group;
+  document.querySelectorAll('#watchlist-group-tabs .tab').forEach(b => {
+    b.className = 'tab ' + (b === btn ? 'active' : 'inactive');
+  });
+  renderWatchlist();
+}
+
 async function loadWatchlist(force) {
   if (_watchlistLoaded && !force) return;
   _watchlistLoaded = true;
@@ -2202,6 +2251,9 @@ async function loadWatchlist(force) {
   try {
     const d = await api('GET', '/api/watchlist');
     _allWatchlist = d.watchlist || [];
+    _watchlistAlertCount = d.alert_count || 0;
+    _renderGroupTabs(d.groups || []);
+    _updateAlertBadge();
     renderWatchlist();
   } catch(e) {
     el.innerHTML = `<div class="loading" style="flex-direction:column;gap:8px;">
@@ -2214,7 +2266,7 @@ async function loadWatchlist(force) {
 
 function filterWatchlist(filter, btn) {
   _watchlistFilter = filter;
-  document.querySelectorAll('#screen-watchlist .tab').forEach(b => {
+  document.querySelectorAll('#screen-watchlist .tabs:last-of-type .tab').forEach(b => {
     b.className = 'tab ' + (b === btn ? 'active' : 'inactive');
   });
   renderWatchlist();
@@ -2224,7 +2276,14 @@ function renderWatchlist() {
   const el = document.getElementById('watchlist-content');
   let list = _allWatchlist;
   const filt = _watchlistFilter || '전체';
+  const gFilt = _watchlistGroupFilter || '전체';
 
+  // 그룹 필터
+  if (gFilt !== '전체') {
+    list = list.filter(w => (w.group_name || '기본') === gFilt);
+  }
+
+  // 타이밍 필터
   if (filt !== '전체') {
     list = list.filter(w => {
       const st = w.timing?.status;
@@ -2298,11 +2357,13 @@ function renderWatchlist() {
       </div>`;
     }
 
+    const isAlert = (timing.score || 0) >= 70;
     return `<div class="card" style="position:relative;" onclick="openWatchlistDetail('${w.code}','${w.name.replace(/'/g,"\\'")}')">
       <button onclick="event.stopPropagation();confirmDeleteWatchlist('${w.code}','${w.name.replace(/'/g,"\\'")}');"
         style="position:absolute;top:10px;right:10px;background:none;border:none;cursor:pointer;padding:2px;line-height:1;z-index:1;">
         <i class="ti ti-trash" style="font-size:16px;color:#8E8E9A;"></i>
       </button>
+      ${isAlert ? `<div style="position:absolute;top:10px;right:38px;width:7px;height:7px;border-radius:50%;background:#E24B4A;"></div>` : ''}
       <div class="card-top" style="padding-right:28px;">
         <div class="stock-icon ${iconColors(w.name)}">${iconText(w.name)}</div>
         <div>

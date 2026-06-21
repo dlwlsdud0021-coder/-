@@ -544,9 +544,17 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
         <button class="btn-primary" style="flex-shrink:0;padding:10px 14px;white-space:nowrap;" onclick="addWatchlist()">추가</button>
         <button class="btn-secondary" style="flex-shrink:0;padding:10px 10px;white-space:nowrap;" onclick="toggleAddWatchlist()">취소</button>
       </div>
+      <div style="display:flex;gap:6px;align-items:center;margin-top:8px;">
+        <select id="w-group-select" class="input-field" style="flex:1;margin-bottom:0;padding:8px 10px;" onchange="onWatchlistGroupSelect(this.value)">
+          <option value="기본">기본</option>
+          <option value="__new__">+ 새 그룹 만들기</option>
+        </select>
+        <input id="w-group-new" class="input-field" type="text" placeholder="새 그룹명 입력" style="flex:1;margin-bottom:0;display:none;">
+      </div>
     </div>
   </div>
-  <div class="tabs">
+  <div id="watchlist-group-tabs" class="tabs" style="padding-bottom:0;border-bottom:none;"></div>
+  <div class="tabs" style="padding-top:6px;">
     <button class="tab active" onclick="filterWatchlist('전체', this)">전체</button>
     <button class="tab inactive" onclick="filterWatchlist('매수검토', this)">매수검토</button>
     <button class="tab inactive" onclick="filterWatchlist('추격금지', this)">추격금지</button>
@@ -611,8 +619,10 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
   <button class="nav-item" id="nav-holdings" onclick="switchTab('holdings')">
     <i class="ti ti-briefcase"></i><span>보유</span>
   </button>
-  <button class="nav-item" id="nav-watchlist" onclick="switchTab('watchlist')">
-    <i class="ti ti-star"></i><span>관심</span>
+  <button class="nav-item" id="nav-watchlist" onclick="switchTab('watchlist')" style="position:relative;">
+    <i class="ti ti-star"></i>
+    <span id="watchlist-alert-badge" style="display:none;position:absolute;top:6px;right:18px;width:8px;height:8px;border-radius:50%;background:#E24B4A;"></span>
+    <span>관심</span>
   </button>
   <button class="nav-item" id="nav-scanner" onclick="switchTab('scanner')">
     <i class="ti ti-chart-bar"></i><span>매집</span>
@@ -622,6 +632,6 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
   </button>
 </nav>
 
-<script src="/js/app.js?v=20260622c"></script>
+<script src="/js/app.js?v=20260622d"></script>
 </body>
 </html>

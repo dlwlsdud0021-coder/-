@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS watchlist (
     name         TEXT NOT NULL,
     target_price REAL,
     stop_loss    REAL,
+    group_name   TEXT DEFAULT '기본',
     created_at   TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(user_id, code)
 );
@@ -177,7 +178,8 @@ def update_holding(user_id: int, code: str, avg_price: float, qty: int):
 # 관심종목
 # ─────────────────────────────────────────────────────────
 def add_watchlist(user_id: int, code: str, name: str,
-                  target_price: float = None, stop_loss: float = None) -> tuple:
+                  target_price: float = None, stop_loss: float = None,
+                  group_name: str = "기본") -> tuple:
     try:
         _db().table("watchlist").upsert({
             "user_id": user_id,
@@ -185,6 +187,7 @@ def add_watchlist(user_id: int, code: str, name: str,
             "name": name,
             "target_price": target_price,
             "stop_loss": stop_loss,
+            "group_name": group_name or "기본",
         }, on_conflict="user_id,code").execute()
         return True, f"{name} 관심종목 추가 완료"
     except Exception as e:
@@ -194,11 +197,34 @@ def add_watchlist(user_id: int, code: str, name: str,
 def get_watchlist(user_id: int) -> list:
     try:
         res = _db().table("watchlist") \
-            .select("code, name, target_price, stop_loss") \
+            .select("code, name, target_price, stop_loss, group_name") \
             .eq("user_id", user_id) \
             .order("created_at") \
             .execute()
         return res.data or []
+    except Exception:
+        return []
+
+
+def update_watchlist_group(user_id: int, code: str, group_name: str):
+    try:
+        _db().table("watchlist") \
+            .update({"group_name": group_name or "기본"}) \
+            .eq("user_id", user_id).eq("code", code).execute()
+    except Exception:
+        pass
+
+
+def get_watchlist_groups(user_id: int) -> list:
+    try:
+        res = _db().table("watchlist") \
+            .select("group_name") \
+            .eq("user_id", user_id) \
+            .execute()
+        groups = list(dict.fromkeys(
+            r["group_name"] or "기본" for r in (res.data or [])
+        ))
+        return groups
     except Exception:
         return []
 

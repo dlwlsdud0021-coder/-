@@ -181,6 +181,15 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 # ─────────────────────────────────────────────────────────
 app = FastAPI(title="포켓주식 API")
 
+@app.on_event("startup")
+def _migrate():
+    """watchlist.group_name 컬럼 없으면 추가"""
+    try:
+        from database import _db as _get_db
+        _get_db().rpc("exec_sql", {"sql": "ALTER TABLE watchlist ADD COLUMN IF NOT EXISTS group_name TEXT DEFAULT '기본'"}).execute()
+    except Exception:
+        pass  # rpc 없으면 Supabase SQL 에디터에서 직접 실행 필요
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -211,6 +220,10 @@ class WatchlistBody(BaseModel):
     name: str
     target_price: Optional[float] = None
     stop_loss: Optional[float] = None
+    group_name: Optional[str] = "기본"
+
+class WatchlistGroupBody(BaseModel):
+    group_name: str
 
 class StockSearchBody(BaseModel):
     query: str
@@ -1259,14 +1272,23 @@ def get_watchlist(user=Depends(get_current_user)):
         entry.setdefault("badges", [])
         entry.setdefault("targets", {})
         enriched.append(entry)
-    return _to_python({"watchlist": enriched})
+    # 알림 배지: timing score 높은 종목 카운트
+    alert_count = sum(1 for e in enriched if (e.get("timing") or {}).get("score", 0) >= 70)
+    groups = db.get_watchlist_groups(user["user_id"])
+    return _to_python({"watchlist": enriched, "alert_count": alert_count, "groups": groups})
 
 @app.post("/api/watchlist")
 def add_watchlist(body: WatchlistBody, user=Depends(get_current_user)):
-    ok, msg = db.add_watchlist(user["user_id"], body.code, body.name, body.target_price, body.stop_loss)
+    ok, msg = db.add_watchlist(user["user_id"], body.code, body.name,
+                               body.target_price, body.stop_loss, body.group_name)
     if not ok:
         raise HTTPException(status_code=400, detail=msg)
     return {"message": msg}
+
+@app.put("/api/watchlist/{code}/group")
+def update_watchlist_group(code: str, body: WatchlistGroupBody, user=Depends(get_current_user)):
+    db.update_watchlist_group(user["user_id"], code, body.group_name)
+    return {"message": "그룹 변경 완료"}
 
 @app.delete("/api/watchlist/{code}")
 def delete_watchlist(code: str, user=Depends(get_current_user)):
