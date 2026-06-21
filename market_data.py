@@ -413,14 +413,50 @@ def get_ohlcv(code: str, days: int = 120) -> pd.DataFrame:
     return pd.DataFrame()
 
 
+def _naver_current_price(code: str) -> dict:
+    """네이버 모바일 주식 API — 시간외 단일가 포함 최신가"""
+    try:
+        import requests as _req
+        url = f"https://m.stock.naver.com/api/stock/{code}/basic"
+        r = _req.get(url, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
+        if r.status_code != 200:
+            return {}
+        d = r.json()
+        cur = int(d.get("closePrice", "0").replace(",", "") or 0)
+        prev = int(d.get("compareToPreviousClosePrice", "0").replace(",", "") or 0)
+        chg_pct = float(d.get("fluctuationsRatio", 0) or 0)
+        high = int(d.get("highPrice", "0").replace(",", "") or 0)
+        low  = int(d.get("lowPrice", "0").replace(",", "") or 0)
+        vol  = int(d.get("accumulatedTradingVolume", "0").replace(",", "") or 0)
+        if cur > 0:
+            _logger.info(f"[현재가] 네이버 성공({code}): {cur}")
+            return {
+                "current_price": cur,
+                "change":        prev,
+                "change_pct":    chg_pct,
+                "high":          high,
+                "low":           low,
+                "volume":        vol,
+            }
+    except Exception as e:
+        _logger.warning(f"[현재가] 네이버 실패({code}): {e}")
+    return {}
+
+
 def get_current_price(code: str) -> dict:
     """
     현재가 정보 반환
-    1순위: KIS API (진짜 실시간)
-    2순위: yfinance (15분 지연)
-    3순위: pykrx/FDR (종가 기반)
+    1순위: 네이버 모바일 API (시간외 단일가 포함)
+    2순위: KIS API (실시간)
+    3순위: yfinance
+    4순위: pykrx/FDR (종가 기반)
     """
-    # 1순위: KIS API 실시간
+    # 1순위: 네이버 모바일 API (시간외 포함)
+    result = _naver_current_price(code)
+    if result:
+        return result
+
+    # 2순위: KIS API 실시간
     try:
         from kis_api import get_current_price as kis_price
         result = kis_price(code)
