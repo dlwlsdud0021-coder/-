@@ -484,7 +484,7 @@ function renderNews() {
       return `<span style="padding:3px 10px;border-radius:20px;background:#F0F0F5;color:#3C3C43;font-size:11px;font-weight:500;">${nm}</span>`;
     }).join('');
 
-    return `<div class="news-card ${borderClass}" style="margin-bottom:12px;">
+    return `<div class="news-card ${borderClass}" style="margin-bottom:12px;cursor:pointer;" onclick="openNewsDetail(${i})">
       <!-- 헤더: 감성 배지 + 출처 -->
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
         <span class="badge ${bdg}">${lbl}</span>
@@ -1193,80 +1193,29 @@ function renderIndexDetail(d, el) {
 // ─────────────────────────────────────────────────────────
 // 뉴스 상세
 // ─────────────────────────────────────────────────────────
-async function openNewsDetail(idx) {
+function openNewsDetail(idx) {
   const n = _allNews[idx];
   if (!n) return;
   _currentTab = 'news';
   showScreen('news-detail');
   const el = document.getElementById('news-detail-content');
-  // 기사 기본 정보 먼저 표시
-  renderNewsDetailBase(n, el);
-  // AI 분석이 없으면 온디맨드로 요청
-  if (!n.ai_summary && !n._analyzing) {
-    n._analyzing = true;
-    const analyzeEl = document.getElementById('news-analyze-placeholder');
-    if (analyzeEl) analyzeEl.innerHTML = '<div class="loading" style="padding:16px;"><div class="spinner"></div> AI 분석 생성 중... (최대 10초)</div>';
-    try {
-      const result = await api('POST', '/api/news/analyze', {
-        title: n.title || '',
-        summary: n.summary || '',
-        sentiment: n.sentiment || 'neutral',
-        category: n.category || '전체',
-      });
-      n.ai_summary = result.ai_summary;
-      n.strategy = result.strategy;
-      if (result.related_stocks) n.related_stocks = result.related_stocks;
-      n._analyzing = false;
-      // 분석 영역만 교체
-      if (analyzeEl) analyzeEl.innerHTML = buildNewsAnalysisHtml(n);
-    } catch(e) {
-      n._analyzing = false;
-      if (analyzeEl) analyzeEl.innerHTML = '<div style="padding:16px;font-size:13px;color:#8E8E9A;">분석을 불러오지 못했습니다.</div>';
-    }
-  }
-}
-
-function renderNewsDetailBase(n, el) {
   const bdg = n.sentiment === 'positive' ? 'badge-pos' : n.sentiment === 'negative' ? 'badge-neg' : 'badge-mix';
-  const lbl = n.label || (n.sentiment === 'positive' ? '긍정' : n.sentiment === 'negative' ? '부정' : '혼조');
+  const lbl = n.sentiment === 'positive' ? '긍정' : n.sentiment === 'negative' ? '부정' : '혼조';
   const borderColor = n.sentiment === 'positive' ? '#185FA5' : n.sentiment === 'negative' ? '#E24B4A' : '#F0A500';
-  const catChip = n.category && n.category !== '전체' ? `<span class="badge badge-ok" style="font-size:11px;">${n.category}</span>` : '';
-
-  // 원문 요약
-  const summaryHtml = n.summary ? `
-    <div class="card" style="margin-bottom:12px;">
-      <div style="font-size:11px;color:#8E8E9A;margin-bottom:6px;display:flex;align-items:center;gap:4px;">
-        <i class="ti ti-file-text" style="font-size:12px;"></i> 기사 요약
-      </div>
-      <div style="font-size:13px;color:#3C3C43;line-height:1.7;">${n.summary}</div>
-    </div>` : '';
-
-  // 외부 링크
-  const linkHtml = n.link ? `
-    <a href="${n.link}" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border:1px solid #E5E5EA;border-radius:12px;color:#5B5BD6;font-size:14px;font-weight:600;text-decoration:none;margin-bottom:16px;">
-      <i class="ti ti-external-link" style="font-size:15px;"></i> 원문 기사 보기
-    </a>` : '';
-
-  const alreadyHasAnalysis = !!(n.ai_summary || n.strategy);
 
   el.innerHTML = `
-    <div style="padding:16px 16px 0;">
-      <!-- 헤더 -->
+    <div style="padding:16px;">
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
         <span class="badge ${bdg}">${lbl}</span>
-        ${catChip}
+        ${n.category && n.category !== '전체' ? `<span class="badge badge-ok" style="font-size:11px;">${n.category}</span>` : ''}
         <span style="font-size:11px;color:#8E8E9A;margin-left:auto;">${n.source||''}</span>
         <span style="font-size:11px;color:#C7C7CC;">${n.published||''}</span>
       </div>
-      <!-- 제목 -->
-      <div style="font-size:17px;font-weight:700;color:#1C1C1E;line-height:1.5;margin-bottom:10px;border-left:3px solid ${borderColor};padding-left:10px;">${n.title||''}</div>
-      ${n.brief ? `<div class="news-brief" style="margin-bottom:12px;">💡 ${n.brief}</div>` : ''}
-      ${summaryHtml}
-      ${linkHtml}
-    </div>
-    <!-- AI 분석 영역 (즉시 있으면 바로 렌더, 없으면 로딩) -->
-    <div id="news-analyze-placeholder">
-      ${alreadyHasAnalysis ? buildNewsAnalysisHtml(n) : ''}
+      <div style="font-size:17px;font-weight:700;color:#1C1C1E;line-height:1.5;margin-bottom:14px;border-left:3px solid ${borderColor};padding-left:10px;">${n.title||''}</div>
+      ${n.summary ? `<div class="card" style="margin-bottom:16px;font-size:14px;color:#3C3C43;line-height:1.8;">${n.summary}</div>` : ''}
+      ${n.link ? `<a href="${n.link}" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:14px;background:#5B5BD6;border-radius:12px;color:#fff;font-size:14px;font-weight:600;text-decoration:none;">
+        <i class="ti ti-external-link" style="font-size:15px;"></i> 원문 기사 전체 보기
+      </a>` : ''}
     </div>`;
 }
 
@@ -1287,6 +1236,14 @@ function buildNewsAnalysisHtml(n) {
       </div>
     </div>` : '';
 
+  const strategyHtml = n.strategy ? `
+    <div style="margin-top:12px;background:#FFFBF0;border:1px solid #F5E6B2;border-radius:14px;padding:16px;font-size:13px;line-height:1.9;color:#3C3C43;">
+      <div style="font-size:12px;font-weight:700;color:#8B6914;margin-bottom:8px;display:flex;align-items:center;gap:5px;">
+        <span>☀️</span> 투자 전략
+      </div>
+      ${n.strategy}
+    </div>` : '';
+
   return `${stocksHtml}
     <div style="padding:0 16px 20px;">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
@@ -1296,6 +1253,7 @@ function buildNewsAnalysisHtml(n) {
       <div style="background:#F5F4FF;border:1px solid #E0DEFF;border-radius:14px;padding:16px;font-size:13px;line-height:1.9;color:#1C1C1E;">
         ${n.ai_summary}
       </div>
+      ${strategyHtml}
     </div>`;
 }
 
