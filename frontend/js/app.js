@@ -2352,28 +2352,32 @@ function renderWatchlistDetail(d, el, code, name) {
   if (tp && curPrice) {
     const tDist = ((tp - curPrice) / curPrice * 100).toFixed(1);
     const sDist = sp2 ? ((sp2 - curPrice) / curPrice * 100).toFixed(1) : null;
-    const rr = sp2 ? Math.abs(tDist / ((sp2 - curPrice) / curPrice * 100)).toFixed(1) : null;
-    const rrCls = rr >= 2 ? '#27500A' : rr >= 1 ? '#BA7517' : '#A32D2D';
-    const rrLbl = rr >= 2 ? '✅ 양호' : rr >= 1 ? '⚠️ 보통' : '❌ 불리';
+    const rrRaw = (sp2 && sDist) ? Math.abs(tDist / sDist).toFixed(1) : null;
+    const rrCls = rrRaw >= 2 ? '#27500A' : rrRaw >= 1 ? '#BA7517' : '#A32D2D';
+    const rrLbl = rrRaw >= 2 ? '✅ 양호' : rrRaw >= 1 ? '⚠️ 보통' : '❌ 불리';
+    const tBasis = a.bollinger?.upper ? `볼린저 상단` : `현재가 기준`;
+    const sBasis = sp2 ? `평단가 -${Math.abs(((sp2 - curPrice) / curPrice * 100)).toFixed(0)}%` : '';
     priceTargetHtml = `<div class="section">
-      <div class="sec-title"><i class="ti ti-target" style="font-size:15px;color:#5B5BD6;"></i>목표가 / 손절가</div>
+      <div class="sec-title"><i class="ti ti-target" style="font-size:15px;color:#5B5BD6;"></i>목표가 / 손절가 분석</div>
       <div class="card">
         <div style="display:flex;justify-content:space-between;margin-bottom:12px;">
           <div>
-            <div style="font-size:10px;color:#8E8E9A;margin-bottom:3px;">내 목표가</div>
+            <div style="font-size:10px;color:#8E8E9A;margin-bottom:3px;">추천 목표가</div>
             <div style="font-size:18px;font-weight:700;color:#27500A;">${fmtNum(tp)}</div>
             <div style="font-size:11px;color:#27500A;">${tDist >= 0 ? '+' : ''}${tDist}%</div>
+            <div style="font-size:10px;color:#8E8E9A;margin-top:2px;">기준: ${tBasis}</div>
           </div>
           ${sp2 ? `<div style="text-align:right;">
-            <div style="font-size:10px;color:#8E8E9A;margin-bottom:3px;">내 손절가</div>
+            <div style="font-size:10px;color:#8E8E9A;margin-bottom:3px;">추천 손절가</div>
             <div style="font-size:18px;font-weight:700;color:#A32D2D;">${fmtNum(sp2)}</div>
             <div style="font-size:11px;color:#A32D2D;">${sDist}%</div>
+            <div style="font-size:10px;color:#8E8E9A;margin-top:2px;">기준: ${sBasis}</div>
           </div>` : ''}
         </div>
-        ${rr ? `<div style="background:#F8F8FA;border-radius:10px;padding:10px 12px;">
+        ${rrRaw ? `<div style="background:#F8F8FA;border-radius:10px;padding:10px 12px;">
           <div style="font-size:10px;color:#8E8E9A;margin-bottom:4px;">리스크/리워드 비율</div>
-          <div style="font-size:13px;font-weight:600;color:${rrCls};">1 : ${rr} ${rrLbl}</div>
-          <div style="font-size:10px;color:#8E8E9A;margin-top:3px;">손실 1원 대비 수익 ${rr}원 기대 — 2 이상이면 진입 적합</div>
+          <div style="font-size:13px;font-weight:600;color:${rrCls};">1 : ${rrRaw} ${rrLbl}</div>
+          <div style="font-size:10px;color:#8E8E9A;margin-top:3px;">손실 1원 대비 수익 ${rrRaw}원 기대 — 2 이상이면 진입 적합</div>
         </div>` : ''}
       </div>
     </div>`;
