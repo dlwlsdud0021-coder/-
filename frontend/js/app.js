@@ -2100,8 +2100,12 @@ function renderWatchlist() {
       </div>`;
     }
 
-    return `<div class="card clickable" onclick="openWatchlistDetail('${w.code}','${w.name.replace(/'/g,"\\'")}')">
-      <div class="card-top">
+    return `<div class="card" style="position:relative;" onclick="openWatchlistDetail('${w.code}','${w.name.replace(/'/g,"\\'")}')">
+      <button onclick="event.stopPropagation();confirmDeleteWatchlist('${w.code}','${w.name.replace(/'/g,"\\'")}');"
+        style="position:absolute;top:10px;right:10px;background:none;border:none;cursor:pointer;padding:2px;line-height:1;z-index:1;">
+        <i class="ti ti-circle-minus" style="font-size:20px;color:#E24B4A;"></i>
+      </button>
+      <div class="card-top" style="padding-right:28px;">
         <div class="stock-icon ${iconColors(w.name)}">${iconText(w.name)}</div>
         <div>
           <div class="stock-name">${w.name}</div>
@@ -2531,6 +2535,15 @@ function renderWatchlistDetail(d, el, code, name) {
         <i class="ti ti-trash" style="font-size:16px;"></i> 관심종목 삭제
       </button>
     </div>`;
+}
+
+async function confirmDeleteWatchlist(code, name) {
+  if (!confirm(`${name}\n삭제하시겠습니까?`)) return;
+  try {
+    await api('DELETE', `/api/watchlist/${code}`);
+    _watchlistLoaded = false;
+    loadWatchlist(true);
+  } catch(e) { alert(e.message); }
 }
 
 async function deleteWatchlist(code, name) {
