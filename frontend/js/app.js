@@ -3111,73 +3111,180 @@ function renderScannerDetail(s) {
 }
 
 function _buildFlowChart(volList, invList) {
-  // 거래량 SVG 바
-  const n = Math.max(volList.length, 1);
-  const W = 280, barW = Math.floor((W - (n-1)*4) / n);
-  const H_VOL = 50;
-  const maxVol = Math.max(...volList.map(d => d.volume), 1);
-  const volBars = volList.map((d, i) => {
-    const h = Math.max(Math.round(d.volume / maxVol * H_VOL), 2);
-    const x = i * (barW + 4);
-    const label = d.date ? d.date.slice(5) : '';
-    return `<rect x="${x}" y="${H_VOL - h}" width="${barW}" height="${h}" rx="2" fill="#5B5BD6" opacity="0.8"/>
-      <text x="${x + barW/2}" y="${H_VOL + 11}" text-anchor="middle" font-size="8" fill="#8E8E9A">${label}</text>`;
-  }).join('');
+  const uid = Math.random().toString(36).slice(2, 7);
 
-  // 외국인·기관 수급 텍스트 카드
-  function buildSupplyRow(label, list, netKey) {
-    if (!list.length) return '';
-    const days = list.map(d => d[netKey] >= 0 ? '▲' : '▼');
-    const buyCnt = days.filter(d => d === '▲').length;
-    const sellCnt = days.length - buyCnt;
-    const net3 = list.slice(-3).reduce((s, d) => s + d[netKey], 0);
-    const isBuy = net3 >= 0;
-    const badge = isBuy
-      ? `<span style="background:#EAF3DE;color:#27500A;font-size:10px;padding:2px 7px;border-radius:5px;font-weight:600;">🟢 매수 우세</span>`
-      : `<span style="background:#FDECEA;color:#A32D2D;font-size:10px;padding:2px 7px;border-radius:5px;font-weight:600;">🔴 매도 우세</span>`;
-    const netAbs = Math.abs(net3).toLocaleString();
-    const desc = isBuy
-      ? `최근 5일 중 ${buyCnt}일 매수 — 사고 있어요`
-      : `최근 5일 중 ${sellCnt}일 매도 — 팔고 있어요`;
-    const arrows = days.map(d =>
-      `<span style="color:${d==='▲'?'#E24B4A':'#185FA5'};font-size:13px;font-weight:700;">${d}</span>`
-    ).join(' ');
-    return `<div style="padding:10px 0;border-bottom:1px solid #F0F0F5;">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
-        <span style="font-size:13px;font-weight:600;color:#1C1C1E;width:36px;">${label}</span>
-        ${badge}
-        <span style="font-size:12px;color:${isBuy?'#E24B4A':'#185FA5'};margin-left:auto;font-weight:600;">${isBuy?'+':'-'}${netAbs}주</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
-        <span style="font-size:10px;color:#8E8E9A;">5일</span>
-        ${arrows}
-      </div>
-      <div style="font-size:11px;color:#8E8E9A;">${desc}</div>
-    </div>`;
+  // ── 1. 거래량 추이 카드 ──────────────────────────────────
+  let volCard = '';
+  if (volList.length) {
+    const n = volList.length;
+    const maxVol = Math.max(...volList.map(d => d.volume), 1);
+    const avgVol = Math.round(volList.reduce((s, d) => s + d.volume, 0) / n);
+    const lastVol = volList[n - 1]?.volume || 0;
+    const avgDiffPct = avgVol ? ((lastVol - avgVol) / avgVol * 100) : 0;
+    const avgDiffStr = (avgDiffPct >= 0 ? '↑' : '↓') + ' 평균 대비 ' + (avgDiffPct >= 0 ? '+' : '') + avgDiffPct.toFixed(1) + '%';
+    const avgBadgeBg = avgDiffPct >= 0 ? '#FAEEDA' : '#EEEDFE';
+    const avgBadgeTx = avgDiffPct >= 0 ? '#633806' : '#3C3489';
+
+    const VW = 320, CHART_H = 80, LABEL_H = 38;
+    const SVG_H = CHART_H + LABEL_H;
+    const barGap = 10;
+    const barW = Math.floor((VW - (n - 1) * barGap) / n);
+    const avgY = Math.round((1 - avgVol / maxVol) * CHART_H);
+    const gradId = 'vg_' + uid;
+
+    const bars = volList.map((d, i) => {
+      const h = Math.max(Math.round(d.volume / maxVol * CHART_H), 3);
+      const x = i * (barW + barGap);
+      const y = CHART_H - h;
+      const lbl = d.date ? d.date.slice(5) : '';
+      const volLbl = d.volume.toLocaleString();
+      return `<rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="5" fill="url(#${gradId})"/>
+<text x="${x + barW / 2}" y="${CHART_H + 14}" text-anchor="middle" font-size="10" fill="#8E8E9A">${lbl}</text>
+<text x="${x + barW / 2}" y="${CHART_H + 28}" text-anchor="middle" font-size="9" fill="#AEAEB2">${volLbl}</text>`;
+    }).join('');
+
+    volCard = `<div class="card" style="margin-bottom:8px;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+    <div>
+      <div style="font-size:13px;font-weight:600;color:#1A1A2E;">거래량 추이</div>
+      <div style="font-size:11px;color:#8E8E9A;margin-top:2px;">최근 5일 평균 거래량</div>
+      <div style="font-size:22px;font-weight:800;color:#1A1A2E;margin-top:4px;">${avgVol.toLocaleString()}주</div>
+    </div>
+    <span style="background:${avgBadgeBg};color:${avgBadgeTx};font-size:11px;padding:4px 9px;border-radius:8px;font-weight:600;white-space:nowrap;margin-top:2px;">${avgDiffStr}</span>
+  </div>
+  <svg viewBox="0 0 ${VW} ${SVG_H}" style="width:100%;overflow:visible;">
+    <defs>
+      <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#8080E8" stop-opacity="0.95"/>
+        <stop offset="100%" stop-color="#B0B0F8" stop-opacity="0.45"/>
+      </linearGradient>
+    </defs>
+    ${bars}
+    <line x1="0" y1="${avgY}" x2="${VW - 44}" y2="${avgY}" stroke="#C5C5D5" stroke-width="1" stroke-dasharray="5,4"/>
+    <text x="${VW}" y="${avgY - 3}" text-anchor="end" font-size="9" fill="#AEAEB2">평균</text>
+    <text x="${VW}" y="${avgY + 10}" text-anchor="end" font-size="9" fill="#AEAEB2">${avgVol.toLocaleString()}</text>
+  </svg>
+</div>`;
   }
 
-  const fRow = buildSupplyRow('외국인', invList, 'foreign');
-  const iRow = buildSupplyRow('기관', invList, 'inst');
+  // ── 2. 외국인·기관 수급 카드 ────────────────────────────
+  function buildMiniChart(list, netKey, posColor, negColor, lineColor) {
+    if (!list.length) return '';
+    const n = list.length;
+    const values = list.map(d => d[netKey]);
+    const maxAbs = Math.max(...values.map(v => Math.abs(v)), 1);
+    const VW = 140, CHART_H = 52, LABEL_H = 18, AXIS_W = 28;
+    const innerW = VW - AXIS_W;
+    const SVG_H = CHART_H + LABEL_H;
+    const barGap = 4;
+    const barW = Math.floor((innerW - (n - 1) * barGap) / n);
+    const zeroY = CHART_H / 2;
 
-  // 종합 판단
-  const fNet = invList.slice(-3).reduce((s,d) => s+d.foreign, 0);
-  const iNet = invList.slice(-3).reduce((s,d) => s+d.inst, 0);
-  let summary = '';
-  if (fNet > 0 && iNet > 0)
-    summary = '📌 외국인·기관 모두 매수 중 — 수급 신호 긍정적';
-  else if (fNet < 0 && iNet < 0)
-    summary = '📌 외국인·기관 모두 매도 중 — 수급 신호 부정적';
-  else if (fNet > 0)
-    summary = '📌 외국인 매수, 기관 관망 — 혼조세';
-  else
-    summary = '📌 기관 매수, 외국인 관망 — 혼조세';
+    // y-axis scale: round up to nice number
+    const rawMax = maxAbs;
+    const scale = Math.pow(10, Math.floor(Math.log10(rawMax)));
+    const niceMax = Math.ceil(rawMax / scale) * scale;
+    const fmt = v => v >= 1000 ? (v / 1000).toFixed(0) + 'K' : v.toString();
 
-  return `
-    <div style="font-size:11px;font-weight:600;color:#3C3C43;margin-bottom:6px;">거래량 추이</div>
-    <svg viewBox="0 0 ${W} ${H_VOL+14}" style="width:100%;overflow:visible;">${volBars}</svg>
-    <div style="font-size:11px;font-weight:600;color:#3C3C43;margin:14px 0 4px;">외국인·기관 수급</div>
-    ${fRow}${iRow}
-    ${summary ? `<div style="margin-top:10px;font-size:12px;color:#3C3C43;font-weight:500;">${summary}</div>` : ''}`;
+    const bars = values.map((v, i) => {
+      const x = i * (barW + barGap);
+      const barH = Math.max(Math.round(Math.abs(v) / niceMax * (CHART_H / 2 - 2)), 2);
+      const y = v >= 0 ? zeroY - barH : zeroY;
+      const fill = v >= 0 ? posColor : negColor;
+      const lbl = list[i].date ? list[i].date.slice(5) : '';
+      return `<rect x="${x}" y="${y}" width="${barW}" height="${barH}" rx="2" fill="${fill}" opacity="0.85"/>
+<text x="${x + barW / 2}" y="${CHART_H + LABEL_H - 2}" text-anchor="middle" font-size="8" fill="#AEAEB2">${lbl}</text>`;
+    }).join('');
+
+    const linePoints = values.map((v, i) => {
+      const x = i * (barW + barGap) + barW / 2;
+      const y = zeroY - (v / niceMax) * (CHART_H / 2 - 2);
+      return `${x},${Math.max(1, Math.min(CHART_H - 1, y))}`;
+    }).join(' ');
+
+    const axisLabels = [niceMax, 0, -niceMax].map((val, idx) => {
+      const y = idx === 0 ? 4 : idx === 1 ? zeroY + 4 : CHART_H - 1;
+      return `<text x="${VW}" y="${y}" text-anchor="end" font-size="8" fill="#C5C5D0">${fmt(Math.abs(val))}</text>`;
+    }).join('');
+
+    const gridLines = [0, zeroY, CHART_H].map(y =>
+      `<line x1="0" y1="${y}" x2="${innerW}" y2="${y}" stroke="#F0F0F5" stroke-width="0.8"/>`
+    ).join('');
+
+    return `<svg viewBox="0 0 ${VW} ${SVG_H}" style="width:100%;overflow:visible;margin:6px 0;">
+  ${gridLines}
+  ${bars}
+  <line x1="0" y1="${zeroY}" x2="${innerW}" y2="${zeroY}" stroke="#E5E5EA" stroke-width="0.8"/>
+  <polyline points="${linePoints}" fill="none" stroke="${lineColor}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  ${axisLabels}
+</svg>`;
+  }
+
+  function buildSupplyCard(label, list, netKey, posColor, negColor, lineColor) {
+    if (!list.length) return '<div style="flex:1;"></div>';
+    const values = list.map(d => d[netKey]);
+    const total5 = values.reduce((s, v) => s + v, 0);
+    const avg1 = Math.round(total5 / values.length);
+    const isBuy = total5 >= 0;
+    const badge = isBuy
+      ? `<span style="background:#EAF3DE;color:#27500A;font-size:10px;padding:2px 6px;border-radius:5px;font-weight:600;">매수 우세</span>`
+      : `<span style="background:#FDECEA;color:#A32D2D;font-size:10px;padding:2px 6px;border-radius:5px;font-weight:600;">매도 우세</span>`;
+    const valColor = isBuy ? '#E24B4A' : '#185FA5';
+
+    return `<div style="flex:1;min-width:0;background:#F8F8FA;border-radius:12px;padding:10px 10px 8px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:4px;">
+    <span style="font-size:13px;font-weight:700;color:#1A1A2E;">${label}</span>
+    ${badge}
+  </div>
+  <div style="font-size:18px;font-weight:800;color:${valColor};margin:4px 0 2px;">${total5 >= 0 ? '+' : ''}${total5.toLocaleString()}주</div>
+  ${buildMiniChart(list, netKey, posColor, negColor, lineColor)}
+  <div style="border-top:1px solid #E5E5EA;margin-top:4px;padding-top:6px;">
+    <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;">
+      <span style="color:#8E8E9A;">5일 누적</span>
+      <span style="color:${valColor};font-weight:600;">${total5 >= 0 ? '+' : ''}${total5.toLocaleString()}주</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;">
+      <span style="color:#8E8E9A;">일평균</span>
+      <span style="color:${valColor};font-weight:600;">${avg1 >= 0 ? '+' : ''}${avg1.toLocaleString()}주</span>
+    </div>
+  </div>
+</div>`;
+  }
+
+  let supplyCard = '';
+  if (invList.length) {
+    const fNet3 = invList.slice(-3).reduce((s, d) => s + d.foreign, 0);
+    const iNet3 = invList.slice(-3).reduce((s, d) => s + d.inst, 0);
+    let signalText = '';
+    if (fNet3 < 0 && iNet3 < 0) signalText = '외국인과 기관 모두 최근 3일 연속 순매도 중입니다.';
+    else if (fNet3 > 0 && iNet3 > 0) signalText = '외국인과 기관 모두 최근 3일 순매수 중입니다.';
+    else if (fNet3 > 0) signalText = '외국인 순매수, 기관은 관망 중입니다.';
+    else signalText = '기관 순매수, 외국인은 관망 중입니다.';
+
+    const fCard = buildSupplyCard('외국인', invList, 'foreign', '#4ADE80', '#F87171', '#22C55E');
+    const iCard = buildSupplyCard('기관', invList, 'inst', '#4ADE80', '#F87171', '#EF4444');
+
+    supplyCard = `<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <span style="font-size:13px;font-weight:600;color:#1A1A2E;">외국인 · 기관 수급</span>
+    <div style="display:flex;gap:4px;">
+      <button style="background:#5B5BD6;color:#fff;border:none;border-radius:6px;font-size:11px;padding:3px 10px;font-weight:600;cursor:default;">5일</button>
+      <button style="background:#F0F0F5;color:#AEAEB2;border:none;border-radius:6px;font-size:11px;padding:3px 10px;cursor:default;">10일</button>
+      <button style="background:#F0F0F5;color:#AEAEB2;border:none;border-radius:6px;font-size:11px;padding:3px 10px;cursor:default;">20일</button>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;">
+    ${fCard}
+    ${iCard}
+  </div>
+  ${signalText ? `<div style="margin-top:10px;background:#FFFBF0;border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;">
+    <i class="ti ti-bulb" style="font-size:15px;color:#F5A623;flex-shrink:0;"></i>
+    <span style="font-size:12px;color:#3C3C43;"><span style="font-weight:600;color:#1A1A2E;">수급 신호</span>&nbsp;${signalText}</span>
+  </div>` : ''}
+</div>`;
+  }
+
+  return volCard + supplyCard;
 }
 
 // ─────────────────────────────────────────────────────────
