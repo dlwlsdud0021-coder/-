@@ -5,6 +5,40 @@
 const API = '';  // 같은 서버에서 서빙되므로 빈 문자열
 
 // ─────────────────────────────────────────────────────────
+// 커스텀 Confirm 모달
+// ─────────────────────────────────────────────────────────
+function showConfirm({ title, message, confirmText = '삭제', cancelText = '취소', onConfirm }) {
+  const existing = document.getElementById('_confirm-modal');
+  if (existing) existing.remove();
+
+  const el = document.createElement('div');
+  el.id = '_confirm-modal';
+  el.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);';
+  el.innerHTML = `
+    <div style="width:100%;max-width:430px;background:#fff;border-radius:20px 20px 0 0;padding:28px 20px 36px;animation:slideUp .22s ease;">
+      <div style="width:40px;height:4px;background:#E5E5EA;border-radius:4px;margin:0 auto 20px;"></div>
+      <div style="text-align:center;margin-bottom:18px;">
+        <div style="width:52px;height:52px;border-radius:50%;background:#FFF0F0;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+          <i class="ti ti-trash" style="font-size:24px;color:#E24B4A;"></i>
+        </div>
+        <div style="font-size:17px;font-weight:700;color:#1C1C1E;margin-bottom:6px;">${title}</div>
+        <div style="font-size:14px;color:#8E8E9A;line-height:1.6;">${message}</div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button id="_confirm-cancel" style="flex:1;height:50px;border-radius:14px;border:none;background:#F2F2F7;color:#3C3C43;font-size:16px;font-weight:600;cursor:pointer;">${cancelText}</button>
+        <button id="_confirm-ok" style="flex:1;height:50px;border-radius:14px;border:none;background:#E24B4A;color:#fff;font-size:16px;font-weight:700;cursor:pointer;">${confirmText}</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(el);
+
+  const close = () => el.remove();
+  el.addEventListener('click', e => { if (e.target === el) close(); });
+  document.getElementById('_confirm-cancel').onclick = close;
+  document.getElementById('_confirm-ok').onclick = () => { close(); onConfirm(); };
+}
+
+// ─────────────────────────────────────────────────────────
 // 상태
 // ─────────────────────────────────────────────────────────
 let _token = localStorage.getItem('pk_token') || '';
@@ -1880,13 +1914,19 @@ function drawPriceChart(ohlcv, avgPrice, targetPrice, stopPrice) {
   drawLine(avgPrice,    '#FF9F0A', '평단가', false);
 }
 
-async function confirmDeleteHolding(code, name) {
-  if (!confirm(`${name}\n삭제하시겠습니까?`)) return;
-  try {
-    await api('DELETE', `/api/holdings/${code}`);
-    _holdingsLoaded = false;
-    loadHoldings(true);
-  } catch(e) { alert(e.message); }
+function confirmDeleteHolding(code, name) {
+  showConfirm({
+    title: '보유종목 삭제',
+    message: `<b>${name}</b>을(를) 삭제할까요?<br>삭제하면 되돌릴 수 없어요.`,
+    confirmText: '삭제',
+    onConfirm: async () => {
+      try {
+        await api('DELETE', `/api/holdings/${code}`);
+        _holdingsLoaded = false;
+        loadHoldings(true);
+      } catch(e) { alert(e.message); }
+    }
+  });
 }
 
 async function deleteHolding(code, name) {
@@ -2522,13 +2562,19 @@ function renderWatchlistDetail(d, el, code, name) {
     </div>`;
 }
 
-async function confirmDeleteWatchlist(code, name) {
-  if (!confirm(`${name}\n삭제하시겠습니까?`)) return;
-  try {
-    await api('DELETE', `/api/watchlist/${code}`);
-    _watchlistLoaded = false;
-    loadWatchlist(true);
-  } catch(e) { alert(e.message); }
+function confirmDeleteWatchlist(code, name) {
+  showConfirm({
+    title: '관심종목 삭제',
+    message: `<b>${name}</b>을(를) 삭제할까요?<br>삭제하면 되돌릴 수 없어요.`,
+    confirmText: '삭제',
+    onConfirm: async () => {
+      try {
+        await api('DELETE', `/api/watchlist/${code}`);
+        _watchlistLoaded = false;
+        loadWatchlist(true);
+      } catch(e) { alert(e.message); }
+    }
+  });
 }
 
 async function deleteWatchlist(code, name) {
