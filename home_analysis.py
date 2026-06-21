@@ -274,7 +274,7 @@ def analyze_us_impact(us_data: dict, kr_data: dict, ma: dict, kp_hist=None) -> l
 
     # ── Gemini 호출 ──
     cache_key = hashlib.md5(
-        f"us_impact_v3:{sp_pct:.2f}:{nd_pct:.2f}:{kp_pct:.2f}:{r5:.1f}:{phase}:{datetime.today().strftime('%Y%m%d')}".encode()
+        f"us_impact_v4_cp:{sp_pct:.2f}:{nd_pct:.2f}:{kp_pct:.2f}:{r5:.1f}:{phase}:{datetime.today().strftime('%Y%m%d')}".encode()
     ).hexdigest()
 
     # 장중 vs 마감/주말 프롬프트 분기
