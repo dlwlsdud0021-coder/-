@@ -692,8 +692,10 @@ def delete_holding(code: str, user=Depends(get_current_user)):
 
 def _calc_ai_targets(cur: float, analysis: dict, ohlcv) -> dict:
     """볼린저/MA/고점 기반 AI 추천 목표가·손절가 계산"""
+    if not cur or cur <= 0:
+        return {}
     try:
-        boll = analysis.get("bollinger", {})
+        boll = analysis.get("bollinger") or {}
         ma20 = analysis.get("ma20")
         boll_upper = boll.get("upper")
         boll_lower = boll.get("lower")
@@ -702,9 +704,11 @@ def _calc_ai_targets(cur: float, analysis: dict, ohlcv) -> dict:
         if boll_upper and boll_upper > cur:
             tp = round(boll_upper / 100) * 100; tb = "볼린저 상단"
         elif ohlcv_ok:
-            high60 = float(ohlcv["high"].tail(60).max())
-            if high60 > cur * 1.03:
-                tp = round(high60 / 100) * 100; tb = "60일 고점"
+            hcol = "high" if "high" in ohlcv.columns else "고가"
+            if hcol in ohlcv.columns:
+                high60 = float(ohlcv[hcol].tail(60).max())
+                if high60 > cur * 1.03:
+                    tp = round(high60 / 100) * 100; tb = "60일 고점"
         if not tp:
             tp = round(cur * 1.08 / 100) * 100; tb = "현재가 +8%"
         sp, sb = None, ""
@@ -812,6 +816,7 @@ def holding_detail(code: str, user=Depends(get_current_user)):
         }
     except Exception as e:
         print(f"[HoldingDetail] targets 계산 실패({code}): {e}")
+        analysis.setdefault("targets", {})
 
     # 4) 수급 일별 데이터
     try:
@@ -887,6 +892,13 @@ def get_watchlist(user=Depends(get_current_user)):
             entry["targets"]      = _to_python(_calc_ai_targets(cur, a, ohlcv))
         except Exception as e:
             entry["_err"] = str(e)
+        # 필수 필드 기본값 보장
+        entry.setdefault("cur_price", 0)
+        entry.setdefault("change_pct", 0)
+        entry.setdefault("rsi", None)
+        entry.setdefault("timing", {})
+        entry.setdefault("badges", [])
+        entry.setdefault("targets", {})
         enriched.append(entry)
     return _to_python({"watchlist": enriched})
 
@@ -943,6 +955,10 @@ def watchlist_detail(code: str, user=Depends(get_current_user)):
     except Exception as e:
         import traceback
         analysis = {"error": str(e), "traceback": traceback.format_exc()}
+    analysis.setdefault("targets", {})
+    analysis.setdefault("timing", {})
+    analysis.setdefault("inv_list", [])
+    analysis.setdefault("news", [])
     return _to_python({"item": item, "analysis": analysis})
 
 # ─────────────────────────────────────────────────────────

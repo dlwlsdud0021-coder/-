@@ -14,6 +14,7 @@ let _prevScreen = '';
 let _allNews = [];
 let _allHoldings = [];
 let _allWatchlist = [];
+let _scannerPollTimer = null;
 
 // ─────────────────────────────────────────────────────────
 // API 유틸
@@ -50,6 +51,7 @@ function showScreen(id) {
 }
 
 function switchTab(tab) {
+  if (tab !== 'scanner') { clearTimeout(_scannerPollTimer); _scannerPollTimer = null; }
   _currentTab = tab;
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const navEl = document.getElementById('nav-' + tab);
@@ -2572,7 +2574,6 @@ async function deleteWatchlist(code, name) {
 // 매집 스캐너
 // ─────────────────────────────────────────────────────────
 let _scannerLoaded = false;
-let _scannerPollTimer = null;
 async function loadScanner(force) {
   if (_scannerLoaded && !force) return;
   _scannerLoaded = true;

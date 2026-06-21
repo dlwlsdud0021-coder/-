@@ -617,7 +617,7 @@ def get_kospi_investor_value(days: int = 25) -> pd.DataFrame:
     # 2순위: pykrx
     if not PYKRX_OK:
         return pd.DataFrame()
-    end   = _today()
+    end   = _last_trading_date()
     start = _ndays_ago(days + 15)
     try:
         df = krx.get_market_trading_value_by_date(start, end, "KOSPI")
@@ -678,7 +678,7 @@ def get_kospi_investor(days: int = 25) -> pd.DataFrame:
         _logger.error("[수급-KOSPI] pykrx 미설치")
         return pd.DataFrame()
 
-    end   = _today()
+    end   = _last_trading_date()
     start = _ndays_ago(days + 15)
 
     # pykrx 거래대금(원) 버전 우선
