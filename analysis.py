@@ -177,18 +177,38 @@ def analyze_stock(
         "is_sideways": sideways,
     })
 
-    # ── 외국인/기관 최근 3일 순매수 ──
+    # ── 외국인/기관 최근 3일 순매수 + 5일 일별 리스트 ──
     foreign_net = 0
     inst_net = 0
+    inv_list = []
     if investor_df is not None and not investor_df.empty:
         recent_inv = investor_df.tail(3)
         if "외국인" in recent_inv.columns:
             foreign_net = int(recent_inv["외국인"].sum())
         if "기관" in recent_inv.columns:
             inst_net = int(recent_inv["기관"].sum())
+        # 5일 일별 데이터
+        recent5 = investor_df.tail(5)
+        for idx2, row in recent5.iterrows():
+            inv_list.append({
+                "date": str(idx2)[:10],
+                "foreign": int(row.get("외국인", 0)),
+                "inst": int(row.get("기관", 0)),
+            })
 
     result["foreign_net_3d"] = foreign_net
     result["institution_net_3d"] = inst_net
+    result["inv_list"] = inv_list
+
+    # ── 5일 거래량 리스트 ──
+    vol_list = []
+    recent_vol = ohlcv.tail(5)
+    for idx2, row in recent_vol.iterrows():
+        vol_list.append({
+            "date": str(idx2)[:10],
+            "volume": int(row.get("volume", 0)),
+        })
+    result["vol_list"] = vol_list
 
     # ── 5신호 판단 ──
     sig_vol    = vol_ratio >= 2.0             # 거래량 평균 2배 이상

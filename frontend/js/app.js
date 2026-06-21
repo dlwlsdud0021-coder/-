@@ -1848,24 +1848,17 @@ function renderHoldingDetail(d, el) {
       <div class="card">${supRowsNew}</div>
     </div>` : ''}
 
-    <!-- 수급 -->
-    <div class="section">
-      <div class="sec-title"><i class="ti ti-users" style="font-size:15px;color:#5B5BD6;"></i>외국인·기관 수급 (5일)</div>
-      <div class="card">
-        <div class="supply-row">
-          <span class="supply-who">외국인</span>
-          <div class="supply-bar-bg"><div class="supply-bar-fill ${fBarCls}" style="width:${fBarW}%;"></div></div>
-          <span class="supply-val ${fCls}">${foreignNet>=0?'+':''}${foreignNet.toLocaleString()}주</span>
+    <!-- 거래량 + 수급 SVG 차트 -->
+    ${invList.length ? `<div class="section">
+      <div class="sec-title"><i class="ti ti-chart-bar" style="font-size:15px;color:#5B5BD6;"></i>5일 거래량 · 수급 흐름</div>
+      <div class="card" style="padding:14px;">
+        ${_buildFlowChart(a.vol_list || [], invList)}
+        <div style="display:flex;gap:16px;margin-top:10px;font-size:12px;">
+          <span style="color:${foreignNet>=0?'#E24B4A':'#185FA5'};font-weight:600;">외국인 3일 ${foreignNet>=0?'+':''}${foreignNet.toLocaleString()}주</span>
+          <span style="color:${instNet>=0?'#F5A623':'#30D158'};font-weight:600;">기관 3일 ${instNet>=0?'+':''}${instNet.toLocaleString()}주</span>
         </div>
-        ${fChips ? `<div class="days-row">${fChips}</div>` : ''}
-        <div class="supply-row">
-          <span class="supply-who">기관</span>
-          <div class="supply-bar-bg"><div class="supply-bar-fill ${iBarCls}" style="width:${iBarW}%;"></div></div>
-          <span class="supply-val ${iCls}">${instNet>=0?'+':''}${instNet.toLocaleString()}주</span>
-        </div>
-        ${iChips ? `<div class="days-row">${iChips}</div>` : ''}
       </div>
-    </div>
+    </div>` : ''}
 
     <!-- 배지 -->
     ${badgesHtml ? `<div class="section">
@@ -2690,6 +2683,14 @@ function renderWatchlistDetail(d, el, code, name) {
       </div>
     </div>
 
+    <!-- TradingView 차트 -->
+    <div class="section" style="margin-top:12px;">
+      <div class="sec-title"><i class="ti ti-chart-candle" style="font-size:15px;color:#5B5BD6;"></i>차트</div>
+      <div style="border-radius:16px;overflow:hidden;background:#131722;">
+        <div id="tv-chart-${code}"></div>
+      </div>
+    </div>
+
     <!-- 타이밍 판정 -->
     ${timingHtml}
 
@@ -2746,24 +2747,17 @@ function renderWatchlistDetail(d, el, code, name) {
       <div class="card">${supRowsNew}</div>
     </div>` : ''}
 
-    <!-- 수급 -->
-    <div class="section">
-      <div class="sec-title"><i class="ti ti-users" style="font-size:15px;color:#5B5BD6;"></i>외국인·기관 수급 (5일)</div>
-      <div class="card">
-        <div class="supply-row">
-          <span class="supply-who">외국인</span>
-          <div class="supply-bar-bg"><div class="supply-bar-fill ${fBarCls}" style="width:${fBarW}%;"></div></div>
-          <span class="supply-val ${fCls}">${foreignNet>=0?'+':''}${foreignNet.toLocaleString()}주</span>
+    <!-- 거래량 + 수급 SVG 차트 -->
+    ${invList.length ? `<div class="section">
+      <div class="sec-title"><i class="ti ti-chart-bar" style="font-size:15px;color:#5B5BD6;"></i>5일 거래량 · 수급 흐름</div>
+      <div class="card" style="padding:14px;">
+        ${_buildFlowChart(a.vol_list || [], invList)}
+        <div style="display:flex;gap:16px;margin-top:10px;font-size:12px;">
+          <span style="color:${foreignNet>=0?'#E24B4A':'#185FA5'};font-weight:600;">외국인 3일 ${foreignNet>=0?'+':''}${foreignNet.toLocaleString()}주</span>
+          <span style="color:${instNet>=0?'#F5A623':'#30D158'};font-weight:600;">기관 3일 ${instNet>=0?'+':''}${instNet.toLocaleString()}주</span>
         </div>
-        ${fChips ? `<div class="days-row">${fChips}</div>` : ''}
-        <div class="supply-row">
-          <span class="supply-who">기관</span>
-          <div class="supply-bar-bg"><div class="supply-bar-fill ${iBarCls}" style="width:${iBarW}%;"></div></div>
-          <span class="supply-val ${iCls}">${instNet>=0?'+':''}${instNet.toLocaleString()}주</span>
-        </div>
-        ${iChips ? `<div class="days-row">${iChips}</div>` : ''}
       </div>
-    </div>
+    </div>` : ''}
 
     <!-- 배지 -->
     ${badgesHtml ? `<div class="section">
@@ -2794,6 +2788,46 @@ function renderWatchlistDetail(d, el, code, name) {
         <i class="ti ti-trash" style="font-size:16px;"></i> 관심종목 삭제
       </button>
     </div>`;
+
+  _initTradingViewChart(code, `tv-chart-${code}`);
+}
+
+function _initTradingViewChart(stockCode, containerId) {
+  const symbol = `KRX:${stockCode}`;
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  function _doInit() {
+    container.innerHTML = '';
+    new TradingView.widget({
+      container_id: containerId,
+      symbol: symbol,
+      interval: 'D',
+      timezone: 'Asia/Seoul',
+      theme: 'dark',
+      style: '1',
+      locale: 'kr',
+      toolbar_bg: '#131722',
+      enable_publishing: false,
+      hide_side_toolbar: true,
+      hide_top_toolbar: false,
+      save_image: false,
+      height: 360,
+      width: '100%',
+      studies: ['RSI@tv-basicstudies', 'MACD@tv-basicstudies'],
+      show_popup_button: false,
+      allow_symbol_change: false,
+    });
+  }
+
+  if (typeof TradingView !== 'undefined') {
+    _doInit();
+  } else {
+    const s = document.createElement('script');
+    s.src = 'https://s3.tradingview.com/tv.js';
+    s.onload = _doInit;
+    document.head.appendChild(s);
+  }
 }
 
 function confirmDeleteWatchlist(code, name) {
@@ -3028,17 +3062,45 @@ function renderScannerDetail(s) {
       </div>` : ''}
     </div>
 
-    <!-- 매집 신호 -->
+    <!-- TradingView 차트 -->
     <div class="section" style="margin-top:8px;">
-      <div class="sec-title"><i class="ti ti-radar" style="font-size:15px;color:#5B5BD6;"></i>매집신호 상세</div>
-      <div class="card">
-        <div class="signal-grid">
-          <div class="sig-grid-item"><div class="sig-grid-label"><div class="sc-sig-dot ${sig.vol_surge?'on':'off'}"></div>거래량 급증</div><div class="sig-grid-val ${sig.vol_surge?'good':'warn'}">${volRatio?'+'+volRatio+'%':sig.vol_surge?'급증':'미충족'}</div></div>
-          <div class="sig-grid-item"><div class="sig-grid-label"><div class="sc-sig-dot ${sig.obv_up?'on':'off'}"></div>OBV 추세</div><div class="sig-grid-val ${sig.obv_up?'good':'warn'}">${sig.obv_up?'상승 중':'미충족'}</div></div>
-          <div class="sig-grid-item"><div class="sig-grid-label"><div class="sc-sig-dot ${sig.foreign_buy?'on':'off'}"></div>외국인 수급</div><div class="sig-grid-val ${sig.foreign_buy?'good':'warn'}">${sig.foreign_buy?'순매수':'미충족'}</div></div>
-          <div class="sig-grid-item"><div class="sig-grid-label"><div class="sc-sig-dot ${sig.inst_buy?'on':'off'}"></div>기관 수급</div><div class="sig-grid-val ${sig.inst_buy?'good':'warn'}">${sig.inst_buy?'순매수':'미충족'}</div></div>
-          <div class="sig-grid-item"><div class="sig-grid-label"><div class="sc-sig-dot ${sig.sideways?'on':'off'}"></div>가격 횡보</div><div class="sig-grid-val ${sig.sideways?'good':'warn'}">${sig.sideways?'충족':'미충족'}</div></div>
-          <div class="sig-grid-item"><div class="sig-grid-label"><div class="sc-sig-dot on"></div>종합 점수</div><div class="sig-grid-val good">${s.score} / 5</div></div>
+      <div class="sec-title"><i class="ti ti-chart-candle" style="font-size:15px;color:#5B5BD6;"></i>차트</div>
+      <div style="border-radius:16px;overflow:hidden;background:#131722;">
+        <div id="tv-sc-${s.code}"></div>
+      </div>
+    </div>
+
+    <!-- 매집 신호 점수 투명화 -->
+    <div class="section" style="margin-top:8px;">
+      <div class="sec-title"><i class="ti ti-radar" style="font-size:15px;color:#5B5BD6;"></i>매집신호 상세 <span style="font-size:11px;color:#8E8E9A;font-weight:400;">(5개 조건 충족 시 신뢰도 높음)</span></div>
+      <div class="card" style="padding:14px;">
+        ${[
+          { key:'vol_surge',   label:'거래량 급증',  desc: volRatio ? `평균 대비 +${volRatio}% 거래량 폭발 (기준: 평균의 2배↑)` : '평균 거래량 2배 이상 조건', icon:'ti-chart-bar' },
+          { key:'obv_up',      label:'OBV 상승',     desc: `매수세 누적 지표 상승 중 (거래량·가격 방향 동일)`, icon:'ti-trending-up' },
+          { key:'foreign_buy', label:'외국인 순매수', desc: foreignNet ? `최근 3일 +${Math.abs(foreignNet).toLocaleString()}주 순매수` : '최근 3일 외국인 순매수 조건', icon:'ti-world' },
+          { key:'inst_buy',    label:'기관 순매수',   desc: instNet ? `최근 3일 +${Math.abs(instNet).toLocaleString()}주 순매수` : '최근 3일 기관 순매수 조건', icon:'ti-building-bank' },
+          { key:'sideways',    label:'가격 횡보',     desc: '박스권 눌림 — 매집 후 급등 전 전형적 패턴', icon:'ti-arrows-horizontal' },
+        ].map(item => {
+          const ok = sig[item.key];
+          return `<div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #F0F0F5;">
+            <div style="width:28px;height:28px;border-radius:50%;background:${ok?'#3B6D11':'#8E8E9A'};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
+              <i class="ti ${item.icon}" style="font-size:14px;color:#fff;"></i>
+            </div>
+            <div style="flex:1;">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+                <span style="font-size:13px;font-weight:600;color:${ok?'#1A1A2E':'#8E8E9A'};">${item.label}</span>
+                <span style="font-size:10px;padding:2px 7px;border-radius:5px;background:${ok?'#EAF3DE':'#F0F0F5'};color:${ok?'#27500A':'#8E8E9A'};">${ok?'✅ 충족':'❌ 미충족'}</span>
+              </div>
+              <div style="font-size:11px;color:#8E8E9A;line-height:1.5;">${item.desc}</div>
+            </div>
+          </div>`;
+        }).join('')}
+        <div style="display:flex;align-items:center;justify-content:space-between;padding-top:10px;">
+          <span style="font-size:13px;color:#3C3C43;">종합 점수</span>
+          <div style="display:flex;gap:4px;">
+            ${[1,2,3,4,5].map(i => `<div style="width:18px;height:18px;border-radius:50%;background:${i<=s.score?'#5B5BD6':'#F0F0F5'};"></div>`).join('')}
+            <span style="font-size:13px;font-weight:700;color:#5B5BD6;margin-left:6px;">${s.score}/5</span>
+          </div>
         </div>
       </div>
     </div>
@@ -3054,14 +3116,11 @@ function renderScannerDetail(s) {
       </div>
     </div>
 
-    <!-- 수급 -->
-    ${foreignNet||instNet ? `<div class="section">
-      <div class="sec-title"><i class="ti ti-users" style="font-size:15px;color:#5B5BD6;"></i>외국인·기관 수급 (최근 5일)</div>
-      <div class="card">
-        <div class="supply-row"><span class="supply-who">외국인</span><div class="supply-bar-bg"><div class="supply-bar-fill ${foreignNet>=0?'bar-buy':'bar-sell'}" style="width:${fBarW}%;"></div></div><span class="supply-val ${foreignNet>=0?'up':'down'}">${foreignNet>=0?'+':''}${foreignNet.toLocaleString()}주</span></div>
-        ${fChips?`<div class="days-row">${fChips}</div>`:''}
-        <div class="supply-row"><span class="supply-who">기관</span><div class="supply-bar-bg"><div class="supply-bar-fill ${instNet>=0?'bar-buy':'bar-sell'}" style="width:${iBarW}%;"></div></div><span class="supply-val ${instNet>=0?'up':'down'}">${instNet>=0?'+':''}${instNet.toLocaleString()}주</span></div>
-        ${iChips?`<div class="days-row">${iChips}</div>`:''}
+    <!-- 거래량 + 수급 SVG 차트 -->
+    ${(invList.length || s.vol_list?.length) ? `<div class="section">
+      <div class="sec-title"><i class="ti ti-chart-bar" style="font-size:15px;color:#5B5BD6;"></i>5일 거래량 · 수급 흐름</div>
+      <div class="card" style="padding:14px;">
+        ${_buildFlowChart(s.vol_list || [], invList)}
       </div>
     </div>` : ''}
 
@@ -3080,6 +3139,52 @@ function renderScannerDetail(s) {
     <div style="padding:0 16px 20px;">
       <div class="warn-box"><i class="ti ti-alert-circle" style="font-size:14px;flex-shrink:0;"></i>투자 결정은 본인 책임입니다. 이 정보는 참고용이며 투자 권유가 아닙니다.</div>
     </div>`;
+
+  _initTradingViewChart(s.code, `tv-sc-${s.code}`);
+}
+
+function _buildFlowChart(volList, invList) {
+  const n = Math.max(volList.length, invList.length, 1);
+  const W = 280, barW = Math.floor((W - (n-1)*4) / n);
+  const H_VOL = 50, H_FLOW = 40;
+
+  // 거래량 바
+  const maxVol = Math.max(...volList.map(d => d.volume), 1);
+  const volBars = volList.map((d, i) => {
+    const h = Math.max(Math.round(d.volume / maxVol * H_VOL), 2);
+    const x = i * (barW + 4);
+    const label = d.date ? d.date.slice(5) : '';
+    return `<rect x="${x}" y="${H_VOL - h}" width="${barW}" height="${h}" rx="2" fill="#5B5BD6" opacity="0.8"/>
+      <text x="${x + barW/2}" y="${H_VOL + 11}" text-anchor="middle" font-size="8" fill="#8E8E9A">${label}</text>`;
+  }).join('');
+
+  // 외국인·기관 수급 바 (양수=빨강, 음수=파랑)
+  const maxFlow = Math.max(...invList.flatMap(d => [Math.abs(d.foreign), Math.abs(d.inst)]), 1);
+  const midY = H_FLOW / 2;
+  const flowBars = invList.map((d, i) => {
+    const x = i * (barW + 4);
+    const halfW = Math.floor(barW / 2) - 1;
+    const fH = Math.max(Math.round(Math.abs(d.foreign) / maxFlow * midY), 1);
+    const iH = Math.max(Math.round(Math.abs(d.inst) / maxFlow * midY), 1);
+    const fy = d.foreign >= 0 ? midY - fH : midY;
+    const iy = d.inst >= 0 ? midY - iH : midY;
+    return `<rect x="${x}" y="${fy}" width="${halfW}" height="${fH}" rx="1" fill="${d.foreign>=0?'#E24B4A':'#185FA5'}"/>
+      <rect x="${x+halfW+1}" y="${iy}" width="${halfW}" height="${iH}" rx="1" fill="${d.inst>=0?'#F5A623':'#30D158'}"/>`;
+  }).join('');
+
+  return `
+    <div style="font-size:11px;font-weight:600;color:#3C3C43;margin-bottom:6px;">거래량 추이</div>
+    <svg viewBox="0 0 ${W} ${H_VOL+14}" style="width:100%;overflow:visible;">${volBars}</svg>
+    <div style="display:flex;gap:12px;margin:10px 0 6px;font-size:10px;color:#8E8E9A;align-items:center;">
+      <span style="font-weight:600;color:#3C3C43;">외국인·기관 수급</span>
+      <span><span style="display:inline-block;width:8px;height:8px;background:#E24B4A;border-radius:2px;margin-right:3px;"></span>외국인매수</span>
+      <span><span style="display:inline-block;width:8px;height:8px;background:#185FA5;border-radius:2px;margin-right:3px;"></span>외국인매도</span>
+      <span><span style="display:inline-block;width:8px;height:8px;background:#F5A623;border-radius:2px;margin-right:3px;"></span>기관매수</span>
+    </div>
+    <svg viewBox="0 0 ${W} ${H_FLOW}" style="width:100%;overflow:visible;">
+      <line x1="0" y1="${midY}" x2="${W}" y2="${midY}" stroke="#F0F0F5" stroke-width="1"/>
+      ${flowBars}
+    </svg>`;
 }
 
 // ─────────────────────────────────────────────────────────
