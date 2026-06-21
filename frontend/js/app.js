@@ -293,41 +293,148 @@ function renderHome(d, el) {
   const analysis = Array.isArray(d.analysis) ? d.analysis : [];
   const forecast = d.forecast || {};
   const investor = Array.isArray(d.investor) ? d.investor : [];
-  const investorHtml = buildInvestorSection(investor);
 
   const heroTitle = kpPct >= 1.5 ? '강한 상승장' : kpPct >= 0.3 ? '상승장' : kpPct <= -1.5 ? '하락장' : kpPct <= -0.3 ? '약세장' : '보합장';
   const heroIcon = kpPct >= 0 ? 'ti-trending-up' : 'ti-trending-down';
 
-  let analysisHtml = '';
-  const dotColors = ['dot-blue','dot-green','dot-orange'];
-  (analysis.slice(0,3)).forEach((a, i) => {
-    // analyze_us_impact 반환: {dot, label, text} 형식
-    // text에 HTML이 포함될 수 있음
-    const label = a.label || a.title || '분석';
-    const text = a.text || a.content || '';
-    // warn 텍스트가 text 안에 포함된 경우 처리
-    analysisHtml += `
-      <div class="analysis-item">
-        <div class="analysis-label"><div class="dot ${dotColors[i]||'dot-blue'}"></div>${label}</div>
-        <div class="analysis-text">${text}</div>
-      </div>`;
-  });
-  if (!analysisHtml) {
-    analysisHtml = `<div class="analysis-item"><div class="analysis-text">KOSPI ${fmtNum(kospi)} (${fmtPct(kpPct)}) · KOSDAQ ${fmtNum(kosdaq)} (${fmtPct(kdPct)})</div></div>`;
-  }
+  // ── 오늘 시장 분석: 3카드 수평 스크롤 ──────────────────────
+  const basis = forecast.basis || {};
+  const a20 = basis.above_ma20;
+  const a60 = basis.above_ma60;
+  const cardMeta = [
+    {
+      icon: 'ti-flag-2', iconBg: '#EEF2FF', iconColor: '#4F63D2',
+      badge: spPct >= 0 ? '긍정' : '주의',
+      badgeBg: spPct >= 0 ? '#EAF3DE' : '#FDECEA',
+      badgeTx: spPct >= 0 ? '#27500A' : '#A32D2D',
+      detail: `<div style="margin-bottom:8px;display:flex;gap:10px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:#8E8E9A;">S&P500 <span class="${spPct>=0?'up':'down'}" style="font-weight:700;">${spPct>=0?'+':''}${spPct.toFixed(2)}%</span></span>
+        <span style="font-size:12px;color:#8E8E9A;">나스닥 <span class="${ndPct>=0?'up':'down'}" style="font-weight:700;">${ndPct>=0?'+':''}${ndPct.toFixed(2)}%</span></span>
+      </div>`,
+    },
+    {
+      icon: 'ti-chart-line', iconBg: '#FEF3C7', iconColor: '#D97706',
+      badge: (a20 && a60) ? '상승' : (!a20 && !a60) ? '하락' : '혼조',
+      badgeBg: (a20 && a60) ? '#EAF3DE' : (!a20 && !a60) ? '#FDECEA' : '#FAEEDA',
+      badgeTx: (a20 && a60) ? '#27500A' : (!a20 && !a60) ? '#A32D2D' : '#633806',
+      detail: `<div style="margin-bottom:8px;font-size:12px;color:#3C3C43;line-height:1.8;">
+        <div>20일선 ${a20 ? '<span style="color:#E24B4A;font-weight:600;">↑ 상향 돌파</span>' : '<span style="color:#185FA5;font-weight:600;">↓ 아래 위치</span>'}</div>
+        <div>60일선 ${a60 ? '<span style="color:#E24B4A;font-weight:600;">↑ 상향 전환</span>' : '<span style="color:#185FA5;font-weight:600;">↓ 아래 위치</span>'}</div>
+      </div>`,
+    },
+    {
+      icon: 'ti-calendar-event', iconBg: '#F3E8FF', iconColor: '#9333EA',
+      badge: '관심', badgeBg: '#EEEDFE', badgeTx: '#3C3489',
+      detail: `<div style="margin-bottom:8px;font-size:12px;color:#3C3C43;line-height:1.8;">
+        <div><i class="ti ti-circle-check" style="font-size:11px;color:#5B5BD6;margin-right:4px;"></i>미국 FOMC 결과 발표</div>
+        <div><i class="ti ti-circle-check" style="font-size:11px;color:#5B5BD6;margin-right:4px;"></i>국내 기업 실적 발표</div>
+      </div>`,
+    },
+  ];
 
+  const analysisCards = analysis.slice(0, 3).map((a, i) => {
+    const m = cardMeta[i] || cardMeta[2];
+    const label = a.label || '분석';
+    // HTML에서 subtitle 추출
+    const subtitleM = (a.text || '').match(/font-weight:700[^>]*>([^<]{1,40})</);
+    const subtitle = subtitleM ? subtitleM[1].trim() : label;
+    // 순수 텍스트 요약 (60자)
+    const plain = (a.text || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const summary = plain.length > 55 ? plain.slice(0, 55) + '…' : plain;
+    return `<div style="flex:0 0 200px;background:#fff;border-radius:16px;border:0.5px solid #E5E5EA;padding:14px 12px;box-sizing:border-box;">
+  <div style="display:flex;align-items:center;gap:7px;margin-bottom:9px;">
+    <div style="width:30px;height:30px;border-radius:50%;background:${m.iconBg};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+      <i class="ti ${m.icon}" style="font-size:14px;color:${m.iconColor};"></i>
+    </div>
+    <span style="font-size:11px;color:#8E8E9A;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${label}</span>
+    <span style="background:${m.badgeBg};color:${m.badgeTx};font-size:10px;padding:2px 6px;border-radius:5px;font-weight:600;white-space:nowrap;">${m.badge}</span>
+  </div>
+  <div style="font-size:14px;font-weight:700;color:#1A1A2E;margin-bottom:8px;line-height:1.3;">${subtitle}</div>
+  ${m.detail}
+  <div style="border-top:0.5px solid #F0F0F5;padding-top:7px;">
+    <div style="font-size:10px;color:#8E8E9A;font-weight:600;margin-bottom:3px;">AI 요약</div>
+    <div style="font-size:11px;color:#3C3C43;line-height:1.5;">${summary}</div>
+  </div>
+</div>`;
+  }).join('');
+
+  const analysisSectionHtml = `<div class="section">
+  <div class="sec-title" style="display:flex;align-items:center;">
+    <i class="ti ti-search" style="font-size:15px;color:#5B5BD6;"></i>오늘 시장 분석
+    <span onclick="openIndexDetail('KOSPI')" style="margin-left:auto;font-size:12px;color:#5B5BD6;font-weight:600;cursor:pointer;">자세히 보기 <i class="ti ti-chevron-right" style="font-size:11px;"></i></span>
+  </div>
+  <div style="display:flex;gap:10px;overflow-x:auto;padding:0 16px 4px;margin:0 -16px;-webkit-overflow-scrolling:touch;scrollbar-width:none;">
+    ${analysisCards || '<div class="card"><div class="analysis-text">시장 분석 데이터를 불러오는 중...</div></div>'}
+  </div>
+</div>`;
+
+  // ── 내일 시장 예측: 도넛 차트 + 근거/주목 ─────────────────
   const fDir = forecast.direction_kor || (forecast.direction === 'up' ? '상승' : forecast.direction === 'down' ? '하락' : '횡보');
   const fTitle = forecast.short_title || fDir + ' 예상';
   const fConf = forecast.confidence || 55;
   const fReasons = Array.isArray(forecast.reasons) ? forecast.reasons : [];
-  const fPoints = Array.isArray(forecast.points) ? forecast.points : [];
+  const fPoints  = Array.isArray(forecast.points)  ? forecast.points  : [];
+  const isUp = forecast.direction === 'up';
+  const isDown = forecast.direction === 'down';
 
-  let basisHtml = fReasons.slice(0,3).map(b => `<div class="forecast-item">${b}</div>`).join('');
-  let pointsHtml = fPoints.slice(0,2).map(p => `<div class="forecast-item">${p}</div>`).join('');
-  if (!basisHtml) basisHtml = `<div class="forecast-item">전일 미국 S&P500 ${fmtPct(spPct)} 참고</div>`;
-  if (!pointsHtml) pointsHtml = `<div class="forecast-item">장 초반 외국인 매매 방향 확인</div>`;
+  // 도넛 SVG (신뢰도)
+  const R = 36, CX = 44, CY = 44, SW = 7;
+  const circ = 2 * Math.PI * R;
+  const dash = circ * fConf / 100;
+  const confBadge = fConf >= 70 ? '신뢰도 높음' : fConf >= 50 ? '신뢰도 보통' : '신뢰도 낮음';
+  const confBadgeBg = fConf >= 70 ? '#EAF3DE' : fConf >= 50 ? '#FAEEDA' : '#FDECEA';
+  const confBadgeTx = fConf >= 70 ? '#27500A' : fConf >= 50 ? '#633806' : '#A32D2D';
+  const donutSvg = `<svg width="88" height="88" viewBox="0 0 88 88" style="flex-shrink:0;">
+  <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="#E5E5EA" stroke-width="${SW}"/>
+  <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="#5B5BD6" stroke-width="${SW}"
+    stroke-dasharray="${dash.toFixed(1)} ${circ.toFixed(1)}"
+    stroke-dashoffset="${(circ * 0.25).toFixed(1)}"
+    stroke-linecap="round" transform="rotate(-90 ${CX} ${CY})"/>
+  <text x="${CX}" y="${CY + 1}" text-anchor="middle" dominant-baseline="middle" font-size="14" font-weight="800" fill="#1A1A2E">${fConf}</text>
+  <text x="${CX}" y="${CY + 15}" text-anchor="middle" font-size="8" fill="#8E8E9A">%</text>
+</svg>`;
 
-  const fWarn = '예측은 참고용이며 투자 결정은 본인 판단으로 하세요';
+  const shortReason = (txt) => {
+    const t = txt.replace(/[^:：]+[:：]\s*/, '').replace(/<[^>]+>/g, '').trim();
+    return t.slice(0, 18);
+  };
+  const basisItems = fReasons.slice(0, 3).map(r => `<div style="display:flex;align-items:flex-start;gap:4px;font-size:11px;color:#3C3C43;margin-bottom:4px;"><i class="ti ti-circle-check" style="font-size:12px;color:#5B5BD6;flex-shrink:0;margin-top:1px;"></i>${shortReason(r)}</div>`).join('');
+  const pointItems = fPoints.slice(0, 3).map(p => `<div style="display:flex;align-items:flex-start;gap:4px;font-size:11px;color:#3C3C43;margin-bottom:4px;"><i class="ti ti-circle-check" style="font-size:12px;color:#5B5BD6;flex-shrink:0;margin-top:1px;"></i>${shortReason(p)}</div>`).join('');
+  const fDesc = `주요 지표와 수급 흐름을 종합한 내일 시장 ${isUp?'상승':'isDown?\'하락\':\'보합\''} 전망입니다.`;
+
+  const forecastSectionHtml = `<div class="section">
+  <div class="sec-title" style="display:flex;align-items:center;">
+    <i class="ti ti-calendar" style="font-size:15px;color:#5B5BD6;"></i>내일 시장 예측
+    <span onclick="openForecastDetail()" style="margin-left:auto;font-size:12px;color:#5B5BD6;font-weight:600;cursor:pointer;">근거 보기 <i class="ti ti-chevron-right" style="font-size:11px;"></i></span>
+  </div>
+  <div class="card clickable" onclick="openForecastDetail()" style="cursor:pointer;">
+    <div style="display:flex;align-items:stretch;gap:10px;">
+      ${donutSvg}
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
+          <span style="font-size:16px;font-weight:800;color:#1A1A2E;">${fTitle}</span>
+          <span style="background:${confBadgeBg};color:${confBadgeTx};font-size:10px;padding:2px 6px;border-radius:5px;font-weight:600;">${confBadge}</span>
+        </div>
+        <div style="font-size:11px;color:#8E8E9A;line-height:1.5;">주요 지표와 수급 흐름을 종합한<br>내일 시장 ${isUp?'상승':isDown?'하락':'보합'} 전망입니다.</div>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:10px;padding-top:10px;border-top:0.5px solid #F0F0F5;flex:none;width:100%;box-sizing:border-box;" class="BREAKER"></div>
+    </div>
+    <div style="display:flex;gap:12px;margin-top:10px;padding-top:10px;border-top:0.5px solid #F0F0F5;">
+      <div style="flex:1;">
+        <div style="font-size:10px;color:#8E8E9A;font-weight:600;margin-bottom:6px;">근거</div>
+        ${basisItems || '<div style="font-size:11px;color:#8E8E9A;">수집 중...</div>'}
+      </div>
+      <div style="width:0.5px;background:#F0F0F5;"></div>
+      <div style="flex:1;">
+        <div style="font-size:10px;color:#8E8E9A;font-weight:600;margin-bottom:6px;">주요 포인트</div>
+        ${pointItems || '<div style="font-size:11px;color:#8E8E9A;">수집 중...</div>'}
+      </div>
+    </div>
+  </div>
+</div>`;
+
+  // ── 외국인·기관 수급 (5일): 듀얼 바 ──────────────────────
+  const investorHtml = buildInvestorSection(investor);
 
   el.innerHTML = `
     <div class="hero">
@@ -360,34 +467,8 @@ function renderHome(d, el) {
       </div>
     </div>
 
-    <div class="section">
-      <div class="sec-title"><i class="ti ti-search" style="font-size:15px;color:#5B5BD6;"></i>오늘 시장 분석</div>
-      <div class="card">${analysisHtml}</div>
-    </div>
-
-    <div class="section">
-      <div class="sec-title"><i class="ti ti-calendar" style="font-size:15px;color:#5B5BD6;"></i>내일 시장 예측</div>
-      <div class="forecast-card clickable" onclick="openForecastDetail()" style="cursor:pointer;">
-        <div class="forecast-header">
-          <div class="forecast-title"><i class="ti ti-trending-up" style="color:#E24B4A;"></i>${fTitle}</div>
-          <span class="confidence-badge">신뢰도 ${fConf}%</span>
-        </div>
-        <div class="progress-bg"><div class="progress-fill" style="width:${fConf}%;"></div></div>
-        <div class="forecast-grid">
-          <div>
-            <div class="forecast-col-title"><i class="ti ti-pin" style="color:#E24B4A;font-size:12px;"></i>근거</div>
-            ${basisHtml}
-          </div>
-          <div>
-            <div class="forecast-col-title"><i class="ti ti-eye" style="color:#5B5BD6;font-size:12px;"></i>주목 포인트</div>
-            ${pointsHtml}
-          </div>
-        </div>
-        <div style="margin-top:8px;text-align:right;font-size:11px;color:#5B5BD6;font-weight:600;">
-          자세한 분석 + 예측 히스토리 보기 <i class="ti ti-chevron-right" style="font-size:11px;"></i>
-        </div>
-      </div>
-    </div>
+    ${analysisSectionHtml}
+    ${forecastSectionHtml}
     ${investorHtml}`;
 }
 
@@ -408,59 +489,47 @@ function fmtEok(v) { return fmtInv(v, '억'); }
 
 function buildInvestorSection(investor) {
   if (!investor || !investor.length) return '';
-  const total5 = investor.reduce((acc, r) => ({
-    foreign: acc.foreign + (r.foreign || 0),
-    inst: acc.inst + (r.inst || 0),
-  }), { foreign: 0, inst: 0 });
-  const fDir = total5.foreign > 0 ? '순매수' : '순매도';
-  const iDir = total5.inst > 0 ? '순매수' : '순매도';
-  const fCls = total5.foreign > 0 ? 'up' : 'down';
-  const iCls = total5.inst > 0 ? 'up' : 'down';
-
   const unit = investor[0]?.unit || '억';
+  const maxAbs = Math.max(...investor.map(r => Math.max(Math.abs(r.foreign||0), Math.abs(r.inst||0))), 1);
+  const BAR_MAX = 45; // 한 쪽 최대 바 너비 (%)
+
   const rows = [...investor].reverse().map(r => {
-    const fc = r.foreign > 0 ? 'up' : 'down';
-    const ic = r.inst > 0 ? 'up' : 'down';
-    const maxAbs = Math.max(...investor.map(x => Math.max(Math.abs(x.foreign||0), Math.abs(x.inst||0))), 1);
-    const bw = Math.min(Math.abs(r.foreign||0)/maxAbs*70+5, 80);
-    return `<div style="display:grid;grid-template-columns:44px 1fr 80px 80px;gap:4px;align-items:center;padding:8px 0;border-bottom:0.5px solid #F0F0F5;font-size:12px;">
-      <span style="color:#8E8E9A;">${r.date.slice(5)}</span>
-      <div style="height:5px;background:#F0F0F5;border-radius:3px;overflow:hidden;">
-        <div style="height:5px;border-radius:3px;width:${bw}%;background:${(r.foreign||0)>=0?'rgba(226,75,74,0.4)':'rgba(24,95,165,0.3)'};"></div>
-      </div>
-      <span class="${fc}" style="text-align:right;font-weight:600;">${(r.foreign||0)>=0?'+':''}${fmtInv(r.foreign, unit)}</span>
-      <span class="${ic}" style="text-align:right;font-weight:600;">${(r.inst||0)>=0?'+':''}${fmtInv(r.inst, unit)}</span>
-    </div>`;
+    const fv = r.foreign || 0, iv = r.inst || 0;
+    const fw = Math.min(Math.abs(fv) / maxAbs * BAR_MAX, BAR_MAX).toFixed(1);
+    const iw = Math.min(Math.abs(iv) / maxAbs * BAR_MAX, BAR_MAX).toFixed(1);
+    const fColor = fv >= 0 ? 'rgba(226,100,100,0.75)' : 'rgba(90,140,200,0.75)';
+    const iColor = iv >= 0 ? 'rgba(226,120,140,0.80)' : 'rgba(110,155,210,0.65)';
+    const fCls = fv >= 0 ? 'up' : 'down';
+    const iCls = iv >= 0 ? 'up' : 'down';
+    return `<div style="display:grid;grid-template-columns:38px 1fr 64px 64px;align-items:center;gap:6px;padding:8px 0;border-bottom:0.5px solid #F0F0F5;">
+  <span style="font-size:11px;color:#8E8E9A;">${r.date.slice(5)}</span>
+  <div style="display:flex;align-items:center;gap:2px;height:12px;">
+    <div style="width:${fw}%;height:7px;background:${fColor};border-radius:0 3px 3px 0;min-width:2px;"></div>
+    <div style="width:${iw}%;height:7px;background:${iColor};border-radius:0 3px 3px 0;min-width:2px;"></div>
+  </div>
+  <span class="${fCls}" style="font-size:11px;font-weight:700;text-align:right;">${fv>=0?'+':''}${fmtInv(fv,unit)}</span>
+  <span class="${iCls}" style="font-size:11px;font-weight:700;text-align:right;">${iv>=0?'+':''}${fmtInv(iv,unit)}</span>
+</div>`;
   }).join('');
 
-  return `
-    <div class="section">
-      <div class="sec-title clickable" onclick="openSupplyDetail()" style="cursor:pointer;">
-        <i class="ti ti-users" style="font-size:15px;color:#5B5BD6;"></i>외국인·기관 수급 (5일)
-        <i class="ti ti-chevron-right" style="font-size:13px;color:#C7C7CC;margin-left:auto;"></i>
-      </div>
-      <div class="card clickable" onclick="openSupplyDetail()" style="cursor:pointer;">
-        <div style="display:flex;gap:10px;margin-bottom:12px;">
-          <div style="flex:1;text-align:center;padding:10px 6px;background:#F8F8FA;border-radius:10px;">
-            <div style="font-size:10px;color:#8E8E9A;margin-bottom:4px;">외국인 5일 합계</div>
-            <div class="${fCls}" style="font-size:17px;font-weight:700;">${total5.foreign>=0?'+':''}${fmtInv(total5.foreign, unit)}</div>
-            <div class="${fCls}" style="font-size:11px;">${fDir}</div>
-          </div>
-          <div style="flex:1;text-align:center;padding:10px 6px;background:#F8F8FA;border-radius:10px;">
-            <div style="font-size:10px;color:#8E8E9A;margin-bottom:4px;">기관 5일 합계</div>
-            <div class="${iCls}" style="font-size:17px;font-weight:700;">${total5.inst>=0?'+':''}${fmtInv(total5.inst, unit)}</div>
-            <div class="${iCls}" style="font-size:11px;">${iDir}</div>
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:44px 1fr 80px 80px;gap:4px;padding-bottom:6px;border-bottom:0.5px solid #E5E5EA;font-size:10px;color:#8E8E9A;">
-          <span>날짜</span><span>추세</span><span style="text-align:right;">외국인(${unit})</span><span style="text-align:right;">기관(${unit})</span>
-        </div>
-        ${rows}
-        <div style="text-align:center;margin-top:10px;font-size:11px;color:#5B5BD6;font-weight:600;">
-          25일 상세 보기 <i class="ti ti-arrow-right" style="font-size:11px;"></i>
-        </div>
-      </div>
-    </div>`;
+  return `<div class="section">
+  <div class="sec-title" style="display:flex;align-items:center;cursor:pointer;" onclick="openSupplyDetail()">
+    <i class="ti ti-clock" style="font-size:15px;color:#5B5BD6;"></i>외국인·기관 수급 (5일)
+    <span style="display:flex;align-items:center;gap:8px;margin-left:8px;font-size:11px;font-weight:400;color:#8E8E9A;">
+      <span style="display:flex;align-items:center;gap:3px;"><span style="width:7px;height:7px;border-radius:50%;background:rgba(90,140,200,0.8);display:inline-block;"></span>외국인</span>
+      <span style="display:flex;align-items:center;gap:3px;"><span style="width:7px;height:7px;border-radius:50%;background:rgba(226,120,140,0.85);display:inline-block;"></span>기관</span>
+    </span>
+    <span style="margin-left:auto;font-size:10px;color:#AEAEB2;">금액 단위: 억원</span>
+  </div>
+  <div class="card clickable" onclick="openSupplyDetail()" style="cursor:pointer;">
+    ${rows}
+    <div style="text-align:center;margin-top:12px;">
+      <button onclick="event.stopPropagation();openSupplyDetail()" style="background:#F5F5F7;border:none;border-radius:20px;padding:7px 20px;font-size:12px;color:#5B5BD6;font-weight:600;cursor:pointer;">
+        25일 전체 보기 <i class="ti ti-chevron-down" style="font-size:11px;"></i>
+      </button>
+    </div>
+  </div>
+</div>`;
 }
 
 // ─────────────────────────────────────────────────────────
