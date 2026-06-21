@@ -1587,27 +1587,25 @@ function renderHoldingDetail(d, el) {
   const pnlBarColor = pnlPct >= 0 ? '#E24B4A' : '#185FA5';
 
   el.innerHTML = `
-    <!-- 히어로 -->
-    <div class="detail-hero">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
-        <div>
-          <div class="detail-name">${h.name}</div>
-          <div style="font-size:11px;opacity:0.6;margin-top:1px;">${h.code}</div>
+    <!-- 히어로 카드 (흰색) -->
+    <div class="section" style="margin-top:0;">
+      <div class="card" style="padding:16px;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:2px;">
+          <div>
+            <div style="font-size:18px;font-weight:700;color:#1A1A2E;">${h.name}</div>
+            <div style="font-size:11px;color:#8E8E9A;margin-top:2px;">${h.code}</div>
+          </div>
+          <span class="badge ${pnlCls==='up'?'badge-buy':'badge-sell'}" style="font-size:11px;padding:4px 10px;">${pnlCls==='up'?'수익':'손실'} ${pnlPct>=0?'+':''}${pnlPct.toFixed(2)}%</span>
         </div>
-        <span class="badge ${pnlCls==='up'?'badge-buy':'badge-sell'}">${pnlCls==='up'?'수익':'손실'} ${pnlPct>=0?'+':''}${pnlPct.toFixed(2)}%</span>
-      </div>
-      <div class="detail-price" style="margin-top:8px;">${fmtNum(curPrice)}원</div>
-      <div style="font-size:13px;margin-top:2px;opacity:0.85;">
-        <span style="color:#fff;">${chgPct>=0?'▲':'▼'} ${Math.abs(chg).toLocaleString()}원 (${Math.abs(chgPct).toFixed(2)}%)</span>
-      </div>
-      ${a.cur_high || a.cur_low ? `<div style="font-size:11px;opacity:0.7;margin-top:6px;">
-        고가 ${fmtNum(a.cur_high||0)} · 저가 ${fmtNum(a.cur_low||0)} · 거래량 ${(a.cur_volume||0).toLocaleString()}
-      </div>` : ''}
-    </div>
+        <div style="font-size:28px;font-weight:800;color:#1A1A2E;margin-top:10px;">${fmtNum(curPrice)}원</div>
+        <div style="font-size:13px;margin-top:3px;color:${chgPct>=0?'#E24B4A':'#185FA5'};">
+          ${chgPct>=0?'▲':'▼'} ${Math.abs(chg).toLocaleString()}원 (${Math.abs(chgPct).toFixed(2)}%)
+        </div>
+        ${a.cur_high || a.cur_low ? `<div style="font-size:11px;color:#8E8E9A;margin-top:6px;">
+          고가 ${fmtNum(a.cur_high||0)}원 &nbsp;저가 ${fmtNum(a.cur_low||0)}원 &nbsp;거래량 ${(a.cur_volume||0).toLocaleString()}
+        </div>` : ''}
 
-    <!-- 내 보유 현황 -->
-    <div class="section" style="margin-top:12px;">
-      <div class="card">
+        <div style="border-top:1px solid #F0F0F5;margin:14px 0 10px;"></div>
         <div style="font-size:11px;font-weight:600;color:#8E8E9A;margin-bottom:10px;">내 보유 현황</div>
         <div class="detail-grid">
           <div class="detail-item" style="background:#F8F8FA;"><div class="detail-item-label">평단가</div><div class="detail-item-val">${fmtNum(h.avg_price)}원</div></div>
@@ -1700,13 +1698,9 @@ function renderHoldingDetail(d, el) {
       </div>
     </div>
 
-    <!-- 배지/경고 -->
-    ${verdict||badgesHtml ? `<div class="section">
-      ${badgesHtml ? `<div style="padding:0 16px 8px;"><div class="signal-badges">${badgesHtml}</div></div>` : ''}
-      ${verdict ? `<div class="card" style="border-left:3px solid #E24B4A;">
-        <div style="font-size:12px;font-weight:600;color:#E24B4A;margin-bottom:6px;"><i class="ti ti-alert-triangle" style="font-size:13px;"></i> 주의 신호</div>
-        <div style="font-size:13px;color:#3C3C43;line-height:1.6;">${verdict}</div>
-      </div>` : ''}
+    <!-- 배지 -->
+    ${badgesHtml ? `<div class="section">
+      <div style="padding:0 16px 8px;"><div class="signal-badges">${badgesHtml}</div></div>
     </div>` : ''}
 
     <!-- 목표가/손절가 -->
@@ -1761,6 +1755,16 @@ function renderHoldingDetail(d, el) {
     ${newsHtml ? `<div class="section">
       <div class="sec-title"><i class="ti ti-news" style="font-size:15px;color:#5B5BD6;"></i>${h.name} 뉴스</div>
       ${newsHtml}
+    </div>` : ''}
+
+    <!-- 시스템 판단 -->
+    ${verdict ? `<div class="section">
+      <div class="card" style="background:#FFFBF0;border:1px solid #F5E6B2;">
+        <div style="font-size:13px;font-weight:700;color:#8B6914;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+          <span style="font-size:16px;">☀️</span> 시스템 판단
+        </div>
+        <div style="font-size:13px;color:#3C3C43;line-height:1.7;">${verdict}</div>
+      </div>
     </div>` : ''}
 
     <div style="padding:0 16px 16px;">
@@ -2378,13 +2382,9 @@ function renderWatchlistDetail(d, el, code, name) {
       </div>
     </div>
 
-    <!-- 배지/경고 -->
-    ${verdict||badgesHtml ? `<div class="section">
-      ${badgesHtml ? `<div style="padding:0 16px 8px;"><div class="signal-badges">${badgesHtml}</div></div>` : ''}
-      ${verdict ? `<div class="card" style="border-left:3px solid #E24B4A;">
-        <div style="font-size:12px;font-weight:600;color:#E24B4A;margin-bottom:6px;"><i class="ti ti-alert-triangle" style="font-size:13px;"></i> 주의 신호</div>
-        <div style="font-size:13px;color:#3C3C43;line-height:1.6;">${verdict}</div>
-      </div>` : ''}
+    <!-- 배지 -->
+    ${badgesHtml ? `<div class="section">
+      <div style="padding:0 16px 8px;"><div class="signal-badges">${badgesHtml}</div></div>
     </div>` : ''}
 
     <!-- 목표가/손절가 -->
