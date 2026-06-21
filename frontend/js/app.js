@@ -2244,22 +2244,24 @@ function renderWatchlistDetail(d, el, code, name) {
     ma60Row = `<div class="ind-row"><span class="ind-label">60일선</span><div class="ind-right"><span class="ind-val">${fmtNum(Math.round(ma60Val))}</span><span class="badge ${scls}" style="font-size:10px;">${d60>=0?'위':'아래'} ${Math.abs(d60).toFixed(1)}%</span></div></div>`;
   }
 
-  // 지지선
-  let supRows = '';
+  // 지지선 배지
+  const supBadgeW = (dist) => {
+    if (dist >= 0)  return `<span style="font-size:10px;padding:2px 7px;border-radius:5px;background:#EAF3DE;color:#27500A;">현재위</span>`;
+    if (dist >= -5) return `<span style="font-size:10px;padding:2px 7px;border-radius:5px;background:#FAEEDA;color:#633806;">근접</span>`;
+    return             `<span style="font-size:10px;padding:2px 7px;border-radius:5px;background:#EEEDFE;color:#3C3489;">주요지지</span>`;
+  };
+  let supRowsNew = '';
   if (ma20Val) {
     const dv = (curPrice - ma20Val) / ma20Val * 100;
-    const cls = dv >= 0 ? 'up' : 'down';
-    supRows += `<div class="sup-row"><span class="sup-label">20일선</span><div class="sup-right"><span class="sup-price">${fmtNum(Math.round(ma20Val))}</span><span class="sup-dist ${cls}">${dv>=0?'+':''}${dv.toFixed(1)}%</span><span class="sup-note">${dv>=0?'현재 위':'이탈'}</span></div></div>`;
+    supRowsNew += `<div class="sup-row"><span class="sup-label">20일선</span><div class="sup-right"><span class="sup-price">${fmtNum(Math.round(ma20Val))}원</span><span class="sup-dist ${dv>=0?'up':'down'}">${dv>=0?'+':''}${dv.toFixed(1)}%</span>${supBadgeW(dv)}</div></div>`;
   }
   if (boll.lower) {
     const dv = (curPrice - boll.lower) / boll.lower * 100;
-    const cls = dv >= 0 ? 'up' : 'down';
-    supRows += `<div class="sup-row"><span class="sup-label">볼린저 하단</span><div class="sup-right"><span class="sup-price">${fmtNum(Math.round(boll.lower))}</span><span class="sup-dist ${cls}">${dv>=0?'+':''}${dv.toFixed(1)}%</span><span class="sup-note">지지선</span></div></div>`;
+    supRowsNew += `<div class="sup-row"><span class="sup-label">볼린저 하단</span><div class="sup-right"><span class="sup-price">${fmtNum(Math.round(boll.lower))}원</span><span class="sup-dist ${dv>=0?'up':'down'}">${dv>=0?'+':''}${dv.toFixed(1)}%</span>${supBadgeW(dv)}</div></div>`;
   }
   if (ma60Val) {
     const dv = (curPrice - ma60Val) / ma60Val * 100;
-    const cls = dv >= 0 ? 'up' : 'down';
-    supRows += `<div class="sup-row"><span class="sup-label">60일선</span><div class="sup-right"><span class="sup-price">${fmtNum(Math.round(ma60Val))}</span><span class="sup-dist ${cls}">${dv>=0?'+':''}${dv.toFixed(1)}%</span><span class="sup-note">주요 지지</span></div></div>`;
+    supRowsNew += `<div class="sup-row"><span class="sup-label">60일선</span><div class="sup-right"><span class="sup-price">${fmtNum(Math.round(ma60Val))}원</span><span class="sup-dist ${dv>=0?'up':'down'}">${dv>=0?'+':''}${dv.toFixed(1)}%</span>${supBadgeW(dv)}</div></div>`;
   }
 
   // 수급
@@ -2344,20 +2346,32 @@ function renderWatchlistDetail(d, el, code, name) {
     </div>`;
   }).join('');
 
+  // 시스템 판단 텍스트
+  const rsiSummary = rsiVal !== null ? (rsiVal <= 30 ? `RSI ${rsiVal} 과매도 — 반등 시도 가능` : rsiVal >= 70 ? `RSI ${rsiVal} 과열 — 단기 조정 주의` : `RSI ${rsiVal} 정상 범위`) : '';
+  const bollSummary = bollPos <= 0.2 ? '볼린저 하단 지지 중' : bollPos >= 0.8 ? '볼린저 상단 — 저항 주의' : '볼린저 중간 구간';
+  const systemText = [rsiSummary, bollSummary].filter(Boolean).join(' · ');
+
   el.innerHTML = `
-    <!-- 히어로 -->
-    <div class="detail-hero">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-        <div class="detail-name">${item.name}</div>
-        ${timing.label ? `<span class="badge ${timing.badge_type==='buy'?'badge-buy':timing.badge_type==='sell'?'badge-sell':'badge-warn'}">${timing.label}</span>` : ''}
+    <!-- 히어로 카드 (흰색) -->
+    <div class="section" style="margin-top:0;">
+      <div class="card" style="padding:16px;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:2px;">
+          <div>
+            <div style="font-size:18px;font-weight:700;color:#1A1A2E;">${item.name}</div>
+            <div style="font-size:11px;color:#8E8E9A;margin-top:2px;">${item.code}</div>
+          </div>
+          ${timing.label ? `<span class="badge ${timing.badge_type==='buy'?'badge-buy':timing.badge_type==='sell'?'badge-sell':'badge-warn'}" style="font-size:11px;padding:4px 10px;">${timing.label}</span>` : ''}
+        </div>
+        <div style="font-size:28px;font-weight:800;color:#1A1A2E;margin-top:10px;">${fmtNum(curPrice)}원</div>
+        <div style="font-size:13px;margin-top:3px;color:${chgPct>=0?'#E24B4A':'#185FA5'};">
+          ${chgPct>=0?'▲':'▼'} ${Math.abs(chg).toLocaleString()}원 (${Math.abs(chgPct).toFixed(2)}%)
+        </div>
+        ${a.cur_high || a.cur_low ? `<div style="font-size:11px;color:#8E8E9A;margin-top:6px;">
+          고가 ${fmtNum(a.cur_high||0)}원 &nbsp;저가 ${fmtNum(a.cur_low||0)}원 &nbsp;거래량 ${(a.cur_volume||0).toLocaleString()}
+        </div>` : ''}
+        ${timing.reason ? `<div style="border-top:1px solid #F0F0F5;margin:12px 0 8px;"></div>
+        <div style="font-size:12px;color:#3C3C43;line-height:1.6;background:#F8F8FA;border-radius:10px;padding:10px 12px;">${timing.reason}</div>` : ''}
       </div>
-      <div class="detail-price">${fmtNum(curPrice)}원</div>
-      <div style="font-size:13px;margin-top:2px;opacity:0.85;">
-        <span class="${chgPct>=0?'up':'down'}" style="color:#fff;">${chgPct>=0?'▲':'▼'} ${Math.abs(chg).toLocaleString()}원 (${Math.abs(chgPct).toFixed(2)}%)</span>
-      </div>
-      ${a.cur_high || a.cur_low ? `<div style="font-size:11px;opacity:0.7;margin-top:6px;">
-        고가 ${fmtNum(a.cur_high||0)} · 저가 ${fmtNum(a.cur_low||0)} · 거래량 ${(a.cur_volume||0).toLocaleString()}
-      </div>` : ''}
     </div>
 
     <!-- 타이밍 판정 -->
@@ -2447,6 +2461,16 @@ function renderWatchlistDetail(d, el, code, name) {
     ${newsHtml ? `<div class="section">
       <div class="sec-title"><i class="ti ti-news" style="font-size:15px;color:#5B5BD6;"></i>${item.name} 뉴스</div>
       ${newsHtml}
+    </div>` : ''}
+
+    <!-- 시스템 판단 -->
+    ${systemText ? `<div class="section">
+      <div class="card" style="background:#FFFBF0;border:1px solid #F5E6B2;">
+        <div style="font-size:13px;font-weight:700;color:#8B6914;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+          <span style="font-size:16px;">☀️</span> 시스템 판단
+        </div>
+        <div style="font-size:13px;color:#3C3C43;line-height:1.7;">${systemText}</div>
+      </div>
     </div>` : ''}
 
     <div style="padding:0 16px 16px;">
