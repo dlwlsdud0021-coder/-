@@ -2165,8 +2165,33 @@ async function loadWatchlistDetail(code, name) {
   try {
     const d = await api('GET', `/api/watchlist/${code}/detail`);
     renderWatchlistDetail(d, el, code, name);
+    // 뉴스는 별도로 비동기 로드
+    loadWatchlistDetailNews(code, name, el);
   } catch(e) {
-    el.innerHTML = `<div class="loading">분석 데이터를 불러오지 못했습니다</div>`;
+    el.innerHTML = `<div class="loading" style="flex-direction:column;gap:6px;padding:32px 16px;">
+      <span style="color:#E24B4A;">데이터 조회 실패</span>
+      <span style="font-size:11px;color:#8E8E9A;">${e.message||''}</span>
+    </div>`;
+  }
+}
+
+async function loadWatchlistDetailNews(code, name, containerEl) {
+  const newsEl = containerEl.querySelector('#watchlist-news-section');
+  if (!newsEl) return;
+  newsEl.innerHTML = '<div style="text-align:center;padding:12px;color:#8E8E9A;font-size:12px;">뉴스 로딩 중...</div>';
+  try {
+    const r = await api('GET', `/api/stock/${code}/news`);
+    const items = (r.news || []).slice(0, 3);
+    if (!items.length) { newsEl.innerHTML = ''; return; }
+    newsEl.innerHTML = items.map(n => {
+      const bdg = n.sentiment === 'positive' ? 'badge-pos' : n.sentiment === 'negative' ? 'badge-neg' : 'badge-mix';
+      return `<div class="news-card">
+        <div class="news-card-top"><span class="badge ${bdg}">${n.label||'중립'}</span><span class="news-source">${n.source||''} · ${n.published||''}</span></div>
+        <div class="news-title">${n.title||''}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    newsEl.innerHTML = '';
   }
 }
 
@@ -2337,15 +2362,8 @@ function renderWatchlistDetail(d, el, code, name) {
     </div>`;
   }
 
-  // 뉴스
-  const newsHtml = (a.news||[]).slice(0,3).map(n => {
-    const bdg = n.sentiment === 'positive' ? 'badge-pos' : n.sentiment === 'negative' ? 'badge-neg' : 'badge-mix';
-    const briefHtml = n.brief ? `<div class="news-brief">💡 ${n.brief}</div>` : '';
-    return `<div class="news-card">
-      <div class="news-card-top"><span class="badge ${bdg}">${n.label||'중립'}</span><span class="news-source">${n.source||''} · ${n.published||''}</span></div>
-      <div class="news-title">${n.title||''}</div>${briefHtml}
-    </div>`;
-  }).join('');
+  // 뉴스는 비동기 로드 (loadWatchlistDetailNews)
+  const newsHtml = '';
 
   // 시스템 판단 텍스트
   const rsiSummary = rsiVal !== null ? (rsiVal <= 30 ? `RSI ${rsiVal} 과매도 — 반등 시도 가능` : rsiVal >= 70 ? `RSI ${rsiVal} 과열 — 단기 조정 주의` : `RSI ${rsiVal} 정상 범위`) : '';
@@ -2461,11 +2479,10 @@ function renderWatchlistDetail(d, el, code, name) {
     <!-- 목표가/손절가 -->
     ${priceTargetHtml}
 
-    <!-- 뉴스 -->
-    ${newsHtml ? `<div class="section">
+    <!-- 뉴스 (비동기 로드) -->
+    <div class="section" id="watchlist-news-section">
       <div class="sec-title"><i class="ti ti-news" style="font-size:15px;color:#5B5BD6;"></i>${item.name} 뉴스</div>
-      ${newsHtml}
-    </div>` : ''}
+    </div>
 
     <!-- 시스템 판단 -->
     ${systemText ? `<div class="section">

@@ -907,8 +907,7 @@ def watchlist_detail(code: str, user=Depends(get_current_user)):
                     "inst": int(row.get("기관", 0)),
                 })
         analysis["inv_list"] = inv_list
-        news = fetch_stock_news(item.get("name", code))
-        analysis["news"] = news[:3]
+        analysis["news"] = []  # 뉴스는 /api/stock/{code}/news 별도 호출
     except Exception as e:
         import traceback
         analysis = {"error": str(e), "traceback": traceback.format_exc()}
