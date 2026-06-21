@@ -788,7 +788,7 @@ def _get_top_net_buy(n: int = 5) -> dict:
 
         return {"foreign": top_n(foreign_col), "institution": top_n(inst_col)}
     except Exception as e:
-        _logger.warning(f"[시황] 순매수 TOP 실패: {e}")
+        print(f"[시황] 순매수 TOP 실패: {e}")
         return {"foreign": [], "institution": []}
 
 
@@ -818,7 +818,7 @@ def _get_top_volume(n: int = 5) -> list:
                            "value_str": f"{int(val)/1e8:.0f}억"})
         return result
     except Exception as e:
-        _logger.warning(f"[시황] 거래대금 TOP 실패: {e}")
+        print(f"[시황] 거래대금 TOP 실패: {e}")
         return []
 
 
@@ -830,7 +830,7 @@ def get_sentiment(force: bool = False):
     import concurrent.futures, time
     now = time.time()
     if not force and _sentiment_cache["data"] and (now - _sentiment_cache["ts"]) < _SENTIMENT_TTL:
-        _logger.info("[시황] 캐시 반환")
+        print("[시황] 캐시 반환")
         return _sentiment_cache["data"]
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
@@ -873,7 +873,7 @@ def get_sentiment(force: bool = False):
         _sentiment_cache["ts"]   = now
         return result
     except Exception as e:
-        _logger.error(f"[시황] API 오류: {e}")
+        print(f"[시황] API 오류: {e}")
         return {"sentiment": {"score": 50, "label": "중립", "color": "#8E8E9A", "factors": [], "factor_details": []},
                 "fx": [], "us_futures": [], "sectors": [], "net_buy": {"foreign":[],"institution":[]}, "top_volume": [],
                 "updated_at": "", "base_date": "", "market_note": ""}
