@@ -1607,10 +1607,10 @@ function renderHoldingDetail(d, el) {
 
         <div style="border-top:1px solid #F0F0F5;margin:14px 0 10px;"></div>
         <div style="font-size:11px;font-weight:600;color:#8E8E9A;margin-bottom:10px;">내 보유 현황</div>
-        <div class="detail-grid">
-          <div class="detail-item" style="background:#F8F8FA;"><div class="detail-item-label">평단가</div><div class="detail-item-val">${fmtNum(h.avg_price)}원</div></div>
-          <div class="detail-item" style="background:#F8F8FA;"><div class="detail-item-label">보유 수량</div><div class="detail-item-val">${h.qty}주</div></div>
-          <div class="detail-item" style="background:#F8F8FA;"><div class="detail-item-label">평가손익</div><div class="detail-item-val ${pnlCls}">${pnl>=0?'+':''}${Math.round(pnl/10000)}만원</div></div>
+        <div style="display:flex;gap:8px;">
+          <div style="flex:1;background:#F8F8FA;border-radius:10px;padding:10px 12px;"><div style="font-size:10px;color:#8E8E9A;margin-bottom:4px;">평단가</div><div style="font-size:13px;font-weight:600;color:#1A1A2E;">${fmtNum(h.avg_price)}원</div></div>
+          <div style="flex:1;background:#F8F8FA;border-radius:10px;padding:10px 12px;"><div style="font-size:10px;color:#8E8E9A;margin-bottom:4px;">보유 수량</div><div style="font-size:13px;font-weight:600;color:#1A1A2E;">${h.qty}주</div></div>
+          <div style="flex:1;background:#F8F8FA;border-radius:10px;padding:10px 12px;"><div style="font-size:10px;color:#8E8E9A;margin-bottom:4px;">평가손익</div><div style="font-size:13px;font-weight:600;" class="${pnlCls}">${pnl>=0?'+':''}${Math.round(pnl/10000)}만원</div></div>
         </div>
         <div style="height:4px;background:#F0F0F5;border-radius:2px;margin-top:10px;overflow:hidden;">
           <div style="height:4px;width:${pnlBarW}%;background:${pnlBarColor};border-radius:2px;"></div>
