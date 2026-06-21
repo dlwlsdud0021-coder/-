@@ -1322,7 +1322,7 @@ function renderForecastDetail(d, el) {
       <div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.18);border-radius:20px;padding:4px 10px;font-size:11px;font-weight:600;margin-bottom:12px;">
         <i class="ti ti-sparkles" style="font-size:12px;"></i>AI 예측
       </div>
-      <div style="font-size:26px;font-weight:800;line-height:1.2;margin-bottom:4px;">${dirArrow} ${fTitle} (${fPct > 0 ? '+' : ''}${fPct.toFixed(1)}%)</div>
+      <div style="font-size:26px;font-weight:800;line-height:1.2;margin-bottom:4px;">${dirArrow} ${fTitle}</div>
       <div style="font-size:13px;opacity:0.85;margin-bottom:16px;">예상 등락률 ${fPct > 0 ? '+' : ''}${fPct.toFixed(1)}%</div>
       <div style="font-size:11px;opacity:0.75;margin-bottom:6px;">신뢰도</div>
       <div style="background:rgba(255,255,255,0.25);border-radius:20px;height:8px;margin-bottom:5px;">
