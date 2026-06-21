@@ -473,20 +473,23 @@ function renderSentiment(d) {
   ];
   const detail = detailMap.find(x => score >= x.min) || detailMap[detailMap.length-1];
 
-  // 8요소 분해 표
+  // 8요소 분해 표 (sub_score 0~100 기준)
   const factorHtml = factorDetails.length ? factorDetails.map(f => {
-    const ic = f.direction === 'up' ? '#27AE60' : f.direction === 'down' ? '#E24B4A' : '#8E8E9A';
+    const sub = f.sub_score ?? 50;
+    // sub_score: 0~40=공포(파랑), 40~60=중립(회색), 60~100=탐욕(주황~빨강)
+    const barColor = sub >= 60 ? '#F5A623' : sub <= 40 ? '#5B5BD6' : '#8E8E9A';
+    const ic = f.direction === 'up' ? '#E24B4A' : f.direction === 'down' ? '#5B5BD6' : '#8E8E9A';
     const arrow = f.direction === 'up' ? '▲' : f.direction === 'down' ? '▼' : '–';
-    const bar = Math.abs(f.contribution || 0);
-    const barMax = 15;
-    const barW = Math.round(bar / barMax * 100);
-    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid #F5F5F7;">
-      <div style="flex:1;font-size:12px;color:#3C3C43;">${f.name}</div>
-      <div style="font-size:11px;color:#8E8E9A;min-width:52px;text-align:right;">${f.value||''}</div>
-      <div style="width:40px;height:4px;background:#F0F0F5;border-radius:2px;overflow:hidden;">
-        <div style="height:100%;width:${barW}%;background:${ic};border-radius:2px;"></div>
+    return `<div style="padding:7px 0;border-bottom:0.5px solid #F5F5F7;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+        <div style="flex:1;font-size:12px;color:#1C1C1E;font-weight:500;">${f.name}</div>
+        <div style="font-size:11px;color:${ic};font-weight:700;">${arrow} ${f.value||''}</div>
+        <div style="font-size:11px;font-weight:700;color:${barColor};min-width:28px;text-align:right;">${sub}</div>
       </div>
-      <span style="font-size:11px;color:${ic};font-weight:700;min-width:14px;">${arrow}</span>
+      <div style="height:4px;background:#F0F0F5;border-radius:2px;overflow:hidden;">
+        <div style="height:100%;width:${sub}%;background:${barColor};border-radius:2px;transition:width .4s;"></div>
+      </div>
+      ${f.desc ? `<div style="font-size:10px;color:#C7C7CC;margin-top:3px;">${f.desc}</div>` : ''}
     </div>`;
   }).join('') : '';
 

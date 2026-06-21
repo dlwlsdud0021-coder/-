@@ -511,162 +511,185 @@ def market_data():
 # 시황 API — 투자심리지수(8요소) + 시장 오버뷰
 # ─────────────────────────────────────────────────────────
 def _calc_sentiment_index() -> dict:
-    """한국 시장 투자심리지수 (CNN Fear & Greed 방식, 8요소, 0~100)"""
-    from market_data import PYKRX_OK
-    import pykrx.stock as krx_s
-    score = 50
-    factor_details = []  # {"name", "value", "contribution", "direction"}
+    """
+    한국 시장 투자심리지수 (CNN Fear & Greed 방식)
+    각 지표를 0~100으로 정규화 → 가중평균 → 최종 점수
+    """
+    import numpy as np
+    from market_data import PYKRX_OK, _last_trading_date, _parse_naver_num
 
-    # ── 1. KOSPI 등락률 (±15) ──────────────────────────
+    def clamp(v, lo=0, hi=100): return max(lo, min(hi, v))
+    def norm(v, v_min, v_max):  # v → 0~100 선형 정규화
+        if v_max == v_min: return 50
+        return clamp((v - v_min) / (v_max - v_min) * 100)
+
+    factor_details = []
+    sub_scores = []   # (weight, sub_score)
+
+    # ── 공통 데이터 미리 로드 ──────────────────────────
+    ohlcv_kospi = None
+    inv_data    = None
+    df_today    = None  # 당일 전 종목 OHLCV (pykrx)
+
+    try: ohlcv_kospi = get_index_ohlcv_history("KOSPI", days=125)  # 6개월
+    except: pass
+    try: inv_data = get_kospi_investor(days=15)
+    except: pass
+    try:
+        if PYKRX_OK:
+            import pykrx.stock as _krx
+            tdate = _last_trading_date()
+            df_today = _krx.get_market_ohlcv_by_ticker(tdate, market="KOSPI")
+    except: pass
+
+    # ── 1. VKOSPI 공포지수 (가중 20%) ─────────────────
+    # VKOSPI: 낮을수록 안정(탐욕), 높을수록 공포. 기준 10~40
+    try:
+        url = "https://m.stock.naver.com/api/stock/VKOSPI/basic"
+        r = _requests.get(url, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
+        if r.status_code == 200:
+            d = r.json()
+            vk = float(_parse_naver_num(d.get("closePrice", 0)))
+            if vk > 0:
+                sub = norm(vk, 10, 40)          # 10→100점(공포낮음), 40→0점(공포높음)
+                sub = 100 - sub                  # 반전: 높은 VKOSPI = 낮은 심리점수
+                chg_vk = float(_parse_naver_num(d.get("compareToPreviousClosePrice", 0)))
+                direction = "down" if chg_vk > 0 else "up" if chg_vk < 0 else "neutral"
+                factor_details.append({"name": "VKOSPI (공포지수)", "value": f"{vk:.2f}",
+                    "sub_score": round(sub), "direction": direction,
+                    "desc": "낮을수록 시장 안정"})
+                sub_scores.append((0.20, sub))
+    except: pass
+
+    # ── 2. KOSPI 등락률 (가중 15%) ─────────────────────
+    # -3% 이하 → 0점, +3% 이상 → 100점
     try:
         idx = get_index_data()
         kospi = next((x for x in (idx or []) if x.get("name") == "KOSPI"), None)
         if kospi:
             chg = float(kospi.get("change_pct", 0) or 0)
-            contrib = max(-15, min(15, chg * 3))
-            score += contrib
+            sub = norm(chg, -3.0, 3.0)
             factor_details.append({"name": "KOSPI 등락률", "value": f"{chg:+.2f}%",
-                "contribution": contrib, "direction": "up" if contrib > 0 else "down" if contrib < 0 else "neutral"})
+                "sub_score": round(sub), "direction": "up" if chg > 0 else "down" if chg < 0 else "neutral",
+                "desc": "당일 KOSPI 등락"})
+            sub_scores.append((0.15, sub))
     except: pass
 
-    # ── 2. 외국인 3일 순매수 (±12) ─────────────────────
-    inv_data = None
-    try:
-        inv_data = get_kospi_investor(days=10)
-    except: pass
+    # ── 3. 외국인 3일 순매수 (가중 15%) ─────────────────
+    # -1조 이하 → 0점, +1조 이상 → 100점 (규모 반영)
     try:
         if inv_data is not None and not inv_data.empty and "외국인" in inv_data.columns:
-            f_net = int(inv_data["외국인"].tail(3).sum())
-            contrib = 12 if f_net > 0 else -12 if f_net < 0 else 0
-            score += contrib
+            f_net = float(inv_data["외국인"].tail(3).sum())
+            sub = norm(f_net, -1e12, 1e12)
             val = f"{f_net/1e8:+.0f}억" if abs(f_net) >= 1e8 else f"{f_net/1e4:+.0f}만"
             factor_details.append({"name": "외국인 3일 순매수", "value": val,
-                "contribution": contrib, "direction": "up" if contrib > 0 else "down"})
+                "sub_score": round(sub), "direction": "up" if f_net > 0 else "down",
+                "desc": "외국인 3일 누적 순매수 금액"})
+            sub_scores.append((0.15, sub))
     except: pass
 
-    # ── 3. 기관 3일 순매수 (±10) ───────────────────────
+    # ── 4. 기관 3일 순매수 (가중 12%) ──────────────────
+    # -5000억~+5000억 정규화
     try:
-        if inv_data is not None and not inv_data.empty and "기관합계" in inv_data.columns:
-            i_net = int(inv_data["기관합계"].tail(3).sum())
-        elif inv_data is not None and not inv_data.empty and "기관" in inv_data.columns:
-            i_net = int(inv_data["기관"].tail(3).sum())
-        else:
-            i_net = 0
-        if i_net != 0:
-            contrib = 10 if i_net > 0 else -10
-            score += contrib
-            val = f"{i_net/1e8:+.0f}억" if abs(i_net) >= 1e8 else f"{i_net/1e4:+.0f}만"
-            factor_details.append({"name": "기관 3일 순매수", "value": val,
-                "contribution": contrib, "direction": "up" if contrib > 0 else "down"})
+        if inv_data is not None and not inv_data.empty:
+            col = "기관합계" if "기관합계" in inv_data.columns else "기관" if "기관" in inv_data.columns else None
+            if col:
+                i_net = float(inv_data[col].tail(3).sum())
+                sub = norm(i_net, -5e11, 5e11)
+                val = f"{i_net/1e8:+.0f}억" if abs(i_net) >= 1e8 else f"{i_net/1e4:+.0f}만"
+                factor_details.append({"name": "기관 3일 순매수", "value": val,
+                    "sub_score": round(sub), "direction": "up" if i_net > 0 else "down",
+                    "desc": "기관 3일 누적 순매수 금액"})
+                sub_scores.append((0.12, sub))
     except: pass
 
-    # ── 4. KOSPI vs MA20 위치 (±10) ────────────────────
-    ohlcv_kospi = None
+    # ── 5. 등락비율 ADR (가중 13%) ──────────────────────
+    # 상승종목 수 / 전체. 30%→0점, 70%→100점
     try:
-        ohlcv_kospi = get_index_ohlcv_history("KOSPI", days=60)
-    except: pass
-    try:
-        if ohlcv_kospi is not None and not ohlcv_kospi.empty and len(ohlcv_kospi) >= 20:
-            closes = ohlcv_kospi["close"].values if "close" in ohlcv_kospi.columns else ohlcv_kospi.iloc[:, 3].values
-            ma20 = float(closes[-20:].mean())
-            cur = float(closes[-1])
-            pct_from_ma = (cur - ma20) / ma20 * 100
-            contrib = max(-10, min(10, pct_from_ma * 2))
-            score += contrib
-            factor_details.append({"name": "KOSPI vs MA20", "value": f"{pct_from_ma:+.1f}%",
-                "contribution": contrib, "direction": "up" if contrib > 0 else "down"})
-    except: pass
-
-    # ── 5. 등락비율 ADR (±12) ──────────────────────────
-    try:
-        if PYKRX_OK:
-            from market_data import _last_trading_date
-            tdate = _last_trading_date()
-            df_ohlcv = krx_s.get_market_ohlcv_by_ticker(tdate, market="KOSPI")
-            if df_ohlcv is not None and not df_ohlcv.empty:
-                # 등락 비율: 상승 종목 수 / 전체 (종가 > 전일종가면 양수 변동)
-                chg_col = "등락률" if "등락률" in df_ohlcv.columns else None
-                if chg_col:
-                    up = (df_ohlcv[chg_col] > 0).sum()
-                    dn = (df_ohlcv[chg_col] < 0).sum()
-                    total = up + dn
-                    if total > 0:
-                        adr = up / total * 100
-                        contrib = max(-12, min(12, (adr - 50) * 0.24))
-                        score += contrib
-                        factor_details.append({"name": "등락비율(ADR)", "value": f"{adr:.0f}%",
-                            "contribution": contrib, "direction": "up" if adr > 50 else "down"})
+        if df_today is not None and not df_today.empty:
+            chg_col = next((c for c in df_today.columns if "등락률" in str(c)), None)
+            if chg_col:
+                up_cnt = int((df_today[chg_col] > 0).sum())
+                dn_cnt = int((df_today[chg_col] < 0).sum())
+                total  = up_cnt + dn_cnt
+                if total > 0:
+                    adr = up_cnt / total * 100
+                    sub = norm(adr, 30, 70)
+                    factor_details.append({"name": "등락비율 ADR", "value": f"상승 {up_cnt} / 하락 {dn_cnt}",
+                        "sub_score": round(sub), "direction": "up" if adr > 50 else "down",
+                        "desc": "KOSPI 상승 종목 비율"})
+                    sub_scores.append((0.13, sub))
     except: pass
 
-    # ── 6. 거래대금 vs 5일 평균 (±8) ───────────────────
+    # ── 6. KOSPI 60일 고점 대비 위치 (가중 10%) ────────
+    # KOSPI 현재가가 60일 범위 어디에 있는지 (신고가에 가까울수록 탐욕)
     try:
-        if ohlcv_kospi is not None and not ohlcv_kospi.empty and len(ohlcv_kospi) >= 6:
-            vol_col = "volume" if "volume" in ohlcv_kospi.columns else None
-            if vol_col is None:
-                for c in ohlcv_kospi.columns:
-                    if "거래" in str(c) or "vol" in str(c).lower():
-                        vol_col = c; break
-            if vol_col:
-                vols = ohlcv_kospi[vol_col].values
-                avg5 = float(vols[-6:-1].mean())
-                today_vol = float(vols[-1])
-                if avg5 > 0:
-                    ratio = today_vol / avg5
-                    contrib = 8 if ratio > 1.2 else -4 if ratio < 0.7 else 0
-                    score += contrib
-                    factor_details.append({"name": "거래대금 vs 5일평균", "value": f"{ratio:.1f}배",
-                        "contribution": contrib, "direction": "up" if contrib > 0 else "down" if contrib < 0 else "neutral"})
+        if ohlcv_kospi is not None and not ohlcv_kospi.empty and len(ohlcv_kospi) >= 60:
+            closes = ohlcv_kospi["close"].values if "close" in ohlcv_kospi.columns else ohlcv_kospi.iloc[:,3].values
+            hi60 = float(closes[-60:].max())
+            lo60 = float(closes[-60:].min())
+            cur  = float(closes[-1])
+            sub  = norm(cur, lo60, hi60)
+            pct  = (cur - lo60) / (hi60 - lo60) * 100 if hi60 > lo60 else 50
+            factor_details.append({"name": "60일 고점 대비 위치", "value": f"{pct:.0f}%",
+                "sub_score": round(sub), "direction": "up" if sub > 50 else "down",
+                "desc": "60일 범위 내 현재 위치 (높을수록 고점 근접)"})
+            sub_scores.append((0.10, sub))
     except: pass
 
-    # ── 7. 신고가/신저가 비율 (±10) ────────────────────
+    # ── 7. 거래대금 vs 20일 평균 (가중 8%) ──────────────
+    # 거래대금 폭증 = 관심 상승 = 약한 탐욕 신호
+    # 0.5배 미만 → 0점, 2배 초과 → 100점
     try:
-        if PYKRX_OK:
-            from market_data import _last_trading_date, _ndays_ago
-            tdate = _last_trading_date()
-            prev52 = _ndays_ago(252)
-            df_52 = krx_s.get_market_ohlcv_by_ticker(tdate, market="KOSPI")
-            # pykrx로 52주 고저 비교가 어려우므로 20일 고저 비율로 대체
-            if df_52 is not None and not df_52.empty:
-                high_col = "고가" if "고가" in df_52.columns else None
-                low_col  = "저가" if "저가" in df_52.columns else None
-                close_col = "종가" if "종가" in df_52.columns else None
-                if high_col and low_col and close_col:
-                    new_high = ((df_52[close_col] >= df_52[high_col] * 0.99)).sum()
-                    new_low  = ((df_52[close_col] <= df_52[low_col] * 1.01)).sum()
-                    ratio = (new_high - new_low) / max(new_high + new_low, 1) * 100
-                    contrib = max(-10, min(10, ratio * 0.1))
-                    score += contrib
-                    factor_details.append({"name": "신고가/신저가", "value": f"신고 {new_high}·신저 {new_low}",
-                        "contribution": contrib, "direction": "up" if contrib > 0 else "down"})
+        if ohlcv_kospi is not None and not ohlcv_kospi.empty and len(ohlcv_kospi) >= 21:
+            for vc in ohlcv_kospi.columns:
+                if "거래" in str(vc) or "vol" in str(vc).lower():
+                    vols = ohlcv_kospi[vc].values
+                    avg20 = float(np.mean(vols[-21:-1]))
+                    today_v = float(vols[-1])
+                    if avg20 > 0:
+                        ratio = today_v / avg20
+                        sub = norm(ratio, 0.5, 2.0)
+                        factor_details.append({"name": "거래대금 vs 20일평균", "value": f"{ratio:.2f}배",
+                            "sub_score": round(sub), "direction": "up" if ratio > 1 else "down",
+                            "desc": "거래대금 활성도 (1배=평균 수준)"})
+                        sub_scores.append((0.08, sub))
+                    break
     except: pass
 
-    # ── 8. 시장 변동성 역방향 (±8) ─────────────────────
+    # ── 8. 시장 변동성 — KOSPI 10일 표준편차 (가중 7%) ──
+    # 변동성 낮을수록 안정(탐욕). 0.3%→100점, 2.5%→0점
     try:
-        if ohlcv_kospi is not None and not ohlcv_kospi.empty and len(ohlcv_kospi) >= 10:
-            import numpy as np
-            closes = ohlcv_kospi["close"].values if "close" in ohlcv_kospi.columns else ohlcv_kospi.iloc[:, 3].values
+        if ohlcv_kospi is not None and not ohlcv_kospi.empty and len(ohlcv_kospi) >= 11:
+            closes = ohlcv_kospi["close"].values if "close" in ohlcv_kospi.columns else ohlcv_kospi.iloc[:,3].values
             returns = np.diff(closes[-11:]) / closes[-11:-1] * 100
             vol = float(np.std(returns))
-            # 변동성 낮을수록 안정 → 탐욕, 높을수록 공포
-            contrib = 8 if vol < 0.5 else 4 if vol < 1.0 else -4 if vol < 2.0 else -8
-            score += contrib
-            factor_details.append({"name": "시장 변동성(10일)", "value": f"{vol:.2f}%",
-                "contribution": contrib, "direction": "up" if contrib > 0 else "down"})
+            sub = 100 - norm(vol, 0.3, 2.5)   # 반전: 높은 변동성 = 낮은 점수
+            factor_details.append({"name": "시장 변동성 (10일)", "value": f"{vol:.2f}%",
+                "sub_score": round(sub), "direction": "up" if vol < 1.0 else "down",
+                "desc": "낮을수록 시장 안정 (탐욕)"})
+            sub_scores.append((0.07, sub))
     except: pass
 
-    score = max(0, min(100, round(score)))
+    # ── 가중평균 계산 ──────────────────────────────────
+    if sub_scores:
+        total_w = sum(w for w, _ in sub_scores)
+        score = sum(w * s for w, s in sub_scores) / total_w
+    else:
+        score = 50.0
+    score = int(clamp(round(score)))
+
     if score >= 75:   label, color = "극단적 탐욕", "#E24B4A"
     elif score >= 60: label, color = "탐욕",       "#F5A623"
     elif score >= 40: label, color = "중립",       "#8E8E9A"
     elif score >= 25: label, color = "공포",       "#5B5BD6"
     else:             label, color = "극단적 공포","#27500A"
 
-    # 요약 팩터 텍스트 (UI용)
     factors_summary = [f["name"] + " " + f["value"] for f in factor_details[:4]]
     return {
         "score": score, "label": label, "color": color,
         "factors": factors_summary,
-        "factor_details": factor_details,  # 상세 (게이지 분해 표시용)
+        "factor_details": factor_details,
     }
 
 
