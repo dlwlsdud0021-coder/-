@@ -2337,8 +2337,10 @@ function renderWatchlistDetail(d, el, code, name) {
     timingHtml = `<div class="section" style="margin-top:12px;">
       <div class="sec-title"><i class="ti ti-clock-check" style="font-size:15px;color:#5B5BD6;"></i>매수 타이밍 판정</div>
       <div class="card">
-        <span class="badge ${tc}" style="font-size:14px;padding:6px 12px;">${timing.label}</span>
-        ${timing.reason ? `<div class="analysis-text" style="margin-top:8px;">${timing.reason}</div>` : ''}
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span class="badge ${tc}" style="font-size:13px;padding:5px 12px;flex-shrink:0;">${timing.label}</span>
+          ${timing.reason ? `<span style="font-size:12px;color:#3C3C43;">${timing.reason}</span>` : ''}
+        </div>
       </div>
     </div>`;
   }
