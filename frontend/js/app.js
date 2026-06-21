@@ -365,6 +365,44 @@ function buildInvestorSection(investor) {
 // ─────────────────────────────────────────────────────────
 // 시황 탭
 // ─────────────────────────────────────────────────────────
+function buildGaugeSVG(score, color, label) {
+  const cx = 150, cy = 148, ro = 118, ri = 76;
+  // score → 각도: score=0이면 180°(왼쪽), score=100이면 0°(오른쪽), score=50이면 90°(위)
+  function pt(s, r) {
+    const a = Math.PI * (1 - s / 100);
+    return [cx + r * Math.cos(a), cy - r * Math.sin(a)];
+  }
+  function seg(s1, s2, clr) {
+    const [x1o, y1o] = pt(s1, ro), [x2o, y2o] = pt(s2, ro);
+    const [x1i, y1i] = pt(s1, ri), [x2i, y2i] = pt(s2, ri);
+    const lg = (s2 - s1) > 50 ? 1 : 0;
+    return `<path d="M${x1o.toFixed(1)},${y1o.toFixed(1)} A${ro},${ro} 0 ${lg},1 ${x2o.toFixed(1)},${y2o.toFixed(1)} L${x2i.toFixed(1)},${y2i.toFixed(1)} A${ri},${ri} 0 ${lg},0 ${x1i.toFixed(1)},${y1i.toFixed(1)}Z" fill="${clr}" opacity="0.9"/>`;
+  }
+  const segments = [[0,20,'#27500A'],[20,40,'#5B5BD6'],[40,60,'#8E8E9A'],[60,80,'#F5A623'],[80,100,'#E24B4A']];
+  const segs = segments.map(([s1,s2,c]) => seg(s1+1.5, s2-1.5, c)).join('');
+  // 바늘
+  const [nx, ny] = pt(score, 92);
+  // 활성 세그먼트 위에 하이라이트
+  const activeColor = segments.find(([s1,s2]) => score >= s1 && score <= s2)?.[2] || color;
+  return `<svg viewBox="0 0 300 168" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:300px;display:block;margin:0 auto;">
+    <!-- 배경 트랙 -->
+    <path d="M${cx-ro},${cy} A${ro},${ro} 0 0,1 ${cx+ro},${cy}" fill="none" stroke="#F0F0F5" stroke-width="${ro-ri}"/>
+    <!-- 컬러 세그먼트 -->
+    ${segs}
+    <!-- 바늘 -->
+    <line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="${activeColor}" stroke-width="3.5" stroke-linecap="round"/>
+    <!-- 중앙 허브 -->
+    <circle cx="${cx}" cy="${cy}" r="11" fill="${activeColor}"/>
+    <circle cx="${cx}" cy="${cy}" r="5.5" fill="white"/>
+    <!-- 점수 텍스트 -->
+    <text x="${cx}" y="${cy-30}" text-anchor="middle" font-size="36" font-weight="800" fill="${activeColor}" font-family="-apple-system,BlinkMacSystemFont,sans-serif">${score}</text>
+    <text x="${cx}" y="${cy+26}" text-anchor="middle" font-size="14" font-weight="700" fill="#1C1C1E" font-family="-apple-system,BlinkMacSystemFont,sans-serif">${label}</text>
+    <!-- 양끝 레이블 -->
+    <text x="14" y="${cy+8}" text-anchor="middle" font-size="10" fill="#8E8E9A" font-family="-apple-system,sans-serif">공포</text>
+    <text x="286" y="${cy+8}" text-anchor="middle" font-size="10" fill="#8E8E9A" font-family="-apple-system,sans-serif">탐욕</text>
+  </svg>`;
+}
+
 let _newsLoaded = false;
 async function loadNews(force) {
   if (_newsLoaded && !force) return;
@@ -391,8 +429,7 @@ function renderSentiment(d) {
   const color = s.color || '#8E8E9A';
   const factors = s.factors || [];
 
-  // 게이지 색상 구간
-  const gaugeGrad = `linear-gradient(90deg, #27500A 0%, #5B5BD6 40%, #F5A623 70%, #E24B4A 100%)`;
+  const gaugeSVG = buildGaugeSVG(score, color, label);
 
   // 점수별 설명 상세
   const detailMap = [
@@ -434,26 +471,11 @@ function renderSentiment(d) {
   el.innerHTML = `
     <!-- 투자심리 지수 -->
     <div class="card" style="margin:12px 0 10px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-        <div>
-          <div style="font-size:13px;color:#8E8E9A;margin-bottom:2px;">투자심리 지수</div>
-          <div style="font-size:26px;font-weight:800;color:${color};">${score}<span style="font-size:14px;font-weight:500;margin-left:4px;">/ 100</span></div>
-        </div>
-        <div style="text-align:right;">
-          <div style="font-size:18px;font-weight:700;color:${color};">${label}</div>
-          <div style="font-size:11px;color:#8E8E9A;margin-top:2px;">${factors.slice(0,2).join(' · ')}</div>
-        </div>
-      </div>
-      <!-- 게이지 바 -->
-      <div style="position:relative;height:10px;border-radius:10px;background:#F0F0F5;margin-bottom:6px;overflow:hidden;">
-        <div style="height:100%;width:100%;background:${gaugeGrad};border-radius:10px;opacity:0.25;position:absolute;left:0;top:0;"></div>
-        <div style="position:absolute;top:50%;left:${score}%;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.2);"></div>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:10px;color:#C7C7CC;margin-bottom:14px;">
-        <span>극단적 공포</span><span>중립</span><span>극단적 탐욕</span>
-      </div>
+      <div style="font-size:13px;color:#8E8E9A;text-align:center;margin-bottom:4px;">투자심리 지수</div>
+      ${gaugeSVG}
+      ${factors.length ? `<div style="text-align:center;font-size:11px;color:#8E8E9A;margin:6px 0 0;">${factors.slice(0,2).join(' · ')}</div>` : ''}
       <!-- 설명 -->
-      <div style="border-top:1px solid #F0F0F5;padding-top:12px;">
+      <div style="border-top:1px solid #F0F0F5;padding-top:12px;margin-top:14px;">
         <div style="font-size:13px;font-weight:700;color:#1C1C1E;margin-bottom:6px;">${detail.title}</div>
         <div style="font-size:13px;color:#3C3C43;line-height:1.75;">${detail.body}</div>
       </div>
