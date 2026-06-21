@@ -1440,6 +1440,24 @@ def search_stock(q: str = ""):
     results = search_stock_by_name(q, max_results=10)
     return {"results": [{"name": r[0], "code": r[1]} for r in results]}
 
+@app.get("/api/stock/{code}/investor")
+def stock_investor(code: str, days: int = 5):
+    """수급 데이터만 반환 (5/10/20일 탭 전환용)"""
+    try:
+        days = min(max(days, 5), 20)
+        inv = get_investor_trading(code, days=days)
+        inv_list = []
+        if inv is not None and not inv.empty:
+            for dt, row in inv.tail(days).iterrows():
+                inv_list.append({
+                    "date": str(dt)[:10],
+                    "foreign": float(row.get("외국인", 0)),
+                    "inst": float(row.get("기관", 0)),
+                })
+        return {"inv_list": inv_list, "days": days}
+    except Exception as e:
+        return {"inv_list": [], "days": days}
+
 @app.get("/api/stock/{code}")
 def stock_detail(code: str):
     try:

@@ -2358,7 +2358,7 @@ function renderHoldingDetail(d, el) {
     ${invList.length ? `<div class="section">
       <div class="sec-title"><i class="ti ti-chart-bar" style="font-size:15px;color:#5B5BD6;"></i>5일 거래량 · 수급 흐름</div>
       <div class="card" style="padding:14px;">
-        ${_buildFlowChart(a.vol_list || [], invList)}
+        ${_buildFlowChart(a.vol_list || [], invList, h.code)}
         <div style="display:flex;gap:16px;margin-top:10px;font-size:12px;">
           <span style="color:${foreignNet>=0?'#E24B4A':'#185FA5'};font-weight:600;">외국인 3일 ${foreignNet>=0?'+':''}${foreignNet.toLocaleString()}주</span>
           <span style="color:${instNet>=0?'#27500A':'#A32D2D'};font-weight:600;">기관 3일 ${instNet>=0?'+':''}${instNet.toLocaleString()}주</span>
@@ -3252,7 +3252,7 @@ function renderWatchlistDetail(d, el, code, name) {
     ${invList.length ? `<div class="section">
       <div class="sec-title"><i class="ti ti-chart-bar" style="font-size:15px;color:#5B5BD6;"></i>5일 거래량 · 수급 흐름</div>
       <div class="card" style="padding:14px;">
-        ${_buildFlowChart(a.vol_list || [], invList)}
+        ${_buildFlowChart(a.vol_list || [], invList, code)}
         <div style="display:flex;gap:16px;margin-top:10px;font-size:12px;">
           <span style="color:${foreignNet>=0?'#E24B4A':'#185FA5'};font-weight:600;">외국인 3일 ${foreignNet>=0?'+':''}${foreignNet.toLocaleString()}주</span>
           <span style="color:${instNet>=0?'#27500A':'#A32D2D'};font-weight:600;">기관 3일 ${instNet>=0?'+':''}${instNet.toLocaleString()}주</span>
@@ -3585,7 +3585,7 @@ function renderScannerDetail(s) {
     ${(invList.length || s.vol_list?.length) ? `<div class="section">
       <div class="sec-title"><i class="ti ti-chart-bar" style="font-size:15px;color:#5B5BD6;"></i>5일 거래량 · 수급 흐름</div>
       <div class="card" style="padding:14px;">
-        ${_buildFlowChart(s.vol_list || [], invList)}
+        ${_buildFlowChart(s.vol_list || [], invList, s.code)}
       </div>
     </div>` : ''}
 
@@ -3610,7 +3610,96 @@ function renderScannerDetail(s) {
   }
 }
 
-function _buildFlowChart(volList, invList) {
+async function switchSupplyDays(code, days) {
+  const card = document.getElementById('supply-days-card');
+  if (!card) return;
+  card.style.opacity = '0.5';
+  try {
+    const res = await apiFetch(`/api/stock/${code}/investor?days=${days}`);
+    const newInvList = res.inv_list || [];
+    const inner = card.querySelector('#supply-days-inner');
+    if (inner) inner.innerHTML = _buildSupplyInner(newInvList, days);
+    // update active button
+    card.querySelectorAll('.supply-day-btn').forEach(b => {
+      const d = parseInt(b.dataset.days);
+      b.style.background = d === days ? '#5B5BD6' : '#F0F0F5';
+      b.style.color = d === days ? '#fff' : '#AEAEB2';
+      b.style.fontWeight = d === days ? '600' : '400';
+    });
+  } catch(e) {}
+  card.style.opacity = '1';
+}
+
+function _buildSupplyInner(invList, activeDays) {
+  function buildMiniChartInner(list, netKey, posColor, negColor, lineColor) {
+    if (!list.length) return '';
+    const n = list.length;
+    const values = list.map(d => d[netKey]);
+    const maxAbs = Math.max(...values.map(v => Math.abs(v)), 1);
+    const VW = 140, CHART_H = 52, LABEL_H = 18, AXIS_W = 28;
+    const innerW = VW - AXIS_W;
+    const SVG_H = CHART_H + LABEL_H;
+    const barGap = 4;
+    const barW = Math.floor((innerW - (n - 1) * barGap) / n);
+    const zeroY = CHART_H / 2;
+    const scale = Math.pow(10, Math.floor(Math.log10(maxAbs)));
+    const niceMax = Math.ceil(maxAbs / scale) * scale;
+    const fmt = v => v >= 1000 ? (v / 1000).toFixed(0) + 'K' : v.toString();
+    const bars = values.map((v, i) => {
+      const x = i * (barW + barGap);
+      const barH = Math.max(Math.round(Math.abs(v) / niceMax * (CHART_H / 2 - 2)), 2);
+      const y = v >= 0 ? zeroY - barH : zeroY;
+      const fill = v >= 0 ? posColor : negColor;
+      const lbl = list[i].date ? list[i].date.slice(5) : '';
+      return `<rect x="${x}" y="${y}" width="${barW}" height="${barH}" rx="2" fill="${fill}" opacity="0.85"/>
+<text x="${x + barW / 2}" y="${CHART_H + LABEL_H - 2}" text-anchor="middle" font-size="8" fill="#AEAEB2">${lbl}</text>`;
+    }).join('');
+    const linePoints = values.map((v, i) => {
+      const x = i * (barW + barGap) + barW / 2;
+      const y = zeroY - (v / niceMax) * (CHART_H / 2 - 2);
+      return `${x},${Math.max(1, Math.min(CHART_H - 1, y))}`;
+    }).join(' ');
+    const axisLabels = [niceMax, 0, -niceMax].map((val, idx) => {
+      const y = idx === 0 ? 4 : idx === 1 ? zeroY + 4 : CHART_H - 1;
+      return `<text x="${VW}" y="${y}" text-anchor="end" font-size="8" fill="#C5C5D0">${fmt(Math.abs(val))}</text>`;
+    }).join('');
+    return `<svg viewBox="0 0 ${VW} ${SVG_H}" style="width:100%;overflow:visible;">
+      ${bars}
+      <polyline points="${linePoints}" fill="none" stroke="${lineColor}" stroke-width="1.5" stroke-linejoin="round"/>
+      <line x1="0" y1="${zeroY}" x2="${VW - AXIS_W}" y2="${zeroY}" stroke="#E5E5EA" stroke-width="0.8"/>
+      ${axisLabels}
+    </svg>`;
+  }
+  function buildCard(label, list, netKey, posC, negC, lineC) {
+    if (!list.length) return '';
+    const net = list.reduce((s, r) => s + r[netKey], 0);
+    const c = net >= 0 ? '#E24B4A' : '#185FA5';
+    const netDays = list.filter(r => r[netKey] >= 0).length;
+    const badge = net >= 0 ? '매수 우세' : '매도 우세';
+    const badgeBg = net >= 0 ? '#EAF3DE' : '#FCEBEB';
+    const badgeTx = net >= 0 ? '#27500A' : '#791F1F';
+    const cum = list.reduce((s,r,i,a) => s + r[netKey], 0);
+    const avg = cum / list.length;
+    return `<div style="flex:1;background:#FAFAFA;border-radius:12px;padding:10px 10px 6px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <span style="font-size:12px;font-weight:700;color:#1A1A2E;">${label}</span>
+        <span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px;background:${badgeBg};color:${badgeTx};">${badge}</span>
+      </div>
+      <div style="font-size:15px;font-weight:800;color:${c};margin-bottom:4px;">${net>=0?'+':''}${Math.round(net).toLocaleString()}주</div>
+      ${buildMiniChartInner(list, netKey, posC, negC, lineC)}
+      <div style="font-size:11px;color:#8E8E9A;margin-top:6px;display:flex;flex-direction:column;gap:2px;">
+        <div style="display:flex;justify-content:space-between;"><span>${activeDays}일 누적</span><span style="color:${c};font-weight:600;">${net>=0?'+':''}${Math.round(cum).toLocaleString()}주</span></div>
+        <div style="display:flex;justify-content:space-between;"><span>일평균</span><span style="color:${c};font-weight:600;">${avg>=0?'+':''}${Math.round(avg).toLocaleString()}주</span></div>
+      </div>
+    </div>`;
+  }
+  if (!invList.length) return '<div style="text-align:center;color:#8E8E9A;font-size:12px;padding:12px 0;">데이터 없음</div>';
+  const fCard = buildCard('외국인', invList, 'foreign', '#4ADE80', '#F87171', '#22C55E');
+  const iCard = buildCard('기관', invList, 'inst', '#4ADE80', '#F87171', '#EF4444');
+  return `<div style="display:flex;gap:8px;">${fCard}${iCard}</div>`;
+}
+
+function _buildFlowChart(volList, invList, code) {
   const uid = Math.random().toString(36).slice(2, 7);
 
   // ── 1. 거래량 추이 카드 ──────────────────────────────────
@@ -3764,18 +3853,19 @@ function _buildFlowChart(volList, invList) {
     const fCard = buildSupplyCard('외국인', invList, 'foreign', '#4ADE80', '#F87171', '#22C55E');
     const iCard = buildSupplyCard('기관', invList, 'inst', '#4ADE80', '#F87171', '#EF4444');
 
-    supplyCard = `<div class="card">
+    const codeAttr = code ? `data-code="${code}"` : '';
+    supplyCard = `<div class="card" id="supply-days-card" ${codeAttr}>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
     <span style="font-size:13px;font-weight:600;color:#1A1A2E;">외국인 · 기관 수급</span>
     <div style="display:flex;gap:4px;">
-      <button style="background:#5B5BD6;color:#fff;border:none;border-radius:6px;font-size:11px;padding:3px 10px;font-weight:600;cursor:default;">5일</button>
-      <button style="background:#F0F0F5;color:#AEAEB2;border:none;border-radius:6px;font-size:11px;padding:3px 10px;cursor:default;">10일</button>
-      <button style="background:#F0F0F5;color:#AEAEB2;border:none;border-radius:6px;font-size:11px;padding:3px 10px;cursor:default;">20일</button>
+      ${[5,10,20].map(d => `<button class="supply-day-btn" data-days="${d}" onclick="switchSupplyDays('${code||''}',${d})" style="background:${d===5?'#5B5BD6':'#F0F0F5'};color:${d===5?'#fff':'#AEAEB2'};border:none;border-radius:6px;font-size:11px;padding:3px 10px;font-weight:${d===5?'600':'400'};cursor:pointer;">${d}일</button>`).join('')}
     </div>
   </div>
+  <div id="supply-days-inner">
   <div style="display:flex;gap:8px;">
     ${fCard}
     ${iCard}
+  </div>
   </div>
   ${signalText ? `<div style="margin-top:10px;background:#FFFBF0;border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;">
     <i class="ti ti-bulb" style="font-size:15px;color:#F5A623;flex-shrink:0;"></i>
