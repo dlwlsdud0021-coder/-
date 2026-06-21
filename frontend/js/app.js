@@ -2259,9 +2259,11 @@ async function loadWatchlist(force) {
 
 function filterWatchlist(filter, btn) {
   _watchlistFilter = filter;
-  document.querySelectorAll('#screen-watchlist .tabs:last-of-type .tab').forEach(b => {
-    b.className = 'tab ' + (b === btn ? 'active' : 'inactive');
-  });
+  if (btn) {
+    btn.closest('.tabs').querySelectorAll('.tab').forEach(b => {
+      b.className = 'tab ' + (b === btn ? 'active' : 'inactive');
+    });
+  }
   renderWatchlist();
 }
 
@@ -2350,7 +2352,7 @@ function renderWatchlist() {
       </div>`;
     }
 
-    const isAlert = (timing.score || 0) >= 70;
+    const isAlert = timing.status === 'buy_ok';
     return `<div class="card" style="position:relative;" onclick="openWatchlistDetail('${w.code}','${w.name.replace(/'/g,"\\'")}')">
       <button onclick="event.stopPropagation();confirmDeleteWatchlist('${w.code}','${w.name.replace(/'/g,"\\'")}');"
         style="position:absolute;top:10px;right:10px;background:none;border:none;cursor:pointer;padding:2px;line-height:1;z-index:1;">

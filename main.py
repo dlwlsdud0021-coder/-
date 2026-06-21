@@ -1279,8 +1279,8 @@ def get_watchlist(user=Depends(get_current_user)):
         entry.setdefault("badges", [])
         entry.setdefault("targets", {})
         enriched.append(entry)
-    # 알림 배지: timing score 높은 종목 카운트
-    alert_count = sum(1 for e in enriched if (e.get("timing") or {}).get("score", 0) >= 70)
+    # 알림 배지: 매수검토 종목 카운트
+    alert_count = sum(1 for e in enriched if (e.get("timing") or {}).get("status") == "buy_ok")
     groups = db.get_watchlist_groups(user["user_id"])
     return _to_python({"watchlist": enriched, "alert_count": alert_count, "groups": groups})
 
