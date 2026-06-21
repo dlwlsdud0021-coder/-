@@ -1193,7 +1193,7 @@ function renderIndexDetail(d, el) {
 // ─────────────────────────────────────────────────────────
 // 뉴스 상세
 // ─────────────────────────────────────────────────────────
-function openNewsDetail(idx) {
+async function openNewsDetail(idx) {
   const n = _allNews[idx];
   if (!n) return;
   _currentTab = 'news';
@@ -1203,8 +1203,8 @@ function openNewsDetail(idx) {
   const lbl = n.sentiment === 'positive' ? '긍정' : n.sentiment === 'negative' ? '부정' : '혼조';
   const borderColor = n.sentiment === 'positive' ? '#185FA5' : n.sentiment === 'negative' ? '#E24B4A' : '#F0A500';
 
-  el.innerHTML = `
-    <div style="padding:16px;">
+  const header = `
+    <div style="padding:16px 16px 0;">
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
         <span class="badge ${bdg}">${lbl}</span>
         ${n.category && n.category !== '전체' ? `<span class="badge badge-ok" style="font-size:11px;">${n.category}</span>` : ''}
@@ -1212,11 +1212,31 @@ function openNewsDetail(idx) {
         <span style="font-size:11px;color:#C7C7CC;">${n.published||''}</span>
       </div>
       <div style="font-size:17px;font-weight:700;color:#1C1C1E;line-height:1.5;margin-bottom:14px;border-left:3px solid ${borderColor};padding-left:10px;">${n.title||''}</div>
-      ${n.summary ? `<div class="card" style="margin-bottom:16px;font-size:14px;color:#3C3C43;line-height:1.8;">${n.summary}</div>` : ''}
-      ${n.link ? `<a href="${n.link}" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:14px;background:#5B5BD6;border-radius:12px;color:#fff;font-size:14px;font-weight:600;text-decoration:none;">
-        <i class="ti ti-external-link" style="font-size:15px;"></i> 원문 기사 전체 보기
-      </a>` : ''}
     </div>`;
+
+  const linkBtn = n.link ? `<div style="padding:0 16px 20px;"><a href="${n.link}" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:14px;background:#5B5BD6;border-radius:12px;color:#fff;font-size:14px;font-weight:600;text-decoration:none;"><i class="ti ti-external-link" style="font-size:15px;"></i> 원문 기사 전체 보기</a></div>` : '';
+
+  // 로딩 상태 먼저 표시
+  el.innerHTML = header + `<div style="padding:0 16px 16px;"><div class="loading" style="padding:24px;"><div class="spinner"></div> 기사 본문 불러오는 중...</div></div>` + linkBtn;
+
+  // 본문 크롤링
+  if (n.link) {
+    try {
+      const res = await api('GET', '/api/news/fetch-body?url=' + encodeURIComponent(n.link), null, 12000);
+      const body = res.body || '';
+      if (body && body.length > 50) {
+        const bodyHtml = body.split('\n').filter(l => l.trim()).map(l => `<p style="margin:0 0 10px;">${l}</p>`).join('');
+        el.innerHTML = header + `<div style="padding:0 16px 16px;"><div class="card" style="font-size:14px;color:#3C3C43;line-height:1.8;">${bodyHtml}</div></div>` + linkBtn;
+      } else {
+        // 본문 추출 실패 → summary로 폴백
+        el.innerHTML = header + `<div style="padding:0 16px 16px;">${n.summary ? `<div class="card" style="font-size:14px;color:#3C3C43;line-height:1.8;">${n.summary}</div>` : '<div style="color:#8E8E9A;font-size:13px;">본문을 불러오지 못했어요. 원문 링크에서 확인하세요.</div>'}</div>` + linkBtn;
+      }
+    } catch(e) {
+      el.innerHTML = header + `<div style="padding:0 16px 16px;">${n.summary ? `<div class="card" style="font-size:14px;color:#3C3C43;line-height:1.8;">${n.summary}</div>` : ''}</div>` + linkBtn;
+    }
+  } else {
+    el.innerHTML = header + `<div style="padding:0 16px 16px;">${n.summary ? `<div class="card" style="font-size:14px;color:#3C3C43;line-height:1.8;">${n.summary}</div>` : ''}</div>`;
+  }
 }
 
 function buildNewsAnalysisHtml(n) {

@@ -526,6 +526,51 @@ class NewsAnalyzeBody(BaseModel):
     sentiment: str = "neutral"
     category: str = "전체"
 
+@app.get("/api/news/fetch-body")
+def fetch_news_body(url: str):
+    """뉴스 기사 URL에서 본문 추출"""
+    try:
+        import requests as req
+        from bs4 import BeautifulSoup
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0 Safari/537.36"}
+        resp = req.get(url, headers=headers, timeout=8, allow_redirects=True)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "lxml")
+
+        # 불필요한 태그 제거
+        for tag in soup(["script", "style", "nav", "header", "footer", "aside", "iframe", "figure"]):
+            tag.decompose()
+
+        # 네이버 뉴스 본문 선택자 우선 시도
+        body = ""
+        for selector in [
+            "#dic_area",           # 네이버 뉴스
+            "#articleBodyContents", # 네이버 구버전
+            ".article-body",
+            ".news-article-body",
+            "article",
+            ".article_view",
+            "#article-view-content-div",
+            ".article_txt",
+        ]:
+            el = soup.select_one(selector)
+            if el:
+                body = el.get_text(separator="\n", strip=True)
+                break
+
+        # 셀렉터 실패 시 <p> 태그 모음
+        if not body:
+            paragraphs = soup.find_all("p")
+            body = "\n".join(p.get_text(strip=True) for p in paragraphs if len(p.get_text(strip=True)) > 30)
+
+        # 빈 줄 정리
+        lines = [l.strip() for l in body.splitlines() if l.strip()]
+        body = "\n".join(lines[:80])  # 최대 80줄
+
+        return {"body": body}
+    except Exception as e:
+        return {"body": "", "error": str(e)}
+
 @app.post("/api/news/analyze")
 def analyze_news_article(body: NewsAnalyzeBody):
     """단일 뉴스 기사에 대한 AI 분석 온디맨드 생성"""
