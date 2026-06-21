@@ -152,7 +152,9 @@ def _analyze_disclosure(title: str) -> tuple:
 # ─────────────────────────────────────────────────────────
 # JWT 설정
 # ─────────────────────────────────────────────────────────
-_JWT_SECRET = os.environ.get("JWT_SECRET", "pocket-stock-secret-2026")
+_JWT_SECRET = os.environ.get("JWT_SECRET")
+if not _JWT_SECRET:
+    raise RuntimeError("JWT_SECRET 환경변수가 설정되지 않았습니다. Render 환경변수를 확인하세요.")
 _JWT_ALGO = "HS256"
 _JWT_EXPIRE_DAYS = 7
 
@@ -190,12 +192,13 @@ def _migrate():
     except Exception:
         pass  # rpc 없으면 Supabase SQL 에디터에서 직접 실행 필요
 
+_ALLOWED_ORIGINS = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_ALLOWED_ORIGINS or ["*"],  # 환경변수 설정 시 제한, 없으면 개발용 전체 허용
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # ─────────────────────────────────────────────────────────
@@ -229,13 +232,44 @@ class StockSearchBody(BaseModel):
     query: str
 
 # ─────────────────────────────────────────────────────────
+# 로그인 브루트포스 방어 (IP당 5회 실패 → 60초 잠금)
+# ─────────────────────────────────────────────────────────
+import time as _time
+_login_fail: dict = {}  # {ip: {"count": n, "until": timestamp}}
+_MAX_FAIL = 5
+_LOCKOUT_SEC = 60
+
+def _check_brute(ip: str):
+    now = _time.time()
+    rec = _login_fail.get(ip)
+    if rec and rec["until"] > now:
+        remaining = int(rec["until"] - now)
+        raise HTTPException(status_code=429, detail=f"로그인 시도 초과. {remaining}초 후 다시 시도하세요.")
+
+def _record_fail(ip: str):
+    now = _time.time()
+    rec = _login_fail.get(ip, {"count": 0, "until": 0})
+    rec["count"] += 1
+    if rec["count"] >= _MAX_FAIL:
+        rec["until"] = now + _LOCKOUT_SEC
+        rec["count"] = 0
+    _login_fail[ip] = rec
+
+def _clear_fail(ip: str):
+    _login_fail.pop(ip, None)
+
+# ─────────────────────────────────────────────────────────
 # 인증 API
 # ─────────────────────────────────────────────────────────
 @app.post("/api/auth/login")
-def login(body: LoginBody):
+def login(body: LoginBody, request: Request):
+    ip = request.client.host
+    _check_brute(ip)
     ok, user_id = db.verify_user(body.username, body.password)
     if not ok:
+        _record_fail(ip)
         raise HTTPException(status_code=401, detail="아이디 또는 비밀번호가 틀렸습니다")
+    _clear_fail(ip)
     token = _make_token(user_id, body.username)
     return {"token": token, "username": body.username, "user_id": user_id}
 

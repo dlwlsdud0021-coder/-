@@ -4,9 +4,10 @@ database.py — 유저/보유종목/관심종목 Supabase(PostgreSQL) 관리
 - 종목 추가/삭제/조회 (유저별 분리)
 """
 
-import hashlib
 import json
 import os
+
+import bcrypt
 
 from supabase import create_client, Client
 
@@ -79,7 +80,13 @@ CREATE TABLE IF NOT EXISTS market_predictions (
 # 비밀번호
 # ─────────────────────────────────────────────────────────
 def _hash(pw: str) -> str:
-    return hashlib.sha256(pw.encode("utf-8")).hexdigest()
+    return bcrypt.hashpw(pw.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+def _verify_hash(pw: str, hashed: str) -> bool:
+    try:
+        return bcrypt.checkpw(pw.encode("utf-8"), hashed.encode("utf-8"))
+    except Exception:
+        return False
 
 
 # ─────────────────────────────────────────────────────────
@@ -89,8 +96,8 @@ def create_user(username: str, password: str) -> tuple:
     """(성공여부, 메시지)"""
     if len(username) < 2:
         return False, "아이디는 2자 이상이어야 합니다."
-    if len(password) < 4:
-        return False, "비밀번호는 4자 이상이어야 합니다."
+    if len(password) < 8:
+        return False, "비밀번호는 8자 이상이어야 합니다."
     try:
         _db().table("users").insert({
             "username": username,
@@ -107,12 +114,12 @@ def create_user(username: str, password: str) -> tuple:
 def verify_user(username: str, password: str) -> tuple:
     """(성공여부, user_id)"""
     try:
+        # bcrypt는 해시값을 DB에서 먼저 꺼낸 뒤 비교해야 함
         res = _db().table("users") \
-            .select("id") \
+            .select("id, password_hash") \
             .eq("username", username) \
-            .eq("password_hash", _hash(password)) \
             .execute()
-        if res.data:
+        if res.data and _verify_hash(password, res.data[0]["password_hash"]):
             return True, res.data[0]["id"]
         return False, -1
     except Exception:
