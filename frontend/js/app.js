@@ -2173,6 +2173,13 @@ async function loadWatchlistDetail(code, name) {
 function renderWatchlistDetail(d, el, code, name) {
   const item = d.item || { code, name };
   const a = d.analysis || {};
+  if (a.error) {
+    el.innerHTML = `<div class="loading" style="flex-direction:column;gap:6px;padding:32px 16px;">
+      <span style="color:#E24B4A;">데이터 조회 실패</span>
+      <span style="font-size:11px;color:#8E8E9A;word-break:break-all;">${a.error}</span>
+    </div>`;
+    return;
+  }
   const timing = a.timing || {};
   const curPrice = a.cur_price || a.current_price || 0;
   const chgPct = a.cur_change_pct || 0;

@@ -908,8 +908,9 @@ def watchlist_detail(code: str, user=Depends(get_current_user)):
         news = fetch_stock_news(code, item.get("name", code))
         analysis["news"] = news[:3]
     except Exception as e:
-        analysis = {"error": str(e)}
-    return {"item": item, "analysis": analysis}
+        import traceback
+        analysis = {"error": str(e), "traceback": traceback.format_exc()}
+    return _to_python({"item": item, "analysis": analysis})
 
 # ─────────────────────────────────────────────────────────
 # 종목 검색 API
