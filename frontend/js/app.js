@@ -1420,6 +1420,8 @@ async function loadHoldingDetail(code, name) {
     setTimeout(() => drawPriceChart(
       a.ohlcv, d.holding?.avg_price, t.target_price, t.stop_price
     ), 50);
+    // 뉴스 비동기 로드
+    loadHoldingDetailNews(code, d.holding?.name || name, el);
   } catch(e) {
     el.innerHTML = `<div class="loading">분석 데이터를 불러오지 못했습니다<br><small>${e.message||''}</small></div>`;
   }
@@ -1548,15 +1550,8 @@ function renderHoldingDetail(d, el) {
   const rrCls = rr >= 2 ? '#27500A' : rr >= 1 ? '#BA7517' : '#A32D2D';
   const rrLbl = rr >= 2 ? '✅ 양호' : rr >= 1 ? '⚠️ 보통' : '❌ 불리';
 
-  // ── 뉴스 ──
-  const newsHtml = (a.news||[]).slice(0,3).map(n => {
-    const bdg = n.sentiment === 'positive' ? 'badge-pos' : n.sentiment === 'negative' ? 'badge-neg' : 'badge-mix';
-    const briefHtml = n.brief ? `<div class="news-brief">💡 ${n.brief}</div>` : '';
-    return `<div class="news-card">
-      <div class="news-card-top"><span class="badge ${bdg}">${n.label||'중립'}</span><span class="news-source">${n.source||''} · ${n.published||''}</span></div>
-      <div class="news-title">${n.title||''}</div>${briefHtml}
-    </div>`;
-  }).join('');
+  // 뉴스는 비동기 로드 (loadHoldingDetailNews)
+  const newsHtml = '';
 
   // 바닥 지지선 배지 (현재위/근접/주요지지)
   const supBadge = (dist) => {
@@ -1747,11 +1742,10 @@ function renderHoldingDetail(d, el) {
       `).join('')}
     </div>` : ''}
 
-    <!-- 뉴스 -->
-    ${newsHtml ? `<div class="section">
+    <!-- 뉴스 (비동기 로드) -->
+    <div class="section" id="holding-news-section">
       <div class="sec-title"><i class="ti ti-news" style="font-size:15px;color:#5B5BD6;"></i>${h.name} 뉴스</div>
-      ${newsHtml}
-    </div>` : ''}
+    </div>
 
     <!-- 손절 기준 확인 -->
     ${(() => {
@@ -2172,6 +2166,27 @@ async function loadWatchlistDetail(code, name) {
       <span style="color:#E24B4A;">데이터 조회 실패</span>
       <span style="font-size:11px;color:#8E8E9A;">${e.message||''}</span>
     </div>`;
+  }
+}
+
+async function loadHoldingDetailNews(code, name, containerEl) {
+  const newsEl = containerEl.querySelector('#holding-news-section');
+  if (!newsEl) return;
+  newsEl.innerHTML += '<div style="text-align:center;padding:8px;color:#8E8E9A;font-size:12px;">뉴스 로딩 중...</div>';
+  try {
+    const r = await api('GET', `/api/stock/${code}/news`);
+    const items = (r.news || []).slice(0, 3);
+    const secTitle = `<div class="sec-title"><i class="ti ti-news" style="font-size:15px;color:#5B5BD6;"></i>${name} 뉴스</div>`;
+    if (!items.length) { newsEl.innerHTML = secTitle; return; }
+    newsEl.innerHTML = secTitle + items.map(n => {
+      const bdg = n.sentiment === 'positive' ? 'badge-pos' : n.sentiment === 'negative' ? 'badge-neg' : 'badge-mix';
+      return `<div class="news-card">
+        <div class="news-card-top"><span class="badge ${bdg}">${n.label||'중립'}</span><span class="news-source">${n.source||''} · ${n.published||''}</span></div>
+        <div class="news-title">${n.title||''}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    newsEl.innerHTML = '';
   }
 }
 

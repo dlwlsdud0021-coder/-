@@ -813,12 +813,8 @@ def holding_detail(code: str, user=Depends(get_current_user)):
     except Exception as e:
         analysis["ohlcv"] = []
 
-    # 6) 종목 뉴스
-    try:
-        news = fetch_stock_news(h["name"])
-        analysis["news"] = news[:3]
-    except Exception:
-        analysis["news"] = []
+    # 6) 종목 뉴스 — 비동기 분리 (/api/stock/{code}/news 별도 호출)
+    analysis["news"] = []
 
     # 7) DART 공시
     try:
