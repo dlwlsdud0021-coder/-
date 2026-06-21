@@ -1855,7 +1855,7 @@ function renderHoldingDetail(d, el) {
         ${_buildFlowChart(a.vol_list || [], invList)}
         <div style="display:flex;gap:16px;margin-top:10px;font-size:12px;">
           <span style="color:${foreignNet>=0?'#E24B4A':'#185FA5'};font-weight:600;">외국인 3일 ${foreignNet>=0?'+':''}${foreignNet.toLocaleString()}주</span>
-          <span style="color:${instNet>=0?'#F5A623':'#30D158'};font-weight:600;">기관 3일 ${instNet>=0?'+':''}${instNet.toLocaleString()}주</span>
+          <span style="color:${instNet>=0?'#F5A623':'#8E4EC6'};font-weight:600;">기관 3일 ${instNet>=0?'+':''}${instNet.toLocaleString()}주</span>
         </div>
       </div>
     </div>` : ''}
@@ -2756,7 +2756,7 @@ function renderWatchlistDetail(d, el, code, name) {
         ${_buildFlowChart(a.vol_list || [], invList)}
         <div style="display:flex;gap:16px;margin-top:10px;font-size:12px;">
           <span style="color:${foreignNet>=0?'#E24B4A':'#185FA5'};font-weight:600;">외국인 3일 ${foreignNet>=0?'+':''}${foreignNet.toLocaleString()}주</span>
-          <span style="color:${instNet>=0?'#F5A623':'#30D158'};font-weight:600;">기관 3일 ${instNet>=0?'+':''}${instNet.toLocaleString()}주</span>
+          <span style="color:${instNet>=0?'#F5A623':'#8E4EC6'};font-weight:600;">기관 3일 ${instNet>=0?'+':''}${instNet.toLocaleString()}주</span>
         </div>
       </div>
     </div>` : ''}
@@ -3171,17 +3171,18 @@ function _buildFlowChart(volList, invList) {
     const fy = d.foreign >= 0 ? midY - fH : midY;
     const iy = d.inst >= 0 ? midY - iH : midY;
     return `<rect x="${x}" y="${fy}" width="${halfW}" height="${fH}" rx="1" fill="${d.foreign>=0?'#E24B4A':'#185FA5'}"/>
-      <rect x="${x+halfW+1}" y="${iy}" width="${halfW}" height="${iH}" rx="1" fill="${d.inst>=0?'#F5A623':'#30D158'}"/>`;
+      <rect x="${x+halfW+1}" y="${iy}" width="${halfW}" height="${iH}" rx="1" fill="${d.inst>=0?'#F5A623':'#8E4EC6'}"/>`;
   }).join('');
 
   return `
     <div style="font-size:11px;font-weight:600;color:#3C3C43;margin-bottom:6px;">거래량 추이</div>
     <svg viewBox="0 0 ${W} ${H_VOL+14}" style="width:100%;overflow:visible;">${volBars}</svg>
-    <div style="display:flex;gap:12px;margin:10px 0 6px;font-size:10px;color:#8E8E9A;align-items:center;">
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 6px;font-size:10px;color:#8E8E9A;align-items:center;">
       <span style="font-weight:600;color:#3C3C43;">외국인·기관 수급</span>
       <span><span style="display:inline-block;width:8px;height:8px;background:#E24B4A;border-radius:2px;margin-right:3px;"></span>외국인매수</span>
       <span><span style="display:inline-block;width:8px;height:8px;background:#185FA5;border-radius:2px;margin-right:3px;"></span>외국인매도</span>
       <span><span style="display:inline-block;width:8px;height:8px;background:#F5A623;border-radius:2px;margin-right:3px;"></span>기관매수</span>
+      <span><span style="display:inline-block;width:8px;height:8px;background:#8E4EC6;border-radius:2px;margin-right:3px;"></span>기관매도</span>
     </div>
     <svg viewBox="0 0 ${W} ${H_FLOW}" style="width:100%;overflow:visible;">
       <line x1="0" y1="${midY}" x2="${W}" y2="${midY}" stroke="#F0F0F5" stroke-width="1"/>
