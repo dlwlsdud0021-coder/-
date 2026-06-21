@@ -488,9 +488,14 @@ async function loadNews(force) {
   if (_newsLoaded && !force) return;
   _newsLoaded = true;
   const el = document.getElementById('news-content');
-  el.innerHTML = '<div class="loading"><div class="spinner"></div> 시황 분석 중...</div>';
+  if (force) {
+    el.innerHTML = '<div class="loading"><div class="spinner"></div> 시황 새로고침 중...</div>';
+  } else {
+    el.innerHTML = '<div class="loading"><div class="spinner"></div> 시황 분석 중...</div>';
+  }
   try {
-    const d = await api('GET', '/api/sentiment', null, 120000);
+    const url = force ? '/api/sentiment?force=true' : '/api/sentiment';
+    const d = await api('GET', url, null, 120000);
     renderSentiment(d);
   } catch(e) {
     el.innerHTML = `<div class="loading" style="flex-direction:column;gap:8px;">
@@ -599,8 +604,22 @@ function renderSentiment(d) {
   const secLabel = (title) => `<div style="font-size:13px;font-weight:700;color:#1C1C1E;margin:16px 0 8px;">${title}</div>`;
 
   el.innerHTML = `
+    <!-- 업데이트 시간 + 새로고침 -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:12px 0 8px;">
+      <div>
+        <span style="font-size:11px;color:#8E8E9A;">${d.market_note||''}</span>
+        ${d.base_date ? `<span style="font-size:11px;color:#C7C7CC;margin-left:4px;">· ${d.base_date}</span>` : ''}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        ${d.updated_at ? `<span style="font-size:11px;color:#C7C7CC;">업데이트 ${d.updated_at}</span>` : ''}
+        <button onclick="_newsLoaded=false;loadNews(true);" style="display:flex;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:8px;background:#F2F2F7;">
+          <i class="ti ti-refresh" style="font-size:14px;color:#5B5BD6;"></i>
+          <span style="font-size:11px;color:#5B5BD6;font-weight:600;">새로고침</span>
+        </button>
+      </div>
+    </div>
     <!-- 투자심리 지수 -->
-    <div class="card" style="margin:12px 0 10px;">
+    <div class="card" style="margin:0 0 10px;">
       <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:4px;">
         <span style="font-size:13px;color:#8E8E9A;">투자심리 지수</span>
         <button onclick="showSentimentInfo()" style="width:18px;height:18px;border-radius:50%;background:#F0F0F5;border:none;cursor:pointer;font-size:11px;font-weight:700;color:#8E8E9A;line-height:18px;padding:0;display:flex;align-items:center;justify-content:center;">?</button>

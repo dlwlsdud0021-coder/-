@@ -809,9 +809,16 @@ def _get_top_volume(n: int = 5) -> list:
         return []
 
 
+_sentiment_cache: dict = {"data": None, "ts": 0}
+_SENTIMENT_TTL = 3600  # 1시간 캐시
+
 @app.get("/api/sentiment")
-def get_sentiment():
-    import concurrent.futures
+def get_sentiment(force: bool = False):
+    import concurrent.futures, time
+    now = time.time()
+    if not force and _sentiment_cache["data"] and (now - _sentiment_cache["ts"]) < _SENTIMENT_TTL:
+        _logger.info("[시황] 캐시 반환")
+        return _sentiment_cache["data"]
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
             f_sent   = pool.submit(_calc_sentiment_index)
@@ -821,23 +828,42 @@ def get_sentiment():
             f_netbuy = pool.submit(_get_top_net_buy, 5)
             f_vol    = pool.submit(_get_top_volume, 5)
             sentiment  = f_sent.result(timeout=30)
-            fx         = f_fx.result(timeout=10)
-            futures    = f_fut.result(timeout=10)
-            sectors    = f_sector.result(timeout=20)
-            net_buy    = f_netbuy.result(timeout=20)
-            top_volume = f_vol.result(timeout=20)
-        return _to_python({
-            "sentiment":  sentiment,
-            "fx":         fx,
-            "us_futures": futures,
-            "sectors":    sectors,
-            "net_buy":    net_buy,
-            "top_volume": top_volume,
+            fx         = f_fx.result(timeout=15)
+            futures    = f_fut.result(timeout=15)
+            sectors    = f_sector.result(timeout=25)
+            net_buy    = f_netbuy.result(timeout=25)
+            top_volume = f_vol.result(timeout=25)
+
+        # 주말/장외 여부
+        from home_analysis import is_market_open
+        from market_data import _last_trading_date
+        import datetime as _dt
+        now_kst = _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=9)))
+        is_weekend = now_kst.weekday() >= 5
+        is_after_hours = not is_market_open()
+        base_date = _last_trading_date()
+        base_date_str = f"{base_date[:4]}.{base_date[4:6]}.{base_date[6:]} 기준"
+        market_note = "주말 — 최근 거래일" if is_weekend else ("장 마감 후" if is_after_hours else "실시간")
+
+        result = _to_python({
+            "sentiment":    sentiment,
+            "fx":           fx,
+            "us_futures":   futures,
+            "sectors":      sectors,
+            "net_buy":      net_buy,
+            "top_volume":   top_volume,
+            "updated_at":   now_kst.strftime("%m/%d %H:%M"),
+            "base_date":    base_date_str,
+            "market_note":  market_note,
         })
+        _sentiment_cache["data"] = result
+        _sentiment_cache["ts"]   = now
+        return result
     except Exception as e:
         _logger.error(f"[시황] API 오류: {e}")
         return {"sentiment": {"score": 50, "label": "중립", "color": "#8E8E9A", "factors": [], "factor_details": []},
-                "fx": [], "us_futures": [], "sectors": [], "net_buy": {"foreign":[],"institution":[]}, "top_volume": []}
+                "fx": [], "us_futures": [], "sectors": [], "net_buy": {"foreign":[],"institution":[]}, "top_volume": [],
+                "updated_at": "", "base_date": "", "market_note": ""}
 
 # ─────────────────────────────────────────────────────────
 # 뉴스 API
