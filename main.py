@@ -852,7 +852,7 @@ def _get_top_volume(n: int = 5) -> list:
 
 
 _sentiment_cache: dict = {"data": None, "ts": 0}
-_SENTIMENT_TTL = 3600  # 1시간 캐시
+_SENTIMENT_TTL = 300  # 5분 캐시
 
 @app.get("/api/sentiment")
 def get_sentiment(force: bool = False):
