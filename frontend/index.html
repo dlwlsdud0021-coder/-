@@ -406,26 +406,20 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
 </div>
 
 <!-- ═══════════════════════════════════════════════════════
-     뉴스 탭
+     시황 탭
 ════════════════════════════════════════════════════════ -->
 <div id="screen-news" class="screen">
   <div class="header">
     <div>
-      <div class="header-title">오늘의 시장 뉴스</div>
-      <div class="header-sub">AI 분석 포함</div>
+      <div class="header-title">시황</div>
+      <div class="header-sub">투자심리 · 주요뉴스 · AI분석</div>
     </div>
     <div class="header-icons">
       <i class="ti ti-refresh" onclick="loadNews(true)"></i>
     </div>
   </div>
-  <div class="filter-row" id="news-filter-row">
-    <button class="filter-btn active" onclick="filterNews('전체', this)">전체</button>
-    <button class="filter-btn inactive" onclick="filterNews('긍정', this)">긍정</button>
-    <button class="filter-btn inactive" onclick="filterNews('부정', this)">부정</button>
-    <button class="filter-btn inactive" onclick="filterNews('혼조', this)">혼조</button>
-  </div>
   <div id="news-content">
-    <div class="loading"><div class="spinner"></div> 뉴스 불러오는 중...</div>
+    <div class="loading"><div class="spinner"></div> 시황 불러오는 중...</div>
   </div>
 </div>
 
@@ -623,10 +617,10 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
     <i class="ti ti-chart-bar"></i><span>매집</span>
   </button>
   <button class="nav-item" id="nav-news" onclick="switchTab('news')">
-    <i class="ti ti-news"></i><span>뉴스</span>
+    <i class="ti ti-chart-line"></i><span>시황</span>
   </button>
 </nav>
 
-<script src="/js/app.js?v=20260621r"></script>
+<script src="/js/app.js?v=20260621s"></script>
 </body>
 </html>

@@ -507,6 +507,96 @@ def market_data():
         return {"error": str(e)}
 
 # ─────────────────────────────────────────────────────────
+# 시황 API (투자심리지수 + 뉴스 + AI분석)
+# ─────────────────────────────────────────────────────────
+def _calc_sentiment_index() -> dict:
+    """한국 시장 투자심리지수 계산 (0~100)"""
+    score = 50  # 기본값
+    factors = []
+    try:
+        idx = get_index_data()
+        kospi = next((x for x in (idx or []) if x.get("name") == "KOSPI"), None)
+        if kospi:
+            chg = kospi.get("change_pct", 0) or 0
+            score += chg * 3
+            if chg > 0: factors.append(f"KOSPI {chg:+.2f}% 상승")
+            elif chg < 0: factors.append(f"KOSPI {chg:+.2f}% 하락")
+    except: pass
+    try:
+        inv = get_kospi_investor(days=5)
+        if inv is not None and not inv.empty:
+            f_net = int(inv["외국인"].tail(3).sum()) if "외국인" in inv.columns else 0
+            i_net = int(inv["기관"].tail(3).sum()) if "기관" in inv.columns else 0
+            if f_net > 0: score += 8; factors.append("외국인 3일 순매수")
+            elif f_net < 0: score -= 8; factors.append("외국인 3일 순매도")
+            if i_net > 0: score += 5; factors.append("기관 3일 순매수")
+            elif i_net < 0: score -= 5; factors.append("기관 3일 순매도")
+    except: pass
+    try:
+        ohlcv = get_index_ohlcv_history("KOSPI", days=20)
+        if ohlcv is not None and not ohlcv.empty and len(ohlcv) >= 5:
+            closes = ohlcv["close"].values if "close" in ohlcv.columns else ohlcv.iloc[:, 3].values
+            ma5 = float(closes[-5:].mean())
+            cur = float(closes[-1])
+            if cur > ma5: score += 7; factors.append("KOSPI 5일 이평 위")
+            else: score -= 7; factors.append("KOSPI 5일 이평 아래")
+    except: pass
+    score = max(0, min(100, round(score)))
+    if score >= 75: label, desc, color = "극단적 탐욕", "시장이 과열 상태예요. 단기 조정 가능성이 높아요.", "#E24B4A"
+    elif score >= 55: label, desc, color = "탐욕", "투자자들이 적극적으로 매수하고 있어요.", "#F5A623"
+    elif score >= 45: label, desc, color = "중립", "시장이 균형 잡힌 상태예요.", "#8E8E9A"
+    elif score >= 25: label, desc, color = "공포", "투자자들이 불안해하며 매도하고 있어요.", "#5B5BD6"
+    else: label, desc, color = "극단적 공포", "시장이 패닉 상태예요. 역발상으로 매수 기회일 수 있어요.", "#27500A"
+    return {"score": score, "label": label, "desc": desc, "color": color, "factors": factors}
+
+@app.get("/api/sentiment")
+def get_sentiment():
+    try:
+        sentiment = _calc_sentiment_index()
+        raw = fetch_market_news(max_items=10)
+        ranked = rank_by_importance(raw)[:5]
+        news_list = []
+        for item in ranked:
+            s = classify_sentiment((item.get("title","")) + " " + (item.get("summary","")))
+            news_list.append({
+                "title":   item.get("title",""),
+                "summary": item.get("summary",""),
+                "source":  item.get("source",""),
+                "published": item.get("published",""),
+                "link":    item.get("link",""),
+                "sentiment": s["sentiment"],
+                "label":   s["label"],
+            })
+        # AI 종합 분석
+        ai_analysis = ""
+        try:
+            headlines = "\n".join([f"- {n['title']}" for n in news_list])
+            pos = sum(1 for n in news_list if n["sentiment"] == "positive")
+            neg = sum(1 for n in news_list if n["sentiment"] == "negative")
+            tone = "긍정적" if pos > neg else "부정적" if neg > pos else "혼조"
+            from news import _call_gemini
+            prompt = f"""오늘 한국 주식시장 주요 뉴스 {len(news_list)}개를 분석해줘.
+
+뉴스 목록:
+{headlines}
+
+투자심리지수: {sentiment['score']}점 ({sentiment['label']})
+전체 뉴스 감성: {tone} ({pos}개 긍정, {neg}개 부정)
+
+다음 형식으로 시장 분석을 작성해줘 (친근하고 자세하게, 존댓말):
+1. 오늘 시장 전체 분위기 (2~3문장)
+2. 주목할 섹터나 테마 (1~2개)
+3. 투자자 대응 전략 (2~3문장)
+
+200자 이내로 핵심만."""
+            ai_analysis = _call_gemini(prompt) or ""
+        except: pass
+        return {"sentiment": sentiment, "news": news_list, "ai_analysis": ai_analysis}
+    except Exception as e:
+        return {"sentiment": {"score": 50, "label": "중립", "desc": "", "color": "#8E8E9A", "factors": []},
+                "news": [], "ai_analysis": "", "error": str(e)}
+
+# ─────────────────────────────────────────────────────────
 # 뉴스 API
 # ─────────────────────────────────────────────────────────
 @app.get("/api/news")

@@ -363,169 +363,117 @@ function buildInvestorSection(investor) {
 }
 
 // ─────────────────────────────────────────────────────────
-// 뉴스 탭
+// 시황 탭
 // ─────────────────────────────────────────────────────────
 let _newsLoaded = false;
-let _newsFilter = '전체';
 async function loadNews(force) {
   if (_newsLoaded && !force) return;
   _newsLoaded = true;
   const el = document.getElementById('news-content');
-  el.innerHTML = '<div class="loading"><div class="spinner"></div> 뉴스 불러오는 중...</div>';
+  el.innerHTML = '<div class="loading"><div class="spinner"></div> 시황 분석 중...</div>';
   try {
-    const d = await api('GET', '/api/news', null, 90000);
-    _allNews = d.news || [];
-    renderNews();
+    const d = await api('GET', '/api/sentiment', null, 120000);
+    renderSentiment(d);
   } catch(e) {
     el.innerHTML = `<div class="loading" style="flex-direction:column;gap:8px;">
-      <span>뉴스를 불러오지 못했습니다</span>
-      <span style="font-size:11px;color:#C7C7CC;">${e.message||''}</span>
+      <span>시황을 불러오지 못했습니다</span>
       <button class="btn-secondary" style="margin-top:8px;" onclick="loadNews(true)">다시 시도</button>
     </div>`;
   }
 }
 
-function filterNews(filter, btn) {
-  _newsFilter = filter;
-  document.querySelectorAll('#news-filter-row .filter-btn').forEach(b => {
-    b.className = 'filter-btn ' + (b === btn ? 'active' : 'inactive');
-  });
-  renderNews();
-}
-
-function renderNews() {
+function renderSentiment(d) {
   const el = document.getElementById('news-content');
-  let news = _allNews;
-  if (_newsFilter !== '전체') {
-    const map = {'긍정': 'positive', '부정': 'negative', '혼조': 'mixed'};
-    news = news.filter(n => n.sentiment === map[_newsFilter]);
-  }
-  if (!news.length) {
-    el.innerHTML = '<div class="empty-state"><i class="ti ti-news"></i>뉴스가 없습니다</div>';
-    return;
-  }
+  const s = d.sentiment || {};
+  const score = s.score ?? 50;
+  const label = s.label || '중립';
+  const desc  = s.desc  || '';
+  const color = s.color || '#8E8E9A';
+  const factors = s.factors || [];
 
-  const catLabelMap = {
-    '반도체': '💻 반도체·AI 업종 관련',
-    '바이오': '🧬 바이오·제약 업종 관련',
-    '2차전지': '🔋 2차전지·배터리 업종 관련',
-    '금융': '🏦 금융·증권 업종 관련',
-    '글로벌': '🌐 글로벌 시장 관련',
-    '전체': '📈 전체 시장 관련',
-  };
-  const briefStrategyMap = {
-    'positive': '장 초반 관련 종목 주가 반응을 먼저 확인하고, 상승 추세가 이어지면 분할 매수 진입을 고려하세요.',
-    'negative': '장 초반 주가 반응을 보고, 추가 하락이 예상되면 손절 또는 비중 축소를 검토하세요.',
-    'mixed':    '장 초반 관련 종목 주가 반응을 먼저 보고, 상승하면 추세 진입, 하락하면 관망을 권장합니다.',
-    'neutral':  '직접적 영향이 제한적일 수 있어 시장 전반 흐름을 참고하며 포트폴리오를 점검하세요.',
-  };
+  // 게이지 색상 구간
+  const gaugeGrad = `linear-gradient(90deg, #27500A 0%, #5B5BD6 40%, #F5A623 70%, #E24B4A 100%)`;
 
-  // 상대 시간 계산 ("2시간 전", "3일 전" 등)
-  function relTime(pub) {
-    if (!pub) return '';
-    try {
-      const now = Date.now();
-      // "06/15" 또는 "2026.06.15" 또는 ISO 형식 처리
-      let d;
-      if (/^\d{2}\/\d{2}$/.test(pub)) {
-        const y = new Date().getFullYear();
-        d = new Date(`${y}-${pub.replace('/','-')}`);
-      } else {
-        d = new Date(pub.replace(/\./g, '-'));
-      }
-      if (isNaN(d)) return pub;
-      const diff = now - d.getTime();
-      const mins = Math.floor(diff / 60000);
-      if (mins < 60) return `${mins}분 전`;
-      const hrs = Math.floor(mins / 60);
-      if (hrs < 24) return `${hrs}시간 전`;
-      const days = Math.floor(hrs / 24);
-      if (days < 7) return `${days}일 전`;
-      return pub;
-    } catch { return pub; }
-  }
+  // 점수별 설명 상세
+  const detailMap = [
+    { min:75, title:'극단적 탐욕 — 조심할 때예요', body:'시장 참여자 대부분이 낙관적이에요. 이런 상황에서는 주가가 실제 가치보다 높게 형성되는 경우가 많아요. 신규 매수보다는 보유 종목 수익 실현을 고려해보세요. 역사적으로 "모두가 사고 싶을 때가 팔 때"인 경우가 많았어요.' },
+    { min:55, title:'탐욕 — 시장이 달아오르고 있어요', body:'투자자들이 적극적으로 매수에 나서고 있어요. 상승 모멘텀이 유지되고 있지만, 과열 구간 진입 전 분할 매도로 수익을 일부 챙기는 전략도 고려해볼 만해요.' },
+    { min:45, title:'중립 — 균형 잡힌 시장이에요', body:'시장이 뚜렷한 방향 없이 보합세를 보이고 있어요. 관심 종목을 차분히 분석하고 매수 기회를 탐색하기 좋은 시기예요. 급하게 결정하기보다는 기다리는 전략이 유리해요.' },
+    { min:25, title:'공포 — 투자자들이 불안해하고 있어요', body:'시장 참여자들이 손실을 두려워하며 매도하고 있어요. 하지만 이런 공포가 극에 달할 때가 종종 좋은 매수 기회가 됐어요. 우량 종목 위주로 분할 매수 전략을 검토해보세요.' },
+    { min:0,  title:'극단적 공포 — 패닉 상태예요', body:'시장이 극도의 공포 상태예요. 단기적으로 변동성이 크지만, 역사적으로 이런 극단적 공포 구간 이후 강한 반등이 나온 경우가 많았어요. 장기 투자 관점에서 분할 매수를 고려해볼 시기예요.' },
+  ];
+  const detail = detailMap.find(x => score >= x.min) || detailMap[detailMap.length-1];
 
-  const html = news.map((n, i) => {
-    const bdg = n.sentiment === 'positive' ? 'badge-pos' : n.sentiment === 'negative' ? 'badge-neg' : 'badge-mix';
+  // 뉴스 카드
+  const news = d.news || [];
+  const newsHtml = news.map((n, i) => {
+    const bdgCls = n.sentiment === 'positive' ? 'badge-pos' : n.sentiment === 'negative' ? 'badge-neg' : 'badge-mix';
     const lbl = n.label || (n.sentiment === 'positive' ? '긍정' : n.sentiment === 'negative' ? '부정' : '혼조');
-    const borderClass = n.sentiment === 'positive' ? 'positive' : n.sentiment === 'negative' ? 'negative' : 'mixed';
-    const catLabel = catLabelMap[n.category] || '📈 전체 시장 관련';
-    const timeStr = relTime(n.published);
-    const sourceStr = [n.source, n.published ? n.published.slice(0,5) : ''].filter(Boolean).join(' · ');
-
-    // 카드 본문: brief > summary 앞부분
-    const summaryText = n.brief || (n.summary ? n.summary.slice(0, 130) + (n.summary.length > 130 ? '...' : '') : '');
-
-    // ai_summary에서 "📋 이 뉴스는?" 이후 텍스트 추출 (<b> 태그 포함 패턴)
-    let aiText = '';
-    if (n.ai_summary) {
-      // 패턴: <b>📋 이 뉴스는?</b><br>텍스트
-      const m = n.ai_summary.match(/이 뉴스는\?<\/b><br>([\s\S]+)$/) ||
-                n.ai_summary.match(/이 뉴스는\?<br>([\s\S]+)$/);
-      if (m) {
-        aiText = m[1].trim();
-      } else {
-        // HTML 태그 제거 후 텍스트만
-        aiText = n.ai_summary
-          .replace(/<[^>]+>/g, '')
-          .replace(/🔍\s*감지된 키워드/g, '')
-          .replace(/📋\s*이 뉴스는\?/g, '')
-          .trim();
-      }
-    }
-
-    // 키워드 배지 섹션 (kw_section - <span> 배지들)
-    let kwHtml = '';
-    if (n.ai_summary) {
-      const kwMatch = n.ai_summary.match(/^([\s\S]*?)(?=<b>📋|📋)/);
-      if (kwMatch && kwMatch[1].includes('<span')) kwHtml = kwMatch[1].trim();
-    }
-
-    const briefStrategy = briefStrategyMap[n.sentiment] || briefStrategyMap['neutral'];
-
-    // 관련 종목 칩
-    const stocks = Array.isArray(n.related_stocks) ? n.related_stocks : [];
-    const stocksHtml = stocks.slice(0, 3).map(s => {
-      const nm = typeof s === 'object' ? (s.name || '') : s;
-      return `<span style="padding:3px 10px;border-radius:20px;background:#F0F0F5;color:#3C3C43;font-size:11px;font-weight:500;">${nm}</span>`;
-    }).join('');
-
-    return `<div class="news-card ${borderClass}" style="margin-bottom:12px;cursor:pointer;" onclick="openNewsDetail(${i})">
-      <!-- 헤더: 감성 배지 + 출처 -->
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
-        <span class="badge ${bdg}">${lbl}</span>
-        <span style="font-size:11px;color:#8E8E9A;margin-left:auto;">${sourceStr}</span>
+    const summary = n.summary ? n.summary.slice(0, 100) + (n.summary.length > 100 ? '...' : '') : '';
+    const src = [n.source, n.published ? n.published.slice(0,5) : ''].filter(Boolean).join(' · ');
+    return `<div class="card" style="margin-bottom:10px;cursor:pointer;" onclick="openNewsDetailFromSentiment(${i})">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+        <span class="badge ${bdgCls}" style="font-size:11px;">${lbl}</span>
+        <span style="font-size:11px;color:#8E8E9A;margin-left:auto;">${src}</span>
       </div>
-      <!-- 제목: 줄바꿈 허용 -->
-      <div style="font-size:15px;font-weight:700;color:#1C1C1E;line-height:1.5;margin-bottom:8px;">${n.title||''}</div>
-      <!-- 기사 요약 -->
-      ${summaryText ? `<div style="font-size:12px;color:#8E8E9A;line-height:1.65;margin-bottom:10px;">${summaryText}</div>` : ''}
-      <!-- AI 분석 -->
-      ${aiText ? `<div style="border-top:1px solid #F0F0F5;padding-top:12px;">
-        <div style="display:flex;align-items:center;gap:5px;margin-bottom:8px;">
-          <i class="ti ti-sparkles" style="font-size:13px;color:#5B5BD6;"></i>
-          <span style="font-size:12px;font-weight:700;color:#5B5BD6;">AI 분석</span>
-        </div>
-        <div style="font-size:11px;color:#8E8E9A;font-weight:600;margin-bottom:6px;">${catLabel}</div>
-        ${kwHtml ? `<div style="margin-bottom:6px;line-height:2;">${kwHtml}</div>` : ''}
-        <div style="font-size:13px;color:#3C3C43;line-height:1.7;margin-bottom:10px;">${aiText}</div>
-        <div style="margin-bottom:10px;">
-          <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
-            <span style="font-size:13px;">☀️</span>
-            <span style="font-size:12px;font-weight:700;color:#3C3C43;">대응 전략</span>
-          </div>
-          <div style="font-size:13px;color:#3C3C43;line-height:1.65;">${briefStrategy}</div>
-        </div>
-      </div>` : ''}
-      <!-- 푸터: 시간 + 관련 종목 -->
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;${aiText?'':'margin-top:8px;'}">
-        <span style="font-size:11px;color:#C7C7CC;">${timeStr}</span>
-        <div style="display:flex;gap:5px;flex-wrap:wrap;">${stocksHtml}</div>
-      </div>
+      <div style="font-size:14px;font-weight:700;color:#1C1C1E;line-height:1.5;margin-bottom:${summary?'6px':'0'};">${n.title||''}</div>
+      ${summary ? `<div style="font-size:12px;color:#8E8E9A;line-height:1.6;">${summary}</div>` : ''}
     </div>`;
   }).join('');
 
-  el.innerHTML = `<div class="section" style="margin-top:12px;">${html}</div>`;
+  // AI 종합 분석
+  const aiHtml = d.ai_analysis ? `
+    <div class="card" style="margin-bottom:12px;background:linear-gradient(135deg,#F5F3FF,#EEF2FF);">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+        <i class="ti ti-sparkles" style="font-size:15px;color:#5B5BD6;"></i>
+        <span style="font-size:14px;font-weight:700;color:#5B5BD6;">AI 시황 분석</span>
+      </div>
+      <div style="font-size:13px;color:#3C3C43;line-height:1.8;white-space:pre-line;">${d.ai_analysis}</div>
+    </div>` : '';
+
+  el.innerHTML = `
+    <!-- 투자심리 지수 -->
+    <div class="card" style="margin:12px 0 10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div>
+          <div style="font-size:13px;color:#8E8E9A;margin-bottom:2px;">투자심리 지수</div>
+          <div style="font-size:26px;font-weight:800;color:${color};">${score}<span style="font-size:14px;font-weight:500;margin-left:4px;">/ 100</span></div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:18px;font-weight:700;color:${color};">${label}</div>
+          <div style="font-size:11px;color:#8E8E9A;margin-top:2px;">${factors.slice(0,2).join(' · ')}</div>
+        </div>
+      </div>
+      <!-- 게이지 바 -->
+      <div style="position:relative;height:10px;border-radius:10px;background:#F0F0F5;margin-bottom:6px;overflow:hidden;">
+        <div style="height:100%;width:100%;background:${gaugeGrad};border-radius:10px;opacity:0.25;position:absolute;left:0;top:0;"></div>
+        <div style="position:absolute;top:50%;left:${score}%;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.2);"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:#C7C7CC;margin-bottom:14px;">
+        <span>극단적 공포</span><span>중립</span><span>극단적 탐욕</span>
+      </div>
+      <!-- 설명 -->
+      <div style="border-top:1px solid #F0F0F5;padding-top:12px;">
+        <div style="font-size:13px;font-weight:700;color:#1C1C1E;margin-bottom:6px;">${detail.title}</div>
+        <div style="font-size:13px;color:#3C3C43;line-height:1.75;">${detail.body}</div>
+      </div>
+    </div>
+
+    <!-- 오늘의 주요 뉴스 -->
+    <div style="font-size:13px;font-weight:700;color:#1C1C1E;margin:16px 0 8px;">오늘의 주요 뉴스</div>
+    ${newsHtml || '<div class="empty-state">뉴스가 없습니다</div>'}
+
+    <!-- AI 종합 분석 -->
+    ${news.length ? `<div style="font-size:13px;font-weight:700;color:#1C1C1E;margin:16px 0 8px;">AI 시황 분석</div>` : ''}
+    ${aiHtml}
+  `;
+
+  // 뉴스 상세용 전역 저장
+  _allNews = news;
+}
+
+function openNewsDetailFromSentiment(i) {
+  openNewsDetail(i);
 }
 
 // ─────────────────────────────────────────────────────────
