@@ -893,6 +893,39 @@ def watchlist_detail(code: str, user=Depends(get_current_user)):
         analysis["cur_volume"]    = pd2.get("volume", 0) or (int(last["volume"]) if last is not None else 0)
         timing = watchlist_timing(analysis, item.get("target_price"), item.get("stop_loss"))
         analysis["timing"] = timing
+        # AI 추천 목표가/손절가 계산
+        try:
+            boll = analysis.get("bollinger", {})
+            ma20 = analysis.get("ma20")
+            ma60 = analysis.get("ma60")
+            boll_upper = boll.get("upper")
+            boll_lower = boll.get("lower")
+            tp, tb = None, ""
+            if boll_upper and boll_upper > cur:
+                tp = round(boll_upper / 100) * 100; tb = "볼린저 상단"
+            elif ohlcv_ok:
+                high60 = float(ohlcv["high"].tail(60).max())
+                if high60 > cur * 1.03:
+                    tp = round(high60 / 100) * 100; tb = "60일 고점"
+            if not tp:
+                tp = round(cur * 1.08 / 100) * 100; tb = "현재가 +8%"
+            sp, sb = None, ""
+            if boll_lower and boll_lower < cur:
+                sp = round(boll_lower / 100) * 100; sb = "볼린저 하단"
+            elif ma20 and ma20 * 0.97 < cur:
+                sp = round(ma20 * 0.97 / 100) * 100; sb = "20일선 -3%"
+            if not sp:
+                sp = round(cur * 0.95 / 100) * 100; sb = "현재가 -5%"
+            tu = round((tp - cur) / cur * 100, 1) if cur else 0
+            sd = round((sp - cur) / cur * 100, 1) if cur else 0
+            rr = round(abs(tu / sd), 1) if sd else 0
+            analysis["targets"] = {
+                "target_price": tp, "target_basis": tb, "target_upside": tu,
+                "stop_price": sp, "stop_basis": sb, "stop_downside": sd,
+                "risk_reward": rr,
+            }
+        except Exception:
+            pass
         # 수급 일별
         inv_list = []
         if inv is not None and not inv.empty:
