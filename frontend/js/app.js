@@ -1352,7 +1352,7 @@ function holdingCard(h) {
   return `<div class="card" style="position:relative;" onclick="openHoldingDetail('${h.code}', '${h.name}')">
     <button onclick="event.stopPropagation();confirmDeleteHolding('${h.code}','${h.name.replace(/'/g,"\\'")}');"
       style="position:absolute;top:10px;right:10px;background:none;border:none;cursor:pointer;padding:2px;line-height:1;z-index:1;">
-      <i class="ti ti-x" style="font-size:18px;color:#5B5BD6;"></i>
+      <i class="ti ti-trash" style="font-size:16px;color:#8E8E9A;"></i>
     </button>
     <div class="card-top" style="padding-right:28px;">
       <div class="stock-icon ${iconColors(h.name)}">${iconText(h.name)}</div>
