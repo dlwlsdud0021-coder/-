@@ -128,7 +128,7 @@ function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + id).classList.add('active');
   const nav = document.getElementById('bottom-nav');
-  const noNav = ['login', 'register', 'holding-detail', 'watchlist-detail', 'news-detail', 'index-detail', 'forecast-detail', 'supply-detail', 'scanner-detail'];
+  const noNav = ['login', 'register', 'holding-detail', 'watchlist-detail', 'news-detail', 'index-detail', 'forecast-detail', 'supply-detail', 'scanner-detail', 'analysis-detail'];
   nav.style.display = noNav.includes(id) ? 'none' : 'flex';
 }
 
@@ -259,17 +259,19 @@ function nowStr() {
 // 홈 탭
 // ─────────────────────────────────────────────────────────
 let _homeLoaded = false;
+let _homeData = null;
 async function loadHome(force) {
   if (_homeLoaded && !force) return;
   _homeLoaded = true;
   const el = document.getElementById('home-content');
-  const silent = force && el.children.length > 0; // 이미 콘텐츠 있으면 스피너 없이 갱신
+  const silent = force && el.children.length > 0;
   if (!silent) {
     el.innerHTML = '<div class="loading"><div class="spinner"></div> 시장 분석 중...</div>';
   }
   document.getElementById('home-date').textContent = nowStr();
   try {
     const d = await api('GET', '/api/home');
+    _homeData = d;
     renderHome(d, el);
   } catch(e) {
     el.innerHTML = `<div class="loading">데이터를 불러오지 못했습니다<br><small>${e.message}</small></div>`;
@@ -361,7 +363,7 @@ function renderHome(d, el) {
   const analysisSectionHtml = `<div class="section">
   <div class="sec-title" style="display:flex;align-items:center;">
     <i class="ti ti-search" style="font-size:15px;color:#5B5BD6;"></i>오늘 시장 분석
-    <span onclick="openIndexDetail('KOSPI')" style="margin-left:auto;font-size:12px;color:#5B5BD6;font-weight:600;cursor:pointer;">자세히 보기 <i class="ti ti-chevron-right" style="font-size:11px;"></i></span>
+    <span onclick="openAnalysisDetail()" style="margin-left:auto;font-size:12px;color:#5B5BD6;font-weight:600;cursor:pointer;">자세히 보기 <i class="ti ti-chevron-right" style="font-size:11px;"></i></span>
   </div>
   <div style="display:flex;gap:10px;overflow-x:auto;padding:0 16px 4px;margin:0 -16px;-webkit-overflow-scrolling:touch;scrollbar-width:none;">
     ${analysisCards || '<div class="card"><div class="analysis-text">시장 분석 데이터를 불러오는 중...</div></div>'}
@@ -599,10 +601,23 @@ function renderSentiment(d) {
   const s = d.sentiment || {};
   const score = s.score ?? 50;
   const label = s.label || '중립';
-  const color = s.color || '#8E8E9A';
   const factorDetails = s.factor_details || [];
 
-  const gaugeSVG = buildGaugeSVG(score, color, label);
+  // 반원 게이지 SVG — 5색 구간 + 동적 바늘
+  const angleDeg = 180 - score * 1.8;
+  const aRad = angleDeg * Math.PI / 180;
+  const nx = (150 + 95 * Math.cos(aRad)).toFixed(1);
+  const ny = (150 - 95 * Math.sin(aRad)).toFixed(1);
+  const gaugeSVG = `<svg width="280" height="160" viewBox="0 0 300 170" style="display:block;margin:0 auto;">
+    <path d="M20,150 A130,130 0 0 1 44.8,73.6" fill="none" stroke="#4C6EF5" stroke-width="26" stroke-linecap="round"/>
+    <path d="M44.8,73.6 A130,130 0 0 1 109.8,26.4" fill="none" stroke="#9AB0FA" stroke-width="26"/>
+    <path d="M109.8,26.4 A130,130 0 0 1 190.2,26.4" fill="none" stroke="#C7C9D4" stroke-width="26"/>
+    <path d="M190.2,26.4 A130,130 0 0 1 255.2,73.6" fill="none" stroke="#FF9C9C" stroke-width="26"/>
+    <path d="M255.2,73.6 A130,130 0 0 1 280,150" fill="none" stroke="#FF4D67" stroke-width="26" stroke-linecap="round"/>
+    <line x1="150" y1="150" x2="${nx}" y2="${ny}" stroke="#1B1C29" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="${nx}" cy="${ny}" r="6" fill="#fff" stroke="#1B1C29" stroke-width="3"/>
+    <circle cx="150" cy="150" r="5" fill="#1B1C29"/>
+  </svg>`;
 
   const detailMap = [
     { min:75, title:'극단적 탐욕 — 조심할 때예요', body:'시장 참여자 대부분이 낙관적이에요. 주가가 실제 가치보다 높게 형성되는 경우가 많으니 신규 매수보다는 보유 종목 수익 실현을 고려해보세요.' },
@@ -613,139 +628,195 @@ function renderSentiment(d) {
   ];
   const detail = detailMap.find(x => score >= x.min) || detailMap[detailMap.length-1];
 
-  // 8요소 분해 표 (sub_score 0~100 기준)
+  // 지표 점수 배지 색상
+  function scoreBadgeStyle(sub) {
+    if (sub >= 75) return 'background:#FF4D67;color:#fff;';
+    if (sub >= 60) return 'background:#FF9C9C;color:#fff;';
+    if (sub >= 40) return 'background:#C7C9D4;color:#fff;';
+    if (sub >= 20) return 'background:#9AB0FA;color:#fff;';
+    return 'background:#4C6EF5;color:#fff;';
+  }
+  function barFillColor(sub) {
+    if (sub >= 75) return '#FF4D67';
+    if (sub >= 60) return '#FF9C9C';
+    if (sub >= 40) return '#C7C9D4';
+    if (sub >= 20) return '#9AB0FA';
+    return '#4C6EF5';
+  }
+
+  // 구성 지표 rows
   const factorHtml = factorDetails.length ? factorDetails.map(f => {
     const sub = f.sub_score ?? 50;
-    // sub_score: 0~40=공포(파랑), 40~60=중립(회색), 60~100=탐욕(주황~빨강)
-    const barColor = sub >= 60 ? '#F5A623' : sub <= 40 ? '#5B5BD6' : '#8E8E9A';
-    const ic = f.direction === 'up' ? '#E24B4A' : f.direction === 'down' ? '#5B5BD6' : '#8E8E9A';
     const arrow = f.direction === 'up' ? '▲' : f.direction === 'down' ? '▼' : '–';
-    return `<div style="padding:7px 0;border-bottom:0.5px solid #F5F5F7;">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
-        <div style="flex:1;font-size:12px;color:#1C1C1E;font-weight:500;">${f.name}</div>
-        <div style="font-size:11px;color:${ic};font-weight:700;">${arrow} ${f.value||''}</div>
-        <div style="font-size:11px;font-weight:700;color:${barColor};min-width:28px;text-align:right;">${sub}</div>
+    const valColor = f.direction === 'up' ? '#FF4D67' : f.direction === 'down' ? '#4C6EF5' : '#8B8D9B';
+    return `<div style="margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
+        <div style="font-size:13.5px;font-weight:700;">${f.name}</div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:${valColor};">
+          ${arrow} ${f.value||''}
+          <span style="font-size:11.5px;font-weight:800;padding:2px 7px;border-radius:8px;min-width:28px;text-align:center;${scoreBadgeStyle(sub)}">${sub}</span>
+        </div>
       </div>
-      <div style="height:4px;background:#F0F0F5;border-radius:2px;overflow:hidden;">
-        <div style="height:100%;width:${sub}%;background:${barColor};border-radius:2px;transition:width .4s;"></div>
+      <div style="height:6px;background:#F1F1F6;border-radius:6px;overflow:hidden;margin-bottom:5px;">
+        <div style="height:100%;width:${sub}%;background:${barFillColor(sub)};border-radius:6px;"></div>
       </div>
-      ${f.desc ? `<div style="font-size:10px;color:#C7C7CC;margin-top:3px;">${f.desc}</div>` : ''}
+      ${f.desc ? `<div style="font-size:11px;color:#B5B7C3;">${f.desc}</div>` : ''}
     </div>`;
   }).join('') : '';
 
+  // grid3 헬퍼 (환율·선물)
+  function grid3Item(label2, price, pct) {
+    const up = pct >= 0;
+    return `<div style="flex:1;text-align:center;">
+      <div style="font-size:11.5px;color:#8B8D9B;margin-bottom:6px;">${label2}</div>
+      <div style="font-size:16px;font-weight:800;margin-bottom:3px;">${typeof price === 'number' ? price.toLocaleString() : price}</div>
+      <div style="font-size:12px;font-weight:700;color:${up?'#FF4D67':'#4C6EF5'};">${up?'+':''}${typeof pct === 'number' ? pct.toFixed(2) : pct}%</div>
+    </div>`;
+  }
+
   // 환율
   const fx = d.fx || [];
-  const fxHtml = fx.length ? fx.map(f => {
-    const up = f.change_pct >= 0;
-    const cls = up ? 'up' : 'down';
-    return `<div style="flex:1;text-align:center;">
-      <div style="font-size:11px;color:#8E8E9A;margin-bottom:3px;">${f.name}</div>
-      <div style="font-size:15px;font-weight:700;color:#1C1C1E;">${f.price?.toLocaleString()}</div>
-      <div style="font-size:11px;class:${cls};color:${up?'#E24B4A':'#185FA5'};">${up?'+':''}${f.change_pct?.toFixed(2)}%</div>
-    </div>`;
-  }).join('<div style="width:1px;background:#F0F0F5;"></div>') : '';
+  const fxGrid = fx.length ? fx.map(f => grid3Item(f.name, f.price, f.change_pct)).join('') : '';
 
   // 미국 선물
   const futures = d.us_futures || [];
-  const futHtml = futures.length ? futures.map(f => {
-    const up = f.change_pct >= 0;
-    return `<div style="flex:1;text-align:center;">
-      <div style="font-size:10px;color:#8E8E9A;margin-bottom:3px;">${f.name}</div>
-      <div style="font-size:14px;font-weight:700;color:#1C1C1E;">${f.price?.toLocaleString()}</div>
-      <div style="font-size:11px;color:${up?'#E24B4A':'#185FA5'};">${up?'+':''}${f.change_pct?.toFixed(2)}%</div>
-    </div>`;
-  }).join('<div style="width:1px;background:#F0F0F5;"></div>') : '';
+  const futGrid = futures.length ? futures.map(f => grid3Item(f.name, f.price, f.change_pct)).join('') : '';
 
   // 업종별 등락
   const sectors = d.sectors || [];
-  const secHtml = sectors.length ? sectors.map(s2 => {
+  const secRows = sectors.length ? sectors.map(s2 => {
     const up = s2.pct >= 0;
-    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid #F5F5F7;">
-      <div style="flex:1;font-size:13px;color:#1C1C1E;">${s2.name}</div>
-      <div style="font-size:13px;font-weight:700;color:${up?'#E24B4A':'#185FA5'};">${up?'+':''}${s2.pct?.toFixed(2)}%</div>
+    const absP = Math.abs(s2.pct || 0);
+    const maxAbs = 6; // 최대 기준값
+    const barW = Math.min(absP / maxAbs * 100, 100).toFixed(0);
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #EEEEF3;">
+      <div style="font-size:13.5px;font-weight:600;flex:1;">${s2.name}</div>
+      <div style="flex:1;max-width:90px;margin:0 10px;">
+        <div style="height:5px;background:#F1F1F6;border-radius:5px;">
+          <div style="height:100%;width:${barW}%;border-radius:5px;background:${up?'#FF4D67':'#4C6EF5'};"></div>
+        </div>
+      </div>
+      <div style="font-size:13.5px;font-weight:700;width:64px;text-align:right;color:${up?'#FF4D67':'#4C6EF5'};">${up?'+':''}${s2.pct?.toFixed(2)}%</div>
     </div>`;
-  }).join('') : '<div style="font-size:13px;color:#8E8E9A;padding:10px 0;">데이터 없음</div>';
+  }).join('').replace(/border-bottom[^;]+;([^<]*<\/div>\s*$)/, '$1') // 마지막 행 구분선 제거
+  : `<div style="display:flex;flex-direction:column;align-items:center;padding:26px 10px 10px;text-align:center;">
+      <div style="font-size:30px;margin-bottom:10px;opacity:0.8;">🌙</div>
+      <div style="font-size:13.5px;font-weight:700;color:#5C5D6B;margin-bottom:4px;">데이터가 없어요</div>
+    </div>`;
 
   // 순매수 TOP5
   const nb = d.net_buy || {};
   function netBuyRows(list) {
-    if (!list || !list.length) return '<div style="font-size:12px;color:#8E8E9A;padding:8px 0;">데이터 없음</div>';
-    return list.map((item, i) => `
-      <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid #F5F5F7;">
-        <div style="width:18px;font-size:11px;color:#8E8E9A;font-weight:700;">${i+1}</div>
-        <div style="flex:1;font-size:13px;color:#1C1C1E;">${item.name}</div>
-        <div style="font-size:12px;font-weight:700;color:#E24B4A;">+${item.value_str}</div>
-      </div>`).join('');
+    if (!list || !list.length) return `<div style="display:flex;flex-direction:column;align-items:center;padding:26px 10px 10px;text-align:center;">
+      <div style="font-size:30px;margin-bottom:10px;opacity:0.8;">🌙</div>
+      <div style="font-size:13.5px;font-weight:700;color:#5C5D6B;margin-bottom:4px;">주말엔 거래 데이터가 없어요</div>
+      <div style="font-size:12px;color:#B5B7C3;">다음 거래일 개장 후 업데이트돼요</div>
+    </div>`;
+    return list.map((item, i) =>
+      `<div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #EEEEF3;">
+        <div style="width:24px;height:24px;border-radius:50%;background:#EFEBFC;color:#6C5DD3;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${i+1}</div>
+        <div style="flex:1;font-size:13.5px;font-weight:700;">${item.name}</div>
+        <div style="font-size:12px;color:#8B8D9B;text-align:right;">+${item.value_str}</div>
+      </div>`
+    ).join('');
   }
 
   // 거래대금 상위
   const topVol = d.top_volume || [];
-  const volHtml = topVol.length ? topVol.map((item, i) => {
+  const volRows = topVol.length ? topVol.map((item, i) => {
     const up = item.change_pct >= 0;
-    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid #F5F5F7;">
-      <div style="width:18px;font-size:11px;color:#8E8E9A;font-weight:700;">${i+1}</div>
-      <div style="flex:1;font-size:13px;color:#1C1C1E;">${item.name}</div>
-      <div style="font-size:11px;color:${up?'#E24B4A':'#185FA5'};min-width:44px;text-align:right;">${up?'+':''}${item.change_pct?.toFixed(1)}%</div>
-      <div style="font-size:11px;color:#8E8E9A;min-width:36px;text-align:right;">${item.value_str}</div>
+    return `<div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #EEEEF3;">
+      <div style="width:24px;height:24px;border-radius:50%;background:#EFEBFC;color:#6C5DD3;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${i+1}</div>
+      <div style="flex:1;font-size:13.5px;font-weight:700;">${item.name}</div>
+      <div style="font-size:13px;font-weight:700;width:54px;text-align:right;color:${up?'#FF4D67':'#4C6EF5'};">${up?'+':''}${item.change_pct?.toFixed(1)}%</div>
+      <div style="font-size:12px;color:#8B8D9B;width:70px;text-align:right;">${item.value_str}</div>
     </div>`;
-  }).join('') : '<div style="font-size:12px;color:#8E8E9A;padding:8px 0;">데이터 없음</div>';
+  }).join('') : `<div style="font-size:12px;color:#8B8D9B;padding:16px 0;text-align:center;">데이터 없음</div>`;
 
-  const secLabel = (title) => `<div style="font-size:13px;font-weight:700;color:#1C1C1E;margin:16px 0 8px;">${title}</div>`;
+  // 카드 공통 래퍼
+  const card = (inner) =>
+    `<div style="background:#fff;border-radius:20px;margin:0 16px 14px;padding:20px;box-shadow:0 2px 10px rgba(30,30,60,0.04);">${inner}</div>`;
+
+  // 섹션 헤더 (카드 내 상단)
+  const secHead = (icon, title, extra='') =>
+    `<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+      <div style="width:28px;height:28px;border-radius:50%;background:#EFEBFC;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">${icon}</div>
+      <div style="font-size:14.5px;font-weight:700;flex:1;">${title}</div>
+      ${extra}
+    </div>`;
 
   el.innerHTML = `
-    <!-- 업데이트 시간 + 새로고침 -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin:12px 0 8px;">
-      <div>
-        <span style="font-size:11px;color:#8E8E9A;">${d.market_note||''}</span>
-        ${d.base_date ? `<span style="font-size:11px;color:#C7C7CC;margin-left:4px;">· ${d.base_date}</span>` : ''}
+    <!-- 상태 행 -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:14px 16px 14px;padding:10px 14px;background:#fff;border-radius:14px;box-shadow:0 1px 4px rgba(20,20,40,0.04);">
+      <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#8B8D9B;">
+        <span style="background:#F1F1F6;color:#6B6D7A;font-size:11px;font-weight:700;padding:3px 8px;border-radius:8px;">${d.market_note||'집계중'}</span>
+        <span>${d.base_date ? `${d.base_date} 기준` : ''}</span>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        ${d.updated_at ? `<span style="font-size:11px;color:#C7C7CC;">업데이트 ${d.updated_at}</span>` : ''}
-        <button onclick="_newsLoaded=false;loadNews(true);" style="display:flex;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:8px;background:#F2F2F7;">
-          <i class="ti ti-refresh" style="font-size:14px;color:#5B5BD6;"></i>
-          <span style="font-size:11px;color:#5B5BD6;font-weight:600;">새로고침</span>
-        </button>
-      </div>
+      <button onclick="_newsLoaded=false;loadNews(true);" style="display:flex;align-items:center;gap:5px;background:none;border:none;cursor:pointer;font-size:12px;color:#6C5DD3;font-weight:700;">
+        ${d.updated_at||''} ⟳
+      </button>
     </div>
-    <!-- 투자심리 지수 -->
-    <div class="card" style="margin:0 0 10px;">
-      <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:4px;">
-        <span style="font-size:13px;color:#8E8E9A;">투자심리 지수</span>
-        <button onclick="showSentimentInfo()" style="width:18px;height:18px;border-radius:50%;background:#F0F0F5;border:none;cursor:pointer;font-size:11px;font-weight:700;color:#8E8E9A;line-height:18px;padding:0;display:flex;align-items:center;justify-content:center;">?</button>
+
+    <!-- 투자심리 게이지 -->
+    ${card(`
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+        <div style="font-size:14px;font-weight:700;">투자심리 지수</div>
+        <div style="width:16px;height:16px;border-radius:50%;background:#F1F1F6;color:#8B8D9B;font-size:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="showSentimentInfo()">?</div>
       </div>
-      ${gaugeSVG}
-      <div style="border-top:1px solid #F0F0F5;padding-top:12px;margin-top:10px;">
-        <div style="font-size:13px;font-weight:700;color:#1C1C1E;margin-bottom:4px;">${detail.title}</div>
-        <div style="font-size:12px;color:#8E8E9A;line-height:1.7;margin-bottom:12px;">${detail.body}</div>
-        ${factorHtml ? `<div style="font-size:11px;font-weight:600;color:#8E8E9A;margin-bottom:6px;">구성 지표 (8개)</div>${factorHtml}` : ''}
+      <div style="display:flex;flex-direction:column;align-items:center;margin:6px 0 2px;">
+        ${gaugeSVG}
+        <div style="display:flex;justify-content:space-between;width:280px;margin-top:-6px;padding:0 6px;">
+          <span style="font-size:12px;color:#8B8D9B;font-weight:600;">공포</span>
+          <span style="font-size:12px;color:#8B8D9B;font-weight:600;">탐욕</span>
+        </div>
+        <div style="font-size:48px;font-weight:800;margin-top:6px;line-height:1;">${score}</div>
+        <div style="display:inline-block;margin-top:6px;font-size:14px;font-weight:800;background:#F1F1F6;padding:4px 14px;border-radius:10px;">${label}</div>
       </div>
-    </div>
+      <div style="font-size:15.5px;font-weight:800;margin:18px 0 6px;">${detail.title}</div>
+      <p style="font-size:13px;line-height:1.6;color:#4B4C5C;margin:0;">${detail.body}</p>
+    `)}
+
+    <!-- 구성 지표 -->
+    ${factorHtml ? card(`
+      ${secHead('📊', '구성 지표', `<div style="font-size:12px;color:#8B8D9B;font-weight:600;">${factorDetails.length}개</div>`)}
+      ${factorHtml}
+    `) : ''}
 
     <!-- 환율 -->
-    ${fxHtml ? `${secLabel('환율')}
-    <div class="card" style="margin-bottom:10px;">
-      <div style="display:flex;align-items:stretch;gap:0;">${fxHtml}</div>
-    </div>` : ''}
+    ${fxGrid ? card(`
+      ${secHead('💱', '환율')}
+      <div style="display:flex;gap:0;text-align:center;">${fxGrid}</div>
+    `) : ''}
 
     <!-- 미국 선물 -->
-    ${futHtml ? `${secLabel('미국 선물')}
-    <div class="card" style="margin-bottom:10px;">
-      <div style="display:flex;align-items:stretch;gap:0;">${futHtml}</div>
-    </div>` : ''}
+    ${futGrid ? card(`
+      ${secHead('🇺🇸', '미국 선물')}
+      <div style="display:flex;gap:0;text-align:center;">${futGrid}</div>
+    `) : ''}
 
     <!-- 업종별 등락 -->
-    ${secLabel('업종별 등락')}
-    <div class="card" style="margin-bottom:10px;">${secHtml}</div>
+    ${card(`
+      ${secHead('🏭', '업종별 등락')}
+      ${secRows}
+    `)}
 
-    <!-- 외국인·기관 순매수 TOP5 -->
-    ${secLabel('외국인 순매수 TOP 5')}
-    <div class="card" style="margin-bottom:10px;">${netBuyRows(nb.foreign)}</div>
-    ${secLabel('기관 순매수 TOP 5')}
-    <div class="card" style="margin-bottom:10px;">${netBuyRows(nb.institution)}</div>
+    <!-- 외국인 순매수 TOP5 -->
+    ${card(`
+      ${secHead('🌍', '외국인 순매수 TOP 5')}
+      ${netBuyRows(nb.foreign)}
+    `)}
 
-    <!-- 거래대금 상위 -->
-    ${secLabel('거래대금 상위 5')}
-    <div class="card" style="margin-bottom:24px;">${volHtml}</div>
+    <!-- 기관 순매수 TOP5 -->
+    ${card(`
+      ${secHead('🏢', '기관 순매수 TOP 5')}
+      ${netBuyRows(nb.institution)}
+    `)}
+
+    <!-- 거래대금 상위 5 -->
+    ${card(`
+      ${secHead('💰', '거래대금 상위 5')}
+      ${volRows}
+    `)}
   `;
 }
 
@@ -990,6 +1061,189 @@ ${lbl ? `<text x="${x + barW / 2}" y="${CHART_H + BOTTOM - 2}" text-anchor="midd
     });
     document.getElementById('supply-tab-content').innerHTML = buildTabContent(tab);
   };
+}
+
+// 오늘 시장 분석 상세
+// ─────────────────────────────────────────────────────────
+async function openAnalysisDetail() {
+  _currentTab = 'home';
+  showScreen('analysis-detail');
+  const el = document.getElementById('analysis-detail-content');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div> 분석 데이터 불러오는 중...</div>';
+  try {
+    const d = _homeData || await api('GET', '/api/home');
+    if (!_homeData) _homeData = d;
+    renderAnalysisDetail(d, el);
+  } catch(e) {
+    el.innerHTML = `<div class="loading">데이터를 불러오지 못했습니다</div>`;
+  }
+}
+
+function renderAnalysisDetail(d, el) {
+  const idx      = d.indices || {};
+  const spPct    = idx.sp500_change_pct || 0;
+  const ndPct    = idx.nasdaq_change_pct || 0;
+  const forecast = d.forecast || {};
+  const basis    = forecast.basis || {};
+  const analysis = Array.isArray(d.analysis) ? d.analysis : [];
+  const a20 = basis.above_ma20;
+  const a60 = basis.above_ma60;
+  const gc  = basis.golden_cross;
+  const ma20val = basis.ma20 || 0;
+  const ma60val = basis.ma60 || 0;
+  const kpCur   = basis.kospi_current || idx.kospi || 0;
+  const trend   = basis.trend || '';
+
+  // 종합 점수 계산
+  let score = 50;
+  if (spPct > 1.5) score += 14; else if (spPct > 0) score += 7; else if (spPct < -1.5) score -= 14; else score -= 5;
+  if (ndPct > 1.5) score += 10; else if (ndPct > 0) score += 5; else if (ndPct < -1.5) score -= 10; else score -= 3;
+  if (a20) score += 8; else score -= 5;
+  if (a60) score += 7; else score -= 3;
+  if (gc) score += 10; else score -= 4;
+  score = Math.max(10, Math.min(95, Math.round(score)));
+
+  const heroTitle = score >= 70 ? '긍정적 · 상승 모멘텀 우세'
+    : score >= 55 ? '중립 · 보합 흐름'
+    : '부정적 · 하락 압력';
+  const heroDesc = score >= 70
+    ? '미국 증시 강세와 이동평균선 흐름이 단기 상승 모멘텀을 지지하고 있습니다.'
+    : score >= 55
+    ? '혼조세 속에 방향성을 확인하는 구간입니다.'
+    : '미국 증시 약세와 기술적 지표 부진으로 하락 압력이 높습니다.';
+
+  // 게이지 SVG
+  const R = 38, CX = 46, CY = 46;
+  const circ = 2 * Math.PI * R;
+  const gaugeSvg = `<svg width="92" height="92" viewBox="0 0 92 92">
+    <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="9"/>
+    <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="#FFFFFF" stroke-width="9"
+      stroke-linecap="round"
+      stroke-dasharray="${(circ*score/100).toFixed(1)} ${circ.toFixed(1)}"
+      transform="rotate(-90 ${CX} ${CY})"/>
+  </svg>`;
+
+  const chips = [
+    spPct >= 0 ? '🇺🇸 미국 증시 강세' : '🇺🇸 미국 증시 약세',
+    gc ? '📈 골든크로스 진행중' : a20 ? '📈 이동평균 상위' : '📉 이동평균 주의',
+    '📅 일정 및 변동성 확인',
+  ];
+
+  // HTML에서 subtitle 추출 + subtitle 제거한 본문 추출
+  const extractSub  = (html) => { const m=(html||'').match(/font-weight:700[^>]*>([^<]{1,60})</); return m?m[1].trim():''; };
+  const stripSub    = (html) => (html||'').replace(/<div[^>]*font-weight:700[^>]*>[^<]*<\/div>/, '');
+
+  const a0 = analysis[0] || {}, a1 = analysis[1] || {}, a2 = analysis[2] || {};
+  const usBadge = spPct >= 0.5 ? {t:'긍정',bg:'#E3F8EE',tx:'#1AAE6F'} : spPct<-0.5 ? {t:'부정',bg:'#FFE9ED',tx:'#FF4D67'} : {t:'중립',bg:'#EEEEF3',tx:'#8B8D9B'};
+  const maBadge = (a20&&a60) ? {t:'상승',bg:'#E3F8EE',tx:'#1AAE6F'} : (!a20&&!a60) ? {t:'하락',bg:'#FFE9ED',tx:'#FF4D67'} : {t:'혼조',bg:'#FFF1DD',tx:'#C17B12'};
+
+  const d20pct = ma20val ? ((kpCur-ma20val)/ma20val*100).toFixed(2) : '0.00';
+  const d60pct = ma60val ? ((kpCur-ma60val)/ma60val*100).toFixed(2) : '0.00';
+
+  const aiBox = (html) => `
+    <div style="background:#FAF9FF;border-radius:14px;padding:14px 14px 14px 16px;border-left:3px solid #6C5DD3;margin-top:14px;">
+      <div style="font-size:11.5px;font-weight:800;color:#6C5DD3;margin-bottom:6px;">✦ AI 상세분석</div>
+      <div style="font-size:13px;line-height:1.65;color:#3C3D4D;">${stripSub(html) || '분석 데이터 준비 중...'}</div>
+    </div>`;
+
+  const cardHead = (icon, iconBg, label, badge) => `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+      <div style="width:30px;height:30px;border-radius:50%;background:${iconBg};display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">${icon}</div>
+      <div style="font-size:14.5px;font-weight:700;flex:1;">${label}</div>
+      <span style="font-size:11px;font-weight:700;padding:4px 9px;border-radius:12px;background:${badge.bg};color:${badge.tx};">${badge.t}</span>
+    </div>`;
+
+  const statBox = (lbl, val, color='#1B1C29') =>
+    `<div style="flex:1;background:#FAFAFC;border-radius:12px;padding:10px 12px;">
+      <div style="font-size:11px;color:#8B8D9B;margin-bottom:3px;">${lbl}</div>
+      <div style="font-size:13.5px;font-weight:700;color:${color};">${val}</div>
+    </div>`;
+
+  const upC = '#FF4D67', dnC = '#4C6EF5';
+  const nowLabel = new Date().toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit'});
+
+  el.innerHTML = `<div style="padding:0 16px 16px;">
+  <div style="font-size:12px;color:#8B8D9B;margin-bottom:16px;">${nowLabel} 기준 · 3개 지표 종합 분석</div>
+
+  <!-- 종합 진단 히어로 -->
+  <div style="background:linear-gradient(135deg,#7A6BE0 0%,#5848C2 100%);color:#fff;border-radius:24px;padding:24px 22px;margin-bottom:16px;box-shadow:0 10px 24px rgba(86,70,200,0.28);">
+    <div style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,0.18);font-size:12px;font-weight:600;padding:5px 10px;border-radius:20px;margin-bottom:14px;">✦ 종합 진단</div>
+    <div style="display:flex;align-items:center;gap:18px;margin-bottom:14px;">
+      <div style="position:relative;width:92px;height:92px;flex-shrink:0;">
+        ${gaugeSvg}
+        <div style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+          <div style="font-size:24px;font-weight:800;line-height:1;">${score}</div>
+          <div style="font-size:10px;opacity:0.75;margin-top:1px;">/ 100점</div>
+        </div>
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:18px;font-weight:800;margin-bottom:6px;">${heroTitle}</div>
+        <div style="font-size:13px;line-height:1.5;opacity:0.92;">${heroDesc}</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+      ${chips.map(c=>`<div style="background:rgba(255,255,255,0.16);font-size:11.5px;padding:6px 10px;border-radius:14px;font-weight:600;">${c}</div>`).join('')}
+    </div>
+  </div>
+
+  <!-- 카드1: 미국 증시 영향 -->
+  <div style="background:#fff;border-radius:20px;padding:20px;margin-bottom:14px;box-shadow:0 2px 10px rgba(30,30,60,0.04);">
+    ${cardHead('🇺🇸','#EAF1FF', a0.label||'미국 증시 영향', usBadge)}
+    <div style="font-size:19px;font-weight:800;margin:10px 0 14px;">${extractSub(a0.text)||(spPct>=0?'미국 증시 강세':'미국 증시 약세')}</div>
+    <div style="display:flex;gap:10px;">
+      ${statBox('S&P500', `${spPct>=0?'+':''}${spPct.toFixed(2)}%`, spPct>=0?upC:dnC)}
+      ${statBox('나스닥',  `${ndPct>=0?'+':''}${ndPct.toFixed(2)}%`, ndPct>=0?upC:dnC)}
+      ${statBox('동조화', '높음')}
+    </div>
+    ${aiBox(a0.text)}
+  </div>
+
+  <!-- 카드2: 이동평균선 분석 -->
+  <div style="background:#fff;border-radius:20px;padding:20px;margin-bottom:14px;box-shadow:0 2px 10px rgba(30,30,60,0.04);">
+    ${cardHead('📈','#E3F8EE', a1.label||'이동평균선 분석', maBadge)}
+    <div style="font-size:19px;font-weight:800;margin:10px 0 ${gc?'8':'14'}px;">${extractSub(a1.text)||(a20?'단기 상승 추세':'이동평균선 하방')}</div>
+    ${gc ? `<div style="display:inline-flex;align-items:center;gap:5px;background:#FFF6E5;color:#B5790A;font-size:11.5px;font-weight:700;padding:5px 10px;border-radius:10px;margin-bottom:14px;">⭐ 골든크로스 진행중</div>` : ''}
+    <div style="display:flex;gap:10px;margin-bottom:10px;">
+      ${statBox('현재가', kpCur?kpCur.toFixed(0):'-')}
+      ${statBox('20일선', ma20val?`${ma20val.toFixed(0)} ${a20?'▲돌파':'▼아래'}`:`-`, a20?upC:dnC)}
+      ${statBox('60일선', ma60val?`${ma60val.toFixed(0)} ${a60?'▲전환':'▼아래'}`:`-`, a60?upC:dnC)}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div style="background:#FAFAFC;border-radius:12px;padding:11px 12px;">
+        <div style="font-size:11px;color:#8B8D9B;margin-bottom:3px;">20일선 이격</div>
+        <div style="font-size:14px;font-weight:700;color:${+d20pct>=0?upC:dnC};">${+d20pct>=0?'+':''}${d20pct}%</div>
+        <div style="font-size:11px;font-weight:600;color:${a20?'#1AAE6F':'#FF4D67'};">${a20?'▲ 위에 위치':'▼ 아래 위치'}</div>
+      </div>
+      <div style="background:#FAFAFC;border-radius:12px;padding:11px 12px;">
+        <div style="font-size:11px;color:#8B8D9B;margin-bottom:3px;">60일선 이격</div>
+        <div style="font-size:14px;font-weight:700;color:${+d60pct>=0?upC:dnC};">${+d60pct>=0?'+':''}${d60pct}%</div>
+        <div style="font-size:11px;font-weight:600;color:${a60?'#1AAE6F':'#FF4D67'};">${a60?'▲ 위에 위치':'▼ 아래 위치'}</div>
+      </div>
+      <div style="background:#FAFAFC;border-radius:12px;padding:11px 12px;">
+        <div style="font-size:11px;color:#8B8D9B;margin-bottom:3px;">정배열</div>
+        <div style="font-size:14px;font-weight:700;">${gc?'골든크로스':'미완성'}</div>
+        <div style="font-size:11px;font-weight:600;color:${gc?'#1AAE6F':'#C17B12'};">${gc?'진행 중':'관찰 필요'}</div>
+      </div>
+      <div style="background:#FAFAFC;border-radius:12px;padding:11px 12px;">
+        <div style="font-size:11px;color:#8B8D9B;margin-bottom:3px;">현재 추세</div>
+        <div style="font-size:13px;font-weight:700;line-height:1.3;">${trend||'집계중'}</div>
+      </div>
+    </div>
+    ${aiBox(a1.text)}
+  </div>
+
+  <!-- 카드3: 오늘 체크 포인트 -->
+  <div style="background:#fff;border-radius:20px;padding:20px;margin-bottom:14px;box-shadow:0 2px 10px rgba(30,30,60,0.04);">
+    ${cardHead('📅','#EFEBFC', a2.label||'오늘 체크 포인트', {t:'관심',bg:'#EFEBFC',tx:'#6C5DD3'})}
+    <div style="font-size:19px;font-weight:800;margin:10px 0 14px;">${extractSub(a2.text)||'주요 포인트 확인'}</div>
+    ${aiBox(a2.text)}
+  </div>
+
+  <!-- 면책 -->
+  <div style="background:#FFF3F4;border-radius:14px;padding:13px 14px;font-size:11.5px;color:#A14552;line-height:1.5;">
+    ⚠️ 본 분석은 AI가 생성한 참고 정보이며 투자 권유가 아닙니다. 투자 판단과 그에 따른 책임은 본인에게 있습니다.
+  </div>
+</div>`;
 }
 
 // 예측 상세 + 히스토리
