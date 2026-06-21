@@ -1377,8 +1377,12 @@ function holdingCard(h) {
     `<span class="badge ${bdgMap[b.type]||'badge-ok'}">${b.text}</span>`
   ).join('') || `<span class="badge ${pnlPct>=0?'badge-ok':'badge-sell'}">${pnlPct>=0?'수익 중':'손실 중'}</span>`;
 
-  return `<div class="card clickable" onclick="openHoldingDetail('${h.code}', '${h.name}')">
-    <div class="card-top">
+  return `<div class="card" style="position:relative;" onclick="openHoldingDetail('${h.code}', '${h.name}')">
+    <button onclick="event.stopPropagation();confirmDeleteHolding('${h.code}','${h.name.replace(/'/g,"\\'")}');"
+      style="position:absolute;top:10px;right:10px;background:none;border:none;cursor:pointer;padding:2px;line-height:1;z-index:1;">
+      <i class="ti ti-x" style="font-size:18px;color:#5B5BD6;"></i>
+    </button>
+    <div class="card-top" style="padding-right:28px;">
       <div class="stock-icon ${iconColors(h.name)}">${iconText(h.name)}</div>
       <div>
         <div class="stock-name">${h.name}</div>
@@ -1904,6 +1908,15 @@ function drawPriceChart(ohlcv, avgPrice, targetPrice, stopPrice) {
   drawLine(avgPrice,    '#FF9F0A', '평단가', false);
 }
 
+async function confirmDeleteHolding(code, name) {
+  if (!confirm(`${name}\n삭제하시겠습니까?`)) return;
+  try {
+    await api('DELETE', `/api/holdings/${code}`);
+    _holdingsLoaded = false;
+    loadHoldings(true);
+  } catch(e) { alert(e.message); }
+}
+
 async function deleteHolding(code, name) {
   if (!confirm(`${name}을(를) 보유종목에서 삭제할까요?`)) return;
   try {
@@ -2103,7 +2116,7 @@ function renderWatchlist() {
     return `<div class="card" style="position:relative;" onclick="openWatchlistDetail('${w.code}','${w.name.replace(/'/g,"\\'")}')">
       <button onclick="event.stopPropagation();confirmDeleteWatchlist('${w.code}','${w.name.replace(/'/g,"\\'")}');"
         style="position:absolute;top:10px;right:10px;background:none;border:none;cursor:pointer;padding:2px;line-height:1;z-index:1;">
-        <i class="ti ti-circle-minus" style="font-size:20px;color:#E24B4A;"></i>
+        <i class="ti ti-x" style="font-size:18px;color:#5B5BD6;"></i>
       </button>
       <div class="card-top" style="padding-right:28px;">
         <div class="stock-icon ${iconColors(w.name)}">${iconText(w.name)}</div>
