@@ -749,18 +749,15 @@ def _get_exchange_rates() -> list:
     result = []
     for p in pairs:
         try:
-            t = yf.Ticker(p["symbol"])
-            info = t.fast_info
-            price_raw = getattr(info, "last_price", None) or getattr(info, "regular_market_price", None)
-            prev_raw  = getattr(info, "previous_close", None)
-            if not price_raw: continue
+            df = yf.Ticker(p["symbol"]).history(period="5d", auto_adjust=False)
+            if df is None or len(df) < 2:
+                continue
+            price_raw = float(df["Close"].iloc[-1])
+            prev_raw  = float(df["Close"].iloc[-2])
             price = round(price_raw * p["mult"], 2)
-            if prev_raw and prev_raw > 0:
-                prev  = prev_raw * p["mult"]
-                chg   = round(price - prev, 2)
-                chg_pct = round(chg / prev * 100, 2)
-            else:
-                chg, chg_pct = 0, 0
+            prev  = prev_raw * p["mult"]
+            chg   = round(price - prev, 2)
+            chg_pct = round(chg / prev * 100, 2)
             result.append({"name": p["name"], "price": price, "change": chg, "change_pct": chg_pct})
         except: pass
     return result

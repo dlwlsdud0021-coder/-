@@ -318,16 +318,17 @@ def _dummy_index():
 # 미국 지수 (S&P500, 나스닥, 다우)
 # ─────────────────────────────────────────────────────────
 def get_us_indices() -> dict:
-    # 1순위: yfinance fast_info (가장 빠르고 안정적)
+    # 1순위: yfinance history — 정규장 종가 기준 (fast_info.last_price는 장외가 포함)
     try:
         import yfinance as yf
         result = {}
         for name, sym in [("S&P500", "^GSPC"), ("나스닥", "^IXIC"), ("다우", "^DJI")]:
-            fi = yf.Ticker(sym).fast_info
-            cur  = fi.last_price
-            prev = fi.previous_close
-            if cur and prev and cur > 0:
-                result[name] = {"current": round(cur, 2), "change_pct": round((cur - prev) / prev * 100, 2)}
+            df = yf.Ticker(sym).history(period="5d", auto_adjust=False)
+            if df is not None and len(df) >= 2:
+                cur  = float(df["Close"].iloc[-1])
+                prev = float(df["Close"].iloc[-2])
+                pct  = (cur - prev) / prev * 100
+                result[name] = {"current": round(cur, 2), "change_pct": round(pct, 2)}
             else:
                 result[name] = {"current": 0, "change_pct": 0}
         if any(v["current"] > 0 for v in result.values()):
