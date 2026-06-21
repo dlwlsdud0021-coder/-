@@ -400,7 +400,7 @@ function renderHome(d, el) {
   };
   const basisItems = fReasons.slice(0, 3).map(r => `<div style="display:flex;align-items:flex-start;gap:4px;font-size:11px;color:#3C3C43;margin-bottom:4px;"><i class="ti ti-circle-check" style="font-size:12px;color:#5B5BD6;flex-shrink:0;margin-top:1px;"></i>${shortReason(r)}</div>`).join('');
   const pointItems = fPoints.slice(0, 3).map(p => `<div style="display:flex;align-items:flex-start;gap:4px;font-size:11px;color:#3C3C43;margin-bottom:4px;"><i class="ti ti-circle-check" style="font-size:12px;color:#5B5BD6;flex-shrink:0;margin-top:1px;"></i>${shortReason(p)}</div>`).join('');
-  const fDesc = `주요 지표와 수급 흐름을 종합한 내일 시장 ${isUp?'상승':'isDown?\'하락\':\'보합\''} 전망입니다.`;
+  const dirWord = isUp ? '상승' : isDown ? '하락' : '보합';
 
   const forecastSectionHtml = `<div class="section">
   <div class="sec-title" style="display:flex;align-items:center;">
@@ -408,23 +408,22 @@ function renderHome(d, el) {
     <span onclick="openForecastDetail()" style="margin-left:auto;font-size:12px;color:#5B5BD6;font-weight:600;cursor:pointer;">근거 보기 <i class="ti ti-chevron-right" style="font-size:11px;"></i></span>
   </div>
   <div class="card clickable" onclick="openForecastDetail()" style="cursor:pointer;">
-    <div style="display:flex;align-items:stretch;gap:10px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
       ${donutSvg}
-      <div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;flex-wrap:wrap;">
           <span style="font-size:16px;font-weight:800;color:#1A1A2E;">${fTitle}</span>
           <span style="background:${confBadgeBg};color:${confBadgeTx};font-size:10px;padding:2px 6px;border-radius:5px;font-weight:600;">${confBadge}</span>
         </div>
-        <div style="font-size:11px;color:#8E8E9A;line-height:1.5;">주요 지표와 수급 흐름을 종합한<br>내일 시장 ${isUp?'상승':isDown?'하락':'보합'} 전망입니다.</div>
+        <div style="font-size:11px;color:#8E8E9A;line-height:1.5;">주요 지표와 수급 흐름을 종합한<br>내일 시장 ${dirWord} 전망입니다.</div>
       </div>
-      <div style="display:flex;gap:12px;margin-top:10px;padding-top:10px;border-top:0.5px solid #F0F0F5;flex:none;width:100%;box-sizing:border-box;" class="BREAKER"></div>
     </div>
-    <div style="display:flex;gap:12px;margin-top:10px;padding-top:10px;border-top:0.5px solid #F0F0F5;">
+    <div style="display:flex;gap:12px;padding-top:10px;border-top:0.5px solid #F0F0F5;">
       <div style="flex:1;">
         <div style="font-size:10px;color:#8E8E9A;font-weight:600;margin-bottom:6px;">근거</div>
         ${basisItems || '<div style="font-size:11px;color:#8E8E9A;">수집 중...</div>'}
       </div>
-      <div style="width:0.5px;background:#F0F0F5;"></div>
+      <div style="width:0.5px;background:#F0F0F5;flex-shrink:0;"></div>
       <div style="flex:1;">
         <div style="font-size:10px;color:#8E8E9A;font-weight:600;margin-bottom:6px;">주요 포인트</div>
         ${pointItems || '<div style="font-size:11px;color:#8E8E9A;">수집 중...</div>'}
