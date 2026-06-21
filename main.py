@@ -982,15 +982,17 @@ def _run_scanner():
     if _scanner_cache["running"]:
         return
     _scanner_cache["running"] = True
+    import logging as _log
+    _slog = _log.getLogger("scanner")
     try:
         stocks = [s for s in get_top_stocks(100) if s.get("code") and len(s["code"]) == 6]
+        _slog.info(f"[스캐너] 종목 수: {len(stocks)}")
         results = []
         for s in stocks[:100]:
             try:
                 ohlcv = get_ohlcv(s["code"], days=60)
                 inv = get_investor_trading(s["code"], days=5)
                 a = analyze_stock(ohlcv, inv)
-                # 수급 데이터 없을 땐 기술적 신호 1개만으로도 포함
                 no_investor = (a.get("foreign_net_3d", 0) == 0 and a.get("institution_net_3d", 0) == 0)
                 min_score = 1 if no_investor else 3
                 if a["score"] >= min_score:
@@ -1003,12 +1005,15 @@ def _run_scanner():
                         "code": s["code"], "name": s["name"],
                         "price": price, "change_pct": change_pct, **a
                     }))
-            except Exception:
+            except Exception as _e:
+                _slog.warning(f"[스캐너] {s.get('code')} 오류: {_e}")
                 continue
+        _slog.info(f"[스캐너] 완료: {len(results)}개 신호 종목")
         results.sort(key=lambda x: (x["score"], x.get("volume_ratio", 0)), reverse=True)
         _scanner_cache["data"] = {"results": results[:20]}
         _scanner_cache["ts"] = time.time()
     except Exception as e:
+        _slog.error(f"[스캐너] 치명적 오류: {e}")
         if not _scanner_cache["data"]:
             _scanner_cache["data"] = {"results": [], "error": str(e)}
     finally:
