@@ -500,23 +500,33 @@ function buildInvestorSection(investor) {
 
   const rows = [...investor].reverse().map(r => {
     const fv = r.foreign || 0, iv = r.inst || 0;
-    const fw = Math.min(Math.abs(fv) / maxAbs * HALF, HALF).toFixed(1);
-    const iw = Math.min(Math.abs(iv) / maxAbs * HALF, HALF).toFixed(1);
-    // 음수=왼쪽, 양수=오른쪽 포지션
-    const fPos = fv < 0
-      ? `right:calc(50% + 0px);width:${fw}px;border-radius:3px 0 0 3px;`
-      : `left:calc(50% + 0px);width:${fw}px;border-radius:0 3px 3px 0;`;
-    const iPos = iv < 0
-      ? `right:calc(50% + 0px);width:${iw}px;border-radius:3px 0 0 3px;`
-      : `left:calc(50% + 0px);width:${iw}px;border-radius:0 3px 3px 0;`;
+    // 0~100% 비율 (최대값 기준)
+    const fp = Math.min(Math.abs(fv) / maxAbs * 100, 100).toFixed(1);
+    const ip = Math.min(Math.abs(iv) / maxAbs * 100, 100).toFixed(1);
     const fCls = fv >= 0 ? 'up' : 'down';
     const iCls = iv >= 0 ? 'up' : 'down';
+
+    // 좌반부(음수) / 우반부(양수) 각각 별도 div — 절대 날짜와 겹치지 않음
+    const fLeftW  = fv < 0 ? fp : '0';
+    const fRightW = fv >= 0 ? fp : '0';
+    const iLeftW  = iv < 0 ? ip : '0';
+    const iRightW = iv >= 0 ? ip : '0';
+
     return `<div style="display:grid;grid-template-columns:36px 1fr 64px 60px;align-items:center;gap:4px;padding:9px 0;border-bottom:1px solid #F2F2F7;">
-  <span style="font-size:11px;color:#8B8D9B;font-weight:500;">${r.date.slice(5)}</span>
-  <div style="position:relative;height:26px;">
-    <div style="position:absolute;left:50%;top:50%;transform:translateY(-50%);width:1px;height:100%;background:#EEEEF3;"></div>
-    <div style="position:absolute;top:3px;height:9px;${fPos}background:${F_COLOR};"></div>
-    <div style="position:absolute;bottom:3px;height:9px;${iPos}background:${I_COLOR};"></div>
+  <span style="font-size:11px;color:#8B8D9B;font-weight:500;white-space:nowrap;">${r.date.slice(5)}</span>
+  <div style="display:flex;height:26px;overflow:hidden;">
+    <!-- 좌측(음수) 영역 -->
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:space-around;align-items:flex-end;padding-right:1px;overflow:hidden;">
+      <div style="width:${fLeftW}%;height:9px;background:${F_COLOR};border-radius:3px 0 0 3px;min-width:${fv<0?'2px':'0'};"></div>
+      <div style="width:${iLeftW}%;height:9px;background:${I_COLOR};border-radius:3px 0 0 3px;min-width:${iv<0?'2px':'0'};"></div>
+    </div>
+    <!-- 중앙 구분선 -->
+    <div style="width:1px;background:#EEEEF3;flex-shrink:0;"></div>
+    <!-- 우측(양수) 영역 -->
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:space-around;align-items:flex-start;padding-left:1px;overflow:hidden;">
+      <div style="width:${fRightW}%;height:9px;background:${F_COLOR};border-radius:0 3px 3px 0;min-width:${fv>=0&&fv!==0?'2px':'0'};"></div>
+      <div style="width:${iRightW}%;height:9px;background:${I_COLOR};border-radius:0 3px 3px 0;min-width:${iv>=0&&iv!==0?'2px':'0'};"></div>
+    </div>
   </div>
   <span class="${fCls}" style="font-size:11px;font-weight:700;text-align:right;">${fv>=0?'+':''}${fmtInv(fv,unit)}</span>
   <span class="${iCls}" style="font-size:11px;font-weight:700;text-align:right;">${iv>=0?'+':''}${fmtInv(iv,unit)}</span>
