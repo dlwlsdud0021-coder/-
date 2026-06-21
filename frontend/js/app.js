@@ -214,6 +214,10 @@ function afterLogin() {
   switchTab('home');
 }
 
+function confirmLogout() {
+  if (confirm(`${_username || ''}님, 로그아웃 하시겠습니까?`)) logout();
+}
+
 function logout() {
   _token = '';
   _username = '';
