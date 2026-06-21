@@ -1536,6 +1536,35 @@ const _TERM_CONTENT = {
   },
 };
 
+function showIndicatorGuide() {
+  const existing = document.getElementById('term-modal-overlay');
+  if (existing) existing.remove();
+  const guides = [
+    { name: 'RSI (상대강도지수)', desc: '0~100 사이 값으로 주가의 과매수/과매도를 측정해요.\n• 70 이상 → 과매수 (너무 많이 올라 조정 가능)\n• 30 이하 → 과매도 (너무 많이 내려 반등 가능)\n• 40~60 → 정상 범위' },
+    { name: '이격도 (20일선 대비)', desc: '현재 주가가 20일 이동평균선에서 얼마나 벗어났는지예요.\n• 115% 이상 → 과열 (평균보다 15% 위)\n• 95% 이하 → 과매도 (평균보다 5% 아래)\n• 100% 근접 → 이동평균에 수렴 중' },
+    { name: '5일 등락률', desc: '최근 5거래일 동안 주가가 얼마나 변했는지예요.\n• +10% 이상 → 단기 급등 (피로 누적 가능)\n• -10% 이하 → 단기 급락 (반등 기회 가능)\n• ±5% 이내 → 정상 범위' },
+    { name: '거래량 비율', desc: '오늘 거래량이 20일 평균 대비 얼마나 많은지예요.\n• 2배 이상 → 관심 급증 (방향 확인 필요)\n• 0.5배 이하 → 거래 침체 (신뢰도 낮음)\n• 1배 전후 → 평균 수준' },
+    { name: '볼린저밴드', desc: '주가 변동성을 기반으로 한 상/하단 밴드예요.\n• 상단 돌파 → 과열, 추격 매수 주의\n• 하단 접근 → 저점 가능, 반등 검토\n• 중간선(20일선) 근처 → 중립' },
+  ];
+  const overlay = document.createElement('div');
+  overlay.id = 'term-modal-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;display:flex;align-items:flex-end;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:430px;padding:24px 20px 40px;max-height:80vh;overflow-y:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+        <div style="font-size:16px;font-weight:700;">기술 지표 설명</div>
+        <button onclick="document.getElementById('term-modal-overlay').remove()" style="border:none;background:#F0F0F5;border-radius:50%;width:28px;height:28px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>
+      ${guides.map(g => `
+        <div style="margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid #F0F0F5;">
+          <div style="font-size:14px;font-weight:700;margin-bottom:6px;color:#1A1A2E;">${g.name}</div>
+          <div style="font-size:13px;color:#6B6B8A;line-height:1.7;white-space:pre-line;">${g.desc}</div>
+        </div>`).join('')}
+    </div>`;
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
 function showTermModal(type, val, valStr, statusLabel) {
   const existing = document.getElementById('term-modal-overlay');
   if (existing) existing.remove();
@@ -1775,7 +1804,7 @@ function renderIndexDetail(d, el) {
 
     <!-- 주요 기술 지표 (항목 클릭 → 설명 모달) -->
     <div class="section">
-      <div class="sec-title"><i class="ti ti-chart-bar" style="font-size:15px;color:#5B5BD6;"></i>주요 기술 지표 <span style="font-size:10px;color:#8E8E9A;font-weight:400;">항목을 누르면 설명이 나와요</span></div>
+      <div class="sec-title" style="justify-content:space-between;"><span style="display:flex;align-items:center;gap:6px;"><i class="ti ti-chart-bar" style="font-size:15px;color:#5B5BD6;"></i>주요 기술 지표</span><span onclick="showIndicatorGuide()" style="width:22px;height:22px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">?</span></div>
       <div class="card">
         ${rsi ? `<div class="ind-row clickable" onclick="showTermModal('rsi',${rsiW},'${rsiStr}','${rsiLbl}')" style="cursor:pointer;">
           <span class="ind-label" style="color:#5B5BD6;text-decoration:underline dotted;">RSI (14일) <i class="ti ti-info-circle" style="font-size:11px;"></i></span>
