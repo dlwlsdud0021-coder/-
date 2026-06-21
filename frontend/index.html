@@ -545,17 +545,11 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
     <div class="add-form">
       <h3>관심종목 추가</h3>
       <div style="display:flex;gap:6px;align-items:flex-start;">
-        <div class="search-wrap" style="flex:3;margin-bottom:0;">
+        <div class="search-wrap" style="flex:1;margin-bottom:0;">
           <input id="w-search" class="input-field" type="text" placeholder="종목명 검색" oninput="searchStock('w')" autocomplete="off" style="margin-bottom:0;">
           <div id="w-search-results" class="search-results" style="display:none;"></div>
         </div>
         <input id="w-code" type="hidden">
-        <div style="flex:2;">
-          <input id="w-target" class="input-field" type="number" placeholder="목표가" style="margin-bottom:0;">
-        </div>
-        <div style="flex:2;">
-          <input id="w-stop" class="input-field" type="number" placeholder="손절가" style="margin-bottom:0;">
-        </div>
         <button class="btn-primary" style="flex-shrink:0;padding:10px 14px;white-space:nowrap;" onclick="addWatchlist()">추가</button>
         <button class="btn-secondary" style="flex-shrink:0;padding:10px 10px;white-space:nowrap;" onclick="toggleAddWatchlist()">취소</button>
       </div>
@@ -637,6 +631,6 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
   </button>
 </nav>
 
-<script src="/js/app.js?v=20260621f"></script>
+<script src="/js/app.js?v=20260621g"></script>
 </body>
 </html>

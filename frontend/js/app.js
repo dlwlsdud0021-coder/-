@@ -1935,8 +1935,6 @@ function toggleAddWatchlist() {
   if (el.style.display === 'block') {
     document.getElementById('w-search').value = '';
     document.getElementById('w-code').value = '';
-    document.getElementById('w-target').value = '';
-    document.getElementById('w-stop').value = '';
   }
 }
 
@@ -1984,11 +1982,9 @@ async function addHolding() {
 async function addWatchlist() {
   const code = document.getElementById('w-code').value;
   const name = document.getElementById('w-search').value.trim();
-  const target_price = parseFloat(document.getElementById('w-target').value) || null;
-  const stop_loss = parseFloat(document.getElementById('w-stop').value) || null;
   if (!code || !name) { alert('종목을 검색해서 선택하세요'); return; }
   try {
-    await api('POST', '/api/watchlist', { code, name, target_price, stop_loss });
+    await api('POST', '/api/watchlist', { code, name });
     toggleAddWatchlist();
     _watchlistLoaded = false;
     loadWatchlist(true);
