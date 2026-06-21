@@ -440,17 +440,15 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
     </div>
   </div>
   <div id="holding-add-form" style="display:none;">
-    <div class="add-form">
+    <div class="add-form" style="position:relative;">
       <h3>종목 추가</h3>
       <!-- 1줄: 종목명 + 추가 -->
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
-        <div class="search-wrap" style="flex:1;min-width:0;margin-bottom:0;display:flex;align-items:center;">
-          <input id="h-search" class="input-field" type="text" placeholder="종목명 검색" oninput="searchStock('h')" autocomplete="off" style="margin-bottom:0;width:100%;box-sizing:border-box;">
-          <div id="h-search-results" class="search-results" style="display:none;"></div>
-        </div>
+        <input id="h-search" class="input-field" type="text" placeholder="종목명 검색" oninput="searchStock('h')" autocomplete="off" style="flex:1;margin-bottom:0;box-sizing:border-box;">
         <input id="h-code" type="hidden">
         <button class="btn-primary" style="flex-shrink:0;padding:10px 16px;white-space:nowrap;" onclick="addHolding()">추가</button>
       </div>
+      <div id="h-search-results" class="search-results" style="display:none;top:68px;"></div>
       <!-- 2줄: 평단가 + 수량 + 취소 -->
       <div style="display:flex;gap:6px;align-items:center;">
         <input id="h-price" class="input-field" type="number" placeholder="평단가" style="flex:1.5;min-width:0;margin-bottom:0;box-sizing:border-box;">
@@ -560,13 +558,11 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
       <h3>관심종목 추가</h3>
       <!-- 1줄: 종목명 + 추가 -->
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
-        <div class="search-wrap" style="flex:1;min-width:0;margin-bottom:0;display:flex;align-items:center;">
-          <input id="w-search" class="input-field" type="text" placeholder="종목명 검색" oninput="searchStock('w')" autocomplete="off" style="margin-bottom:0;width:100%;box-sizing:border-box;">
-          <div id="w-search-results" class="search-results" style="display:none;"></div>
-        </div>
+        <input id="w-search" class="input-field" type="text" placeholder="종목명 검색" oninput="searchStock('w')" autocomplete="off" style="flex:1;margin-bottom:0;box-sizing:border-box;">
         <input id="w-code" type="hidden">
         <button class="btn-primary" style="flex-shrink:0;padding:10px 16px;white-space:nowrap;" onclick="addWatchlist()">추가</button>
       </div>
+      <div id="w-search-results" class="search-results" style="display:none;top:68px;"></div>
       <!-- 2줄: 취소 -->
       <div style="display:flex;gap:6px;align-items:center;">
         <button class="btn-secondary" style="flex-shrink:0;padding:10px 12px;white-space:nowrap;" onclick="toggleAddWatchlist()">취소</button>
@@ -651,6 +647,6 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
   </button>
 </nav>
 
-<script src="/js/app.js?v=20260621q"></script>
+<script src="/js/app.js?v=20260621r"></script>
 </body>
 </html>
