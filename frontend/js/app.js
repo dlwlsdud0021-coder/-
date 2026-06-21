@@ -2358,7 +2358,6 @@ function renderWatchlist() {
         style="position:absolute;top:10px;right:10px;background:none;border:none;cursor:pointer;padding:2px;line-height:1;z-index:1;">
         <i class="ti ti-trash" style="font-size:16px;color:#8E8E9A;"></i>
       </button>
-      ${isAlert ? `<div style="position:absolute;top:10px;right:38px;width:7px;height:7px;border-radius:50%;background:#E24B4A;"></div>` : ''}
       <div class="card-top" style="padding-right:28px;">
         <div class="stock-icon ${iconColors(w.name)}">${iconText(w.name)}</div>
         <div>
