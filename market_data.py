@@ -524,7 +524,7 @@ def get_investor_trading(code: str, days: int = 25) -> pd.DataFrame:
     if not PYKRX_OK:
         return pd.DataFrame()
     try:
-        end   = _today()
+        end   = _last_trading_date()   # 주말이면 마지막 거래일 사용
         start = _ndays_ago(days + 15)
         df = krx.get_market_trading_volume_by_date(start, end, code, on="순매수")
         if df is None or df.empty:

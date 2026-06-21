@@ -2571,7 +2571,8 @@ let _scannerItems = [];
 function renderScanner(d, el) {
   _scannerItems = d.results || d.stocks || [];
   if (!_scannerItems.length) {
-    el.innerHTML = '<div class="empty-state"><i class="ti ti-chart-bar"></i>오늘 매집 신호 없음</div>';
+    const today = new Date(); const isWeekend = today.getDay() === 0 || today.getDay() === 6;
+    el.innerHTML = `<div class="empty-state"><i class="ti ti-chart-bar"></i>${isWeekend ? '주말엔 수급 데이터 없음<br><small style="font-size:11px;color:#8E8E9A;">기술적 신호 기반으로만 분석됩니다</small>' : '오늘 매집 신호 없음'}</div>`;
     return;
   }
   renderScannerList(el);
