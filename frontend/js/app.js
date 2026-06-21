@@ -2633,21 +2633,12 @@ async function addWatchlist() {
   const code = document.getElementById('w-code').value;
   const name = document.getElementById('w-search').value.trim();
   if (!code || !name) { alert('종목을 검색해서 선택하세요'); return; }
-  const sel = document.getElementById('w-group-select').value;
-  const newG = document.getElementById('w-group-new').value.trim();
-  const group_name = (sel === '__new__' ? newG : sel) || '기본';
-  if (sel === '__new__' && !newG) { alert('새 그룹명을 입력하세요'); return; }
   try {
-    await api('POST', '/api/watchlist', { code, name, group_name });
+    await api('POST', '/api/watchlist', { code, name, group_name: '기본' });
     toggleAddWatchlist();
     _watchlistLoaded = false;
     loadWatchlist(true);
   } catch(e) { alert(e.message); }
-}
-
-function onWatchlistGroupSelect(val) {
-  const inp = document.getElementById('w-group-new');
-  inp.style.display = val === '__new__' ? '' : 'none';
 }
 
 // ─────────────────────────────────────────────────────────
