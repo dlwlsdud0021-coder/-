@@ -2088,19 +2088,38 @@ function renderWatchlist() {
       </div>`;
     }
 
-    // 배지
+    // 배지 (문자열만 필터)
     const timing = w.timing || {};
     const bdgType = timing.badge_type || 'neutral';
     const bdgCls  = bdgType === 'buy' ? 'badge-buy' : bdgType === 'sell' ? 'badge-sell' : 'badge-ok';
-    const extraBadges = (w.badges || []).slice(0, 3)
+    const extraBadges = (w.badges || []).filter(b => typeof b === 'string').slice(0, 3)
       .map(b => `<span class="badge badge-ok">${b}</span>`).join('');
+
+    // 시장 구분 (코드 앞자리로 추정)
+    const market = w.market || (w.code && w.code.length === 6 && w.code[0] === '0' ? '코스닥' : '코스피');
+    const codeSub = `${market} · ${w.code}`;
+
+    // 목표가·손절가 한 줄 표시
+    let targetRow = '';
+    if (w.target_price && cur) {
+      const tDist = ((w.target_price - cur) / cur * 100).toFixed(1);
+      const sDist = w.stop_loss ? ((w.stop_loss - cur) / cur * 100).toFixed(1) : null;
+      targetRow = `<div style="display:flex;gap:12px;margin:8px 0 4px;font-size:13px;">
+        <span style="color:#8E8E9A;font-size:12px;">목표가</span>
+        <span style="font-weight:600;color:#27500A;">${fmtNum(w.target_price)}원</span>
+        <span style="color:#27500A;font-size:12px;">(+${tDist}%)</span>
+        ${sDist != null ? `<span style="color:#8E8E9A;font-size:12px;margin-left:4px;">손절가</span>
+        <span style="font-weight:600;color:#A32D2D;">${fmtNum(w.stop_loss)}원</span>
+        <span style="color:#A32D2D;font-size:12px;">(${sDist}%)</span>` : ''}
+      </div>`;
+    }
 
     return `<div class="card clickable" onclick="openWatchlistDetail('${w.code}','${w.name.replace(/'/g,"\\'")}')">
       <div class="card-top">
         <div class="stock-icon ${iconColors(w.name)}">${iconText(w.name)}</div>
         <div>
           <div class="stock-name">${w.name}</div>
-          <div class="stock-sub">${w.code}</div>
+          <div class="stock-sub" style="color:#8E8E9A;">${codeSub}</div>
         </div>
         <div class="stock-right">
           ${cur ? `<div class="stock-price">${fmtNum(cur)}원</div>` : ''}
