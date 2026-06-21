@@ -1340,6 +1340,19 @@ def watchlist_detail(code: str, user=Depends(get_current_user)):
                 })
         analysis["inv_list"] = inv_list
         analysis["news"] = []  # 뉴스는 /api/stock/{code}/news 별도 호출
+        # OHLCV 차트 데이터
+        ohlcv_data = []
+        if ohlcv is not None and not ohlcv.empty:
+            for dt, row in ohlcv.tail(60).iterrows():
+                ohlcv_data.append({
+                    "date":   str(dt)[:10],
+                    "open":   int(row.get("open",   row.get("시가",  0))),
+                    "high":   int(row.get("high",   row.get("고가",  0))),
+                    "low":    int(row.get("low",    row.get("저가",  0))),
+                    "close":  int(row.get("close",  row.get("종가",  0))),
+                    "volume": int(row.get("volume", row.get("거래량",0))),
+                })
+        analysis["ohlcv"] = ohlcv_data
     except Exception as e:
         import traceback
         analysis = {"error": str(e), "traceback": traceback.format_exc()}
@@ -1347,6 +1360,7 @@ def watchlist_detail(code: str, user=Depends(get_current_user)):
     analysis.setdefault("timing", {})
     analysis.setdefault("inv_list", [])
     analysis.setdefault("vol_list", [])
+    analysis.setdefault("ohlcv", [])
     analysis.setdefault("news", [])
     return _to_python({"item": item, "analysis": analysis})
 
@@ -1406,9 +1420,21 @@ def _run_scanner():
                     if not price and ohlcv is not None and not ohlcv.empty:
                         price = float(ohlcv["close"].iloc[-1])
                     change_pct = pd2.get("change_pct", 0) or 0
+                    ohlcv_data = []
+                    if ohlcv is not None and not ohlcv.empty:
+                        for dt, row in ohlcv.tail(60).iterrows():
+                            ohlcv_data.append({
+                                "date":   str(dt)[:10],
+                                "open":   int(row.get("open",   row.get("시가",  0))),
+                                "high":   int(row.get("high",   row.get("고가",  0))),
+                                "low":    int(row.get("low",    row.get("저가",  0))),
+                                "close":  int(row.get("close",  row.get("종가",  0))),
+                                "volume": int(row.get("volume", row.get("거래량",0))),
+                            })
                     results.append(_to_python({
                         "code": s["code"], "name": s["name"],
-                        "price": price, "change_pct": change_pct, **a
+                        "price": price, "change_pct": change_pct, **a,
+                        "ohlcv": ohlcv_data,
                     }))
             except Exception as _e:
                 _slog.warning(f"[스캐너] {s.get('code')} 오류: {_e}")

@@ -1978,8 +1978,8 @@ function renderHoldingDetail(d, el) {
     </div>`;
 }
 
-function drawPriceChart(ohlcv, avgPrice, targetPrice, stopPrice) {
-  const canvas = document.getElementById('price-chart');
+function drawPriceChart(ohlcv, avgPrice, targetPrice, stopPrice, canvasId) {
+  const canvas = document.getElementById(canvasId || 'price-chart');
   if (!canvas || !ohlcv || ohlcv.length === 0) return;
   const dpr = window.devicePixelRatio || 1;
   const W = canvas.offsetWidth || 340;
@@ -2684,6 +2684,14 @@ function renderWatchlistDetail(d, el, code, name) {
       </div>
     </div>
 
+    <!-- 가격 차트 -->
+    ${(a.ohlcv||[]).length > 0 ? `<div class="section" style="margin-top:12px;">
+      <div class="sec-title"><i class="ti ti-chart-candle" style="font-size:15px;color:#5B5BD6;"></i>가격 차트</div>
+      <div class="card" style="padding:8px;">
+        <canvas id="wl-price-chart-${code}" style="width:100%;height:200px;"></canvas>
+      </div>
+    </div>` : ''}
+
     <!-- 타이밍 판정 -->
     ${timingHtml}
 
@@ -2782,6 +2790,9 @@ function renderWatchlistDetail(d, el, code, name) {
       </button>
     </div>`;
 
+  if ((a.ohlcv||[]).length > 0) {
+    setTimeout(() => drawPriceChart(a.ohlcv, null, null, null, `wl-price-chart-${code}`), 50);
+  }
 }
 
 function confirmDeleteWatchlist(code, name) {
@@ -3016,6 +3027,14 @@ function renderScannerDetail(s) {
       </div>` : ''}
     </div>
 
+    <!-- 가격 차트 -->
+    ${(s.ohlcv||[]).length > 0 ? `<div class="section" style="margin-top:8px;">
+      <div class="sec-title"><i class="ti ti-chart-candle" style="font-size:15px;color:#5B5BD6;"></i>가격 차트</div>
+      <div class="card" style="padding:8px;">
+        <canvas id="sc-price-chart-${s.code}" style="width:100%;height:200px;"></canvas>
+      </div>
+    </div>` : ''}
+
     <!-- 매집 신호 점수 투명화 -->
     <div class="section" style="margin-top:8px;">
       <div class="sec-title"><i class="ti ti-radar" style="font-size:15px;color:#5B5BD6;"></i>매집신호 상세 <span style="font-size:11px;color:#8E8E9A;font-weight:400;">(5개 조건 충족 시 신뢰도 높음)</span></div>
@@ -3086,6 +3105,9 @@ function renderScannerDetail(s) {
       <div class="warn-box"><i class="ti ti-alert-circle" style="font-size:14px;flex-shrink:0;"></i>투자 결정은 본인 책임입니다. 이 정보는 참고용이며 투자 권유가 아닙니다.</div>
     </div>`;
 
+  if ((s.ohlcv||[]).length > 0) {
+    setTimeout(() => drawPriceChart(s.ohlcv, null, null, null, `sc-price-chart-${s.code}`), 50);
+  }
 }
 
 function _buildFlowChart(volList, invList) {
