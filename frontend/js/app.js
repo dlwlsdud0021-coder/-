@@ -93,6 +93,8 @@ let _currentTab = 'home';
 let _prevScreen = '';
 let _allNews = [];
 let _allHoldings = [];
+let _autoRefreshTimer = null;
+const _AUTO_REFRESH_MS = 60000; // 1분
 let _allWatchlist = [];
 let _scannerPollTimer = null;
 
@@ -130,8 +132,22 @@ function showScreen(id) {
   nav.style.display = noNav.includes(id) ? 'none' : 'flex';
 }
 
+function _startAutoRefresh(tab) {
+  clearInterval(_autoRefreshTimer);
+  _autoRefreshTimer = null;
+  const refreshFns = {
+    home:      () => loadHome(true),
+    holdings:  () => refreshHoldingsPrices(),
+    watchlist: () => refreshWatchlistPrices(),
+  };
+  if (refreshFns[tab]) {
+    _autoRefreshTimer = setInterval(refreshFns[tab], _AUTO_REFRESH_MS);
+  }
+}
+
 function switchTab(tab) {
   if (tab !== 'scanner') { clearTimeout(_scannerPollTimer); _scannerPollTimer = null; }
+  clearInterval(_autoRefreshTimer); _autoRefreshTimer = null;
   _currentTab = tab;
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const navEl = document.getElementById('nav-' + tab);
@@ -142,9 +158,11 @@ function switchTab(tab) {
   else if (tab === 'holdings') loadHoldings();
   else if (tab === 'watchlist') loadWatchlist();
   else if (tab === 'scanner') loadScanner();
+  _startAutoRefresh(tab);
 }
 
 function goBack() {
+  clearInterval(_autoRefreshTimer); _autoRefreshTimer = null;
   switchTab(_currentTab);
 }
 
@@ -245,7 +263,10 @@ async function loadHome(force) {
   if (_homeLoaded && !force) return;
   _homeLoaded = true;
   const el = document.getElementById('home-content');
-  el.innerHTML = '<div class="loading"><div class="spinner"></div> 시장 분석 중...</div>';
+  const silent = force && el.children.length > 0; // 이미 콘텐츠 있으면 스피너 없이 갱신
+  if (!silent) {
+    el.innerHTML = '<div class="loading"><div class="spinner"></div> 시장 분석 중...</div>';
+  }
   document.getElementById('home-date').textContent = nowStr();
   try {
     const d = await api('GET', '/api/home');
@@ -1420,6 +1441,25 @@ function buildNewsAnalysisHtml(n) {
 // ─────────────────────────────────────────────────────────
 let _holdingsLoaded = false;
 let _holdingsFilter = '전체';
+async function refreshHoldingsPrices() {
+  // 전체 재렌더 없이 현재가만 조용히 갱신
+  if (!_allHoldings.length) return;
+  try {
+    const d = await api('GET', '/api/holdings');
+    _allHoldings = d.holdings || [];
+    renderHoldings();
+    document.getElementById('holdings-date').textContent = nowStr();
+  } catch(e) {}
+}
+
+async function refreshWatchlistPrices() {
+  if (!_watchlistLoaded) return;
+  try {
+    const d = await api('GET', '/api/watchlist');
+    renderWatchlistFromData(d);
+  } catch(e) {}
+}
+
 async function loadHoldings(force) {
   if (_holdingsLoaded && !force) return;
   _holdingsLoaded = true;
@@ -2147,6 +2187,11 @@ async function addWatchlist() {
 // ─────────────────────────────────────────────────────────
 // 관심종목 탭
 // ─────────────────────────────────────────────────────────
+function renderWatchlistFromData(d) {
+  _allWatchlist = d.watchlist || [];
+  renderWatchlist();
+}
+
 let _watchlistLoaded = false;
 let _watchlistFilter = '전체';
 async function loadWatchlist(force) {
