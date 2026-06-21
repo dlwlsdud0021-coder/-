@@ -160,15 +160,8 @@ def get_stock_name(code: str) -> str:
 
 
 def get_all_tickers() -> dict:
-    """코스피+코스닥 전 종목 {code: name}. KIS API → pykrx → FDR 순"""
-    # 1순위: KIS API
-    try:
-        stocks = get_top_stocks(200)
-        if stocks:
-            return {s["code"]: s["name"] for s in stocks}
-    except:
-        pass
-    # 2순위: pykrx
+    """코스피+코스닥 전 종목 {code: name}. pykrx → FDR → KIS 순 (KIS는 200종목 제한)"""
+    # 1순위: pykrx (전 종목)
     if PYKRX_OK:
         try:
             tdate = _last_trading_date()
@@ -177,16 +170,26 @@ def get_all_tickers() -> dict:
             result = {}
             for c in kospi + kosdaq:
                 result[c] = krx.get_market_ticker_name(c)
-            return result
+            if result:
+                return result
         except:
             pass
-    # 3순위: FDR
+    # 2순위: FDR
     if FDR_OK:
         try:
             listing = fdr.StockListing("KRX")
-            return dict(zip(listing["Code"].astype(str), listing["Name"]))
+            result = dict(zip(listing["Code"].astype(str), listing["Name"]))
+            if result:
+                return result
         except:
             pass
+    # 3순위: KIS (상위 200종목만)
+    try:
+        stocks = get_top_stocks(200)
+        if stocks:
+            return {s["code"]: s["name"] for s in stocks}
+    except:
+        pass
     return {}
 
 

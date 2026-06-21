@@ -2605,7 +2605,10 @@ function searchStock(prefix) {
         </div>`
       ).join('');
       resEl.style.display = 'block';
-    } catch(e) {}
+    } catch(e) {
+      resEl.innerHTML = '<div class="search-result-item" style="color:#8E8E9A;">검색 실패 — 다시 시도해주세요</div>';
+      resEl.style.display = 'block';
+    }
   }, 300);
 }
 
