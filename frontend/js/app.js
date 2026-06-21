@@ -2091,6 +2091,8 @@ function renderWatchlist() {
     const market = w.market || (w.code && w.code.length === 6 && w.code[0] === '0' ? '코스닥' : '코스피');
     const codeSub = `${market} · ${w.code}`;
 
+    const cur = w.cur_price || 0;
+
     // 목표가·손절가 한 줄 표시
     let targetRow = '';
     if (w.target_price && cur) {
