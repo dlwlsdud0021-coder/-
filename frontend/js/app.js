@@ -1306,24 +1306,9 @@ function renderForecastDetail(d, el) {
   const dirArrow = isUp ? '↗' : isDown ? '↘' : '→';
 
   // ── 히어로 카드 (그라디언트) ──────────────────────────────
-  // 장식용 꺾은선 SVG
-  const heroLinePoints = isUp
-    ? '10,55 40,50 70,42 100,38 130,28 155,15'
-    : isDown
-    ? '10,15 40,22 70,30 100,38 130,46 155,58'
-    : '10,40 40,35 70,42 100,35 130,40 155,38';
-  const heroSvg = `<svg viewBox="0 0 165 70" style="width:120px;height:60px;position:absolute;right:12px;top:20px;opacity:0.7;">
-    <polyline points="${heroLinePoints}" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-    ${heroLinePoints.split(' ').map(pt => {
-      const [x, y] = pt.split(',');
-      return `<circle cx="${x}" cy="${y}" r="3.5" fill="rgba(255,255,255,0.95)"/>`;
-    }).join('')}
-  </svg>`;
-
   const heroCard = `
-  <div class="section" style="margin-top:0;">
+  <div class="section" style="margin-top:12px;">
     <div style="background:linear-gradient(135deg,#5B5BD6 0%,#7C7CE8 100%);border-radius:20px;padding:20px 16px 20px;position:relative;overflow:hidden;color:#fff;">
-      ${heroSvg}
       <div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.18);border-radius:20px;padding:4px 10px;font-size:11px;font-weight:600;margin-bottom:12px;">
         <i class="ti ti-sparkles" style="font-size:12px;"></i>AI 예측
       </div>
@@ -1363,7 +1348,6 @@ function renderForecastDetail(d, el) {
         <div style="font-size:13px;font-weight:600;color:#1A1A2E;line-height:1.4;">${title}</div>
         ${sub ? `<div style="font-size:12px;color:#8E8E9A;margin-top:2px;line-height:1.4;">${sub}</div>` : ''}
       </div>
-      ${showChevron ? `<i class="ti ti-chevron-right" style="font-size:14px;color:#C7C7CC;flex-shrink:0;"></i>` : ''}
     </div>`;
   }
 
