@@ -2072,22 +2072,6 @@ function renderWatchlist() {
       else if (rsi <= 35) { rsiColor = '#3B6D11'; rsiLabel = '저점'; }
     }
 
-    // 목표가·손절가 거리
-    const cur = w.cur_price || 0;
-    let targetRow = '';
-    if (w.target_price && cur) {
-      const tDist = ((w.target_price - cur) / cur * 100).toFixed(1);
-      const sDist = w.stop_loss ? ((w.stop_loss - cur) / cur * 100).toFixed(1) : null;
-      targetRow = `<div class="target-row">
-        <span class="target-label">목표가</span>
-        <span class="target-val">${fmtNum(w.target_price)}원</span>
-        <span class="target-dist">(${tDist >= 0 ? '+' : ''}${tDist}%)</span>
-        ${sDist != null ? `<span class="target-label" style="margin-left:8px;">손절가</span>
-        <span class="target-val" style="color:#A32D2D;">${fmtNum(w.stop_loss)}원</span>
-        <span class="target-dist" style="color:#A32D2D;">(${sDist}%)</span>` : ''}
-      </div>`;
-    }
-
     // 배지 (문자열만 필터)
     const timing = w.timing || {};
     const bdgType = timing.badge_type || 'neutral';
