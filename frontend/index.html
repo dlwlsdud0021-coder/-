@@ -202,15 +202,51 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
 .empty-state i { font-size: 36px; display: block; margin-bottom: 10px; color: #C7C7CC; }
 
 /* ── 매집 스캐너 ── */
-.scanner-card { background: #fff; border-radius: 16px; padding: 14px 16px; border: 0.5px solid #E5E5EA; margin-bottom: 8px; cursor: pointer; }
-.scanner-rank { font-size: 11px; font-weight: 700; color: #5B5BD6; margin-bottom: 6px; }
-.scanner-name { font-size: 14px; font-weight: 700; }
-.scanner-code { font-size: 11px; color: #8E8E93; }
-.scanner-signals { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
-.scanner-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
-.metric-item { background: #F8F8FA; border-radius: 8px; padding: 6px 8px; text-align: center; }
-.metric-label { font-size: 9px; color: #8E8E93; }
-.metric-val { font-size: 12px; font-weight: 600; margin-top: 1px; }
+.scanner-sum-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:12px 16px; }
+.scanner-sum-card { background:#fff; border-radius:12px; padding:10px 12px; border:0.5px solid #E5E5EA; text-align:center; }
+.scanner-sum-label { font-size:10px; color:#8E8E9A; margin-bottom:3px; }
+.scanner-sum-val { font-size:18px; font-weight:700; }
+.scanner-filter-row { display:flex; padding:0 16px; gap:6px; margin-bottom:12px; overflow-x:auto; scrollbar-width:none; }
+.scanner-filter-row::-webkit-scrollbar { display:none; }
+.scanner-filter-btn { padding:6px 14px; border-radius:20px; font-size:11px; font-weight:500; white-space:nowrap; cursor:pointer; border:none; }
+.scanner-filter-btn.active { background:#5B5BD6; color:#fff; }
+.scanner-filter-btn.inactive { background:#fff; color:#6B6B8A; border:0.5px solid #E5E5EA; }
+.scanner-card { background:#fff; border-radius:0 16px 16px 16px; padding:14px 16px; border:0.5px solid #E5E5EA; margin-bottom:8px; cursor:pointer; }
+.scanner-card.high { border-left:3px solid #5B5BD6; }
+.scanner-card.mid { border-left:3px solid #BA7517; }
+.sc-top { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.sc-rank { font-size:13px; font-weight:700; color:#C7C7CC; min-width:18px; }
+.sc-signal-dots { display:flex; gap:5px; align-items:center; margin-bottom:8px; }
+.sc-sig-item { display:flex; align-items:center; gap:3px; }
+.sc-sig-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.sc-sig-dot.on { background:#5B5BD6; }
+.sc-sig-dot.off { background:#D1D1D6; }
+.sc-sig-text { font-size:10px; color:#6B6B8A; }
+.sc-rsi-row { display:flex; align-items:center; gap:6px; margin-bottom:5px; }
+.sc-rsi-label { font-size:10px; color:#8E8E9A; min-width:28px; }
+.sc-rsi-bar { flex:1; height:4px; background:#F0F0F5; border-radius:2px; overflow:hidden; }
+.sc-rsi-fill { height:4px; border-radius:2px; }
+.sc-rsi-val { font-size:10px; font-weight:600; min-width:24px; text-align:right; }
+.sc-obv-row { display:flex; justify-content:space-between; align-items:center; }
+.sc-obv-label { font-size:10px; color:#8E8E9A; }
+.sc-obv-val { font-size:10px; font-weight:600; color:#3C3489; display:flex; align-items:center; gap:3px; }
+.sc-card-bottom { display:flex; justify-content:space-between; align-items:center; padding-top:8px; border-top:0.5px solid #F0F0F5; margin-top:8px; }
+.sc-detail-btn { font-size:11px; color:#5B5BD6; display:flex; align-items:center; gap:2px; font-weight:500; }
+/* 매집 상세 */
+.scanner-price-section { background:#fff; padding:16px 20px; margin-bottom:8px; border-bottom:0.5px solid #E5E5EA; }
+.scanner-current-price { font-size:28px; font-weight:700; letter-spacing:-0.5px; }
+.scanner-price-meta { display:flex; gap:16px; margin-top:10px; }
+.scanner-pm-item { font-size:11px; color:#8E8E9A; }
+.scanner-pm-item span { color:#1A1A2E; font-weight:500; }
+.signal-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.sig-grid-item { background:#F8F8FA; border-radius:10px; padding:10px 12px; }
+.sig-grid-label { font-size:10px; color:#8E8E9A; margin-bottom:4px; display:flex; align-items:center; gap:4px; }
+.sig-grid-val { font-size:13px; font-weight:600; }
+.sig-grid-val.good { color:#3C3489; }
+.sig-grid-val.warn { color:#A32D2D; }
+.advice-box { background:#EEEDFE; border-radius:14px; padding:14px 16px; margin:0 16px 8px; }
+.advice-title { font-size:13px; font-weight:600; color:#3C3489; margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.advice-text { font-size:12px; color:#534AB7; line-height:1.6; }
 
 /* ── 수급 상세 ── */
 .tab-row { display:flex; padding:10px 16px; gap:6px; background:#fff; border-bottom:0.5px solid #E5E5EA; }
@@ -554,15 +590,29 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
 <div id="screen-scanner" class="screen">
   <div class="header">
     <div>
-      <div class="header-title">매집 스캐너</div>
+      <div class="header-title">매집신호 스캐너</div>
       <div class="header-sub">외국인·기관 동시 매수 포착</div>
     </div>
     <div class="header-icons">
-      <i class="ti ti-refresh" onclick="loadScanner(true)"></i>
+      <i class="ti ti-refresh" onclick="loadScanner(true)" style="cursor:pointer;"></i>
     </div>
   </div>
   <div id="scanner-content">
     <div class="loading"><div class="spinner"></div> 스캔 중...</div>
+  </div>
+</div>
+
+<div id="screen-scanner-detail" class="screen">
+  <div class="header">
+    <i class="ti ti-arrow-left" style="font-size:22px;color:#5B5BD6;cursor:pointer;" onclick="goBack()"></i>
+    <div style="flex:1;margin-left:12px;">
+      <div class="header-title" id="scanner-detail-name">-</div>
+      <div class="header-sub" id="scanner-detail-code">-</div>
+    </div>
+    <span id="scanner-detail-badge" class="badge badge-ok" style="font-size:10px;"></span>
+  </div>
+  <div id="scanner-detail-content">
+    <div class="loading"><div class="spinner"></div> 분석 중...</div>
   </div>
 </div>
 
@@ -587,6 +637,6 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
   </button>
 </nav>
 
-<script src="/js/app.js?v=20260621i"></script>
+<script src="/js/app.js?v=20260621j"></script>
 </body>
 </html>
