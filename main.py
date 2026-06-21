@@ -958,12 +958,17 @@ def scanner():
                 a = analyze_stock(ohlcv, inv)
                 if a["score"] >= 3:
                     pd2 = get_current_price(s["code"])
-                    results.append({
+                    price = pd2.get("current_price", 0) or 0
+                    # 주말/장마감 시 OHLCV 마지막 종가 폴백
+                    if not price and ohlcv is not None and not ohlcv.empty:
+                        price = float(ohlcv["close"].iloc[-1])
+                    change_pct = pd2.get("change_pct", 0) or 0
+                    results.append(_to_python({
                         "code": s["code"], "name": s["name"],
-                        "price": pd2.get("current_price", 0),
-                        "change_pct": pd2.get("change_pct", 0),
+                        "price": price,
+                        "change_pct": change_pct,
                         **a
-                    })
+                    }))
             except Exception:
                 continue
         results.sort(key=lambda x: (x["score"], x.get("volume_ratio", 0)), reverse=True)
