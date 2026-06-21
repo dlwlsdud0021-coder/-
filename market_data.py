@@ -1,4 +1,4 @@
-"""
+﻿"""
 market_data.py — 실제 시장 데이터 수집
 - pykrx: 국내 주식 OHLCV, 지수, 외국인/기관 수급, 종목 목록
 - yfinance: 미국 지수 (S&P500, 나스닥, 다우)
@@ -129,7 +129,6 @@ except Exception as e:
 # ─────────────────────────────────────────────────────────
 # 종목명 조회 (캐시)
 # ─────────────────────────────────────────────────────────
-@st.cache_data(ttl=86400)
 def get_stock_name(code: str) -> str:
     """종목코드 → 종목명. KIS API → pykrx → FDR 순"""
     # 1순위: KIS API (get_top_stocks 캐시에서 찾기)
@@ -160,7 +159,6 @@ def get_stock_name(code: str) -> str:
     return code
 
 
-@st.cache_data(ttl=86400)
 def get_all_tickers() -> dict:
     """코스피+코스닥 전 종목 {code: name}. KIS API → pykrx → FDR 순"""
     # 1순위: KIS API
@@ -206,7 +204,6 @@ def search_stock_by_name(query: str, max_results: int = 10) -> list:
 # ─────────────────────────────────────────────────────────
 # 국내 지수 (KOSPI / KOSDAQ) — yfinance 기반
 # ─────────────────────────────────────────────────────────
-@st.cache_data(ttl=60)
 def get_index_data() -> dict:
     # 1순위: KIS API (가장 정확한 실시간 데이터)
     try:
@@ -320,7 +317,6 @@ def _dummy_index():
 # ─────────────────────────────────────────────────────────
 # 미국 지수 (S&P500, 나스닥, 다우)
 # ─────────────────────────────────────────────────────────
-@st.cache_data(ttl=60)
 def get_us_indices() -> dict:
     # 1순위: yfinance fast_info (가장 빠르고 안정적)
     try:
@@ -367,7 +363,6 @@ def get_us_indices() -> dict:
 # ─────────────────────────────────────────────────────────
 # 종목 OHLCV
 # ─────────────────────────────────────────────────────────
-@st.cache_data(ttl=300)
 def get_ohlcv(code: str, days: int = 120) -> pd.DataFrame:
     """
     Returns DataFrame with columns: open, high, low, close, volume
@@ -418,7 +413,6 @@ def get_ohlcv(code: str, days: int = 120) -> pd.DataFrame:
     return pd.DataFrame()
 
 
-@st.cache_data(ttl=60)
 def get_current_price(code: str) -> dict:
     """
     현재가 정보 반환
@@ -498,7 +492,6 @@ _INVESTOR_COL_MAP = {"외국인합계": "외국인", "기관합계": "기관"}
 _INVESTOR_NEEDED  = ["외국인합계", "기관합계", "개인"]
 
 
-@st.cache_data(ttl=600)
 def get_investor_trading(code: str, days: int = 25) -> pd.DataFrame:
     """
     종목별 투자자 순매수량 (일별).
@@ -543,7 +536,6 @@ def get_investor_trading(code: str, days: int = 25) -> pd.DataFrame:
         return pd.DataFrame()
 
 
-@st.cache_data(ttl=600)
 def get_kospi_investor_value(days: int = 25) -> pd.DataFrame:
     """
     KOSPI 외국인·기관 일별 순매수 거래대금.
@@ -583,7 +575,6 @@ def get_kospi_investor_value(days: int = 25) -> pd.DataFrame:
         return pd.DataFrame()
 
 
-@st.cache_data(ttl=600)
 def get_kospi_investor(days: int = 25) -> pd.DataFrame:
     """KOSPI 전체 외국인/기관/개인 순매수 (홈 수급 탭용)
     1순위: KIS API, 2순위: pykrx
@@ -676,7 +667,6 @@ def get_kospi_investor(days: int = 25) -> pd.DataFrame:
 # ─────────────────────────────────────────────────────────
 # 스캐너: 시가총액 상위 종목 목록
 # ─────────────────────────────────────────────────────────
-@st.cache_data(ttl=3600)
 def get_top_stocks(n: int = 200) -> list:
     """
     시가총액 상위 N개 종목 리스트
@@ -780,7 +770,6 @@ def get_top_stocks(n: int = 200) -> list:
 # ─────────────────────────────────────────────────────────
 _INDEX_TICKER = {"1001": "^KS11", "2001": "^KQ11"}
 
-@st.cache_data(ttl=3600)
 def get_index_ohlcv_history(index_code: str = "1001", days: int = 120) -> pd.DataFrame:
     """
     지수 OHLCV 히스토리 반환 (이동평균선 계산용).
@@ -809,7 +798,6 @@ def get_index_ohlcv_history(index_code: str = "1001", days: int = 120) -> pd.Dat
         return pd.DataFrame()
 
 
-@st.cache_data(ttl=600)
 def get_sector_performance() -> list:
     """
     주요 섹터 대표 종목들로 섹터 등락률 계산.
@@ -844,7 +832,6 @@ def get_sector_performance() -> list:
 # ─────────────────────────────────────────────────────────
 # 전체 시장 당일 데이터 (스캐너 빠른 조회용)
 # ─────────────────────────────────────────────────────────
-@st.cache_data(ttl=300)
 def get_market_snapshot(market: str = "KOSPI") -> pd.DataFrame:
     """
     당일 전 종목 OHLCV + 거래량 한번에 조회
@@ -858,3 +845,4 @@ def get_market_snapshot(market: str = "KOSPI") -> pd.DataFrame:
         return df if df is not None else pd.DataFrame()
     except:
         return pd.DataFrame()
+
