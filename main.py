@@ -983,7 +983,7 @@ def _run_scanner():
         return
     _scanner_cache["running"] = True
     try:
-        stocks = get_top_stocks(100)
+        stocks = [s for s in get_top_stocks(100) if s.get("code") and len(s["code"]) == 6]
         results = []
         for s in stocks[:100]:
             try:
