@@ -882,43 +882,95 @@ function renderForecastDetail(d, el) {
   const fPct   = forecast.predicted_pct || 0;
   const isUp   = (forecast.direction || '') === 'up';
   const isDown = (forecast.direction || '') === 'down';
-  const dirColor = isUp ? '#E24B4A' : isDown ? '#185FA5' : '#BA7517';
-  const dirIcon  = isUp ? 'ti-trending-up' : isDown ? 'ti-trending-down' : 'ti-minus';
+  const dirArrow = isUp ? '↗' : isDown ? '↘' : '→';
 
-  // 근거 + 주목 포인트
+  // ── 히어로 카드 (그라디언트) ──────────────────────────────
+  // 장식용 꺾은선 SVG
+  const heroLinePoints = isUp
+    ? '10,55 40,50 70,42 100,38 130,28 155,15'
+    : isDown
+    ? '10,15 40,22 70,30 100,38 130,46 155,58'
+    : '10,40 40,35 70,42 100,35 130,40 155,38';
+  const heroSvg = `<svg viewBox="0 0 165 70" style="width:120px;height:60px;position:absolute;right:12px;top:20px;opacity:0.7;">
+    <polyline points="${heroLinePoints}" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${heroLinePoints.split(' ').map(pt => {
+      const [x, y] = pt.split(',');
+      return `<circle cx="${x}" cy="${y}" r="3.5" fill="rgba(255,255,255,0.95)"/>`;
+    }).join('')}
+  </svg>`;
+
+  const heroCard = `
+  <div class="section" style="margin-top:0;">
+    <div style="background:linear-gradient(135deg,#5B5BD6 0%,#7C7CE8 100%);border-radius:20px;padding:20px 16px 20px;position:relative;overflow:hidden;color:#fff;">
+      ${heroSvg}
+      <div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.18);border-radius:20px;padding:4px 10px;font-size:11px;font-weight:600;margin-bottom:12px;">
+        <i class="ti ti-sparkles" style="font-size:12px;"></i>AI 예측
+      </div>
+      <div style="font-size:26px;font-weight:800;line-height:1.2;margin-bottom:4px;">${dirArrow} ${fTitle} (${fPct > 0 ? '+' : ''}${fPct.toFixed(1)}%)</div>
+      <div style="font-size:13px;opacity:0.85;margin-bottom:16px;">예상 등락률 ${fPct > 0 ? '+' : ''}${fPct.toFixed(1)}%</div>
+      <div style="font-size:11px;opacity:0.75;margin-bottom:6px;">신뢰도</div>
+      <div style="background:rgba(255,255,255,0.25);border-radius:20px;height:8px;margin-bottom:5px;">
+        <div style="width:${fConf}%;background:#fff;border-radius:20px;height:8px;transition:width 0.6s;"></div>
+      </div>
+      <div style="font-size:14px;font-weight:700;">${fConf}%</div>
+    </div>
+  </div>`;
+
+  // ── 근거/주목 공통 row 빌더 ───────────────────────────────
+  function _icon(text, fallback) {
+    const t = text.toLowerCase();
+    if (t.includes('s&p') || t.includes('나스닥') || t.includes('미국')) return { i: 'ti-flag-2', bg: '#EEF2FF', c: '#4F63D2' };
+    if (t.includes('이동평균') || t.includes('일선') || t.includes('ma') || t.includes('추세')) return { i: 'ti-trending-up', bg: '#FEF3C7', c: '#D97706' };
+    if (t.includes('외국인')) return { i: 'ti-users', bg: '#DCFCE7', c: '#16A34A' };
+    if (t.includes('기관')) return { i: 'ti-building-bank', bg: '#F3E8FF', c: '#9333EA' };
+    if (t.includes('거래량') || t.includes('볼륨')) return { i: 'ti-chart-bar', bg: '#FEE2E2', c: '#DC2626' };
+    if (t.includes('코스피') || t.includes('kospi') || t.includes('지수')) return { i: 'ti-activity', bg: '#E0F2FE', c: '#0284C7' };
+    return fallback;
+  }
+
+  function buildRow(text, fallbackIcon, showChevron) {
+    const colonIdx = text.indexOf(':');
+    const hasColon = colonIdx > 0 && colonIdx < 30;
+    const title = hasColon ? text.slice(0, colonIdx).trim() : text;
+    const sub   = hasColon ? text.slice(colonIdx + 1).trim() : '';
+    const ic = _icon(text, fallbackIcon);
+    return `<div style="display:flex;align-items:center;gap:12px;padding:13px 14px;background:#fff;border-radius:14px;border:0.5px solid #E5E5EA;margin-bottom:8px;">
+      <div style="width:36px;height:36px;border-radius:50%;background:${ic.bg};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <i class="ti ${ic.i}" style="font-size:16px;color:${ic.c};"></i>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:600;color:#1A1A2E;line-height:1.4;">${title}</div>
+        ${sub ? `<div style="font-size:12px;color:#8E8E9A;margin-top:2px;line-height:1.4;">${sub}</div>` : ''}
+      </div>
+      ${showChevron ? `<i class="ti ti-chevron-right" style="font-size:14px;color:#C7C7CC;flex-shrink:0;"></i>` : ''}
+    </div>`;
+  }
+
   const reasons = Array.isArray(forecast.reasons) ? forecast.reasons : [];
   const points  = Array.isArray(forecast.points)  ? forecast.points  : [];
 
-  const reasonsHtml = reasons.map(r =>
-    `<div style="padding:10px 12px;background:#F8F8FA;border-radius:10px;font-size:13px;color:#3C3C43;line-height:1.6;margin-bottom:8px;">
-      <i class="ti ti-circle-dot" style="color:${dirColor};font-size:12px;margin-right:4px;"></i>${r}
-    </div>`
-  ).join('');
+  const reasonsHtml = reasons.length
+    ? reasons.map(r => buildRow(r, { i: 'ti-circle-dot', bg: '#FEE2E2', c: '#DC2626' }, true)).join('')
+    : '<div class="card"><div class="analysis-text">데이터 수집 중...</div></div>';
 
-  const pointsHtml = points.map(p =>
-    `<div style="padding:10px 12px;background:#F0F0FF;border-radius:10px;font-size:13px;color:#3C3C43;line-height:1.6;margin-bottom:8px;">
-      <i class="ti ti-eye" style="color:#5B5BD6;font-size:12px;margin-right:4px;"></i>${p}
-    </div>`
-  ).join('');
+  const pointFallbacks = [
+    { i: 'ti-users', bg: '#DCFCE7', c: '#16A34A' },
+    { i: 'ti-chart-pie', bg: '#E0F2FE', c: '#0284C7' },
+  ];
+  const pointsHtml = points.length
+    ? points.map((p, i) => buildRow(p, pointFallbacks[i] || { i: 'ti-eye', bg: '#EEEDFE', c: '#5B5BD6' }, true)).join('')
+    : '<div class="card"><div class="analysis-text">데이터 수집 중...</div></div>';
 
-  // 전체 Gemini 원문 (있으면)
-  const fullText = forecast.full_gemini_text || '';
-  const fullHtml = fullText ? `
-    <div class="section">
-      <div class="sec-title"><i class="ti ti-brain" style="font-size:15px;color:#5B5BD6;"></i>AI 전체 분석</div>
-      <div class="card" style="font-size:13px;color:#3C3C43;line-height:1.8;white-space:pre-line;">${fullText}</div>
-    </div>` : '';
+  // ── 예측 히스토리 ────────────────────────────────────────
+  const dirIcon2 = { up: '▲', down: '▼', sideways: '➡' };
+  const dirClr2  = { up: '#E24B4A', down: '#185FA5', sideways: '#BA7517' };
+  const dirKor2  = { up: '상승', down: '하락', sideways: '횡보' };
 
-  // 예측 히스토리
-  const dirIcon2 = {up:'▲', down:'▼', sideways:'➡'};
-  const dirClr2  = {up:'#E24B4A', down:'#185FA5', sideways:'#BA7517'};
-  const dirKor2  = {up:'상승', down:'하락', sideways:'횡보'};
-
-  const accuracy = stats.accuracy;
+  const accuracy  = stats.accuracy;
   const evaluated = stats.evaluated || 0;
-  const accHtml = accuracy !== null && accuracy !== undefined
-    ? `<span style="font-size:16px;font-weight:700;color:#5B5BD6;">${accuracy}%</span>
-       <span style="font-size:11px;color:#8E8E9A;margin-left:4px;">(${evaluated}회 검증)</span>`
+  const accHtml = (accuracy !== null && accuracy !== undefined)
+    ? `<span style="font-size:18px;font-weight:800;color:#5B5BD6;">${accuracy}%</span>
+       <span style="font-size:12px;color:#8E8E9A;margin-left:4px;">(${evaluated}회 검증)</span>`
     : `<span style="font-size:12px;color:#8E8E9A;">아직 검증 데이터 없음</span>`;
 
   const histRows = history.slice(0, 7).map(p => {
@@ -926,75 +978,63 @@ function renderForecastDetail(d, el) {
     const ad  = p.actual_direction;
     const pct = p.predicted_change || 0;
     const correct = p.is_correct;
-    const predHtml = `<span style="color:${dirClr2[pd]||'#8E8E9A'};font-weight:600;">
-      ${dirIcon2[pd]||'?'} ${dirKor2[pd]||'?'} (${pct>0?'+':''}${pct.toFixed(1)}%)
-    </span>`;
-    let resultBadge, actHtml = '';
+    let resultBadge = `<span style="font-size:11px;color:#8E8E9A;">결과 대기</span>`;
+    let actHtml = '';
     if (ad !== null && ad !== undefined) {
       resultBadge = correct
-        ? `<span class="badge badge-buy" style="font-size:10px;">✓ 적중</span>`
-        : `<span class="badge badge-sell" style="font-size:10px;">✗ 빗나감</span>`;
+        ? `<span style="background:#EAF3DE;color:#27500A;font-size:10px;padding:2px 8px;border-radius:6px;font-weight:600;">✓ 적중</span>`
+        : `<span style="background:#FDECEA;color:#A32D2D;font-size:10px;padding:2px 8px;border-radius:6px;font-weight:600;">✗ 빗나감</span>`;
       const ac = p.actual_change || 0;
-      actHtml = `<div style="font-size:11px;color:${dirClr2[ad]||'#8E8E9A'};margin-top:3px;">
-        실제 ${dirIcon2[ad]||'?'} ${ac>0?'+':''}${ac.toFixed(1)}%
+      actHtml = `<div style="font-size:11px;color:${dirClr2[ad]||'#8E8E9A'};margin-top:4px;">
+        실제 ${dirIcon2[ad]||'?'} ${ac > 0 ? '+' : ''}${ac.toFixed(1)}%
       </div>`;
-    } else {
-      resultBadge = `<span style="font-size:10px;color:#8E8E9A;">결과 대기</span>`;
     }
-    return `<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:0.5px solid #F0F0F5;">
-      <div>
-        <div style="font-size:11px;color:#8E8E9A;margin-bottom:3px;">${p.date||''}</div>
-        ${predHtml}
+    return `<div style="padding:12px 0;border-bottom:0.5px solid #F0F0F5;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <span style="font-size:11px;color:#8E8E9A;">${p.date || ''}</span>
+        ${resultBadge}
       </div>
-      <div style="text-align:right;">${resultBadge}${actHtml}</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;">
+        <span style="font-size:15px;font-weight:700;color:${dirClr2[pd] || '#8E8E9A'};">
+          ${dirIcon2[pd] || '?'} ${dirKor2[pd] || '?'} (${pct > 0 ? '+' : ''}${pct.toFixed(1)}%)
+        </span>
+        <div style="text-align:right;">${actHtml}</div>
+      </div>
     </div>`;
   }).join('');
 
   const historyHtml = history.length ? `
     <div class="section">
-      <div class="sec-title"><i class="ti ti-history" style="font-size:15px;color:#5B5BD6;"></i>예측 히스토리</div>
+      <div class="sec-title" style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="display:flex;align-items:center;gap:5px;"><i class="ti ti-history" style="font-size:15px;color:#5B5BD6;"></i>예측 히스토리</span>
+      </div>
       <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:10px;border-bottom:0.5px solid #F0F0F5;margin-bottom:4px;">
-          <span style="font-size:13px;font-weight:600;color:#1C1C1E;">누적 정확도</span>
-          <div>${accHtml}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:12px;border-bottom:0.5px solid #F0F0F5;margin-bottom:2px;">
+          <span style="font-size:13px;font-weight:600;color:#1A1A2E;">누적 정확도 <i class="ti ti-info-circle" style="font-size:12px;color:#C7C7CC;"></i></span>
+          <div style="display:flex;align-items:baseline;">${accHtml}</div>
         </div>
         ${histRows}
-        <div style="margin-top:8px;font-size:10px;color:#8E8E9A;">최근 ${Math.min(history.length,7)}일 예측 기록 · 매일 자동 업데이트</div>
+        <div style="margin-top:10px;font-size:10px;color:#8E8E9A;">최근 ${Math.min(history.length, 7)}일 예측 기록 · 매일 자동 업데이트</div>
       </div>
     </div>` : '';
 
   el.innerHTML = `
-    <div class="detail-hero">
-      <div style="font-size:13px;opacity:0.8;margin-bottom:6px;">내일 KOSPI 예측</div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-        <i class="ti ${dirIcon}" style="font-size:28px;color:#fff;"></i>
-        <div style="font-size:24px;font-weight:800;">${fTitle}</div>
-      </div>
-      <div style="font-size:15px;opacity:0.85;">예상 등락률 ${fPct>0?'+':''}${fPct.toFixed(1)}%</div>
-      <div style="margin-top:12px;">
-        <div style="font-size:11px;opacity:0.7;margin-bottom:6px;">신뢰도</div>
-        <div style="background:rgba(255,255,255,0.2);border-radius:20px;height:8px;">
-          <div style="width:${fConf}%;background:#fff;border-radius:20px;height:8px;"></div>
-        </div>
-        <div style="font-size:13px;margin-top:4px;opacity:0.9;">${fConf}%</div>
-      </div>
-    </div>
+    ${heroCard}
 
-    <div class="section" style="margin-top:12px;">
-      <div class="sec-title"><i class="ti ti-pin" style="font-size:15px;color:#E24B4A;"></i>예측 근거</div>
-      <div>${reasonsHtml || '<div class="card"><div class="analysis-text">데이터 수집 중...</div></div>'}</div>
+    <div class="section">
+      <div class="sec-title"><i class="ti ti-target" style="font-size:15px;color:#E24B4A;"></i>예측 근거</div>
+      <div>${reasonsHtml}</div>
     </div>
 
     <div class="section">
       <div class="sec-title"><i class="ti ti-eye" style="font-size:15px;color:#5B5BD6;"></i>내일 주목 포인트</div>
-      <div>${pointsHtml || '<div class="card"><div class="analysis-text">데이터 수집 중...</div></div>'}</div>
+      <div>${pointsHtml}</div>
     </div>
 
-    ${fullHtml}
     ${historyHtml}
 
     <div style="padding:0 16px 8px;">
-      <div class="warn-box"><i class="ti ti-alert-circle" style="font-size:14px;flex-shrink:0;"></i>예측은 참고용이며 투자 결정은 본인 판단으로 하세요</div>
+      <div class="warn-box"><i class="ti ti-alert-circle" style="font-size:14px;flex-shrink:0;color:#E24B4A;"></i>예측은 참고용이며 투자 결정은 본인 판단으로 하세요</div>
     </div>`;
 }
 
