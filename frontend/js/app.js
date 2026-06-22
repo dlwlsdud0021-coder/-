@@ -2306,7 +2306,8 @@ async function loadHoldingDetail(code, name) {
     const a = d.analysis || {};
     const t = a.targets || {};
     setTimeout(() => drawPriceChart(
-      a.ohlcv, d.holding?.avg_price, t.target_price, t.stop_price
+      a.ohlcv, d.holding?.avg_price, t.target_price, t.stop_price,
+      null, a.ma20, a.ma60, a.bollinger?.lower
     ), 50);
     // 뉴스 비동기 로드
     loadHoldingDetailNews(code, d.holding?.name || name, el);
@@ -2688,7 +2689,7 @@ function renderHoldingDetail(d, el) {
     </div>`;
 }
 
-function drawPriceChart(ohlcv, avgPrice, targetPrice, stopPrice, canvasId) {
+function drawPriceChart(ohlcv, avgPrice, targetPrice, stopPrice, canvasId, ma20, ma60, bollLower) {
   const canvas = document.getElementById(canvasId || 'price-chart');
   if (!canvas || !ohlcv || ohlcv.length === 0) return;
   const dpr = window.devicePixelRatio || 1;
@@ -2710,6 +2711,9 @@ function drawPriceChart(ohlcv, avgPrice, targetPrice, stopPrice, canvasId) {
   if (avgPrice)   allPrices.push(avgPrice);
   if (targetPrice)allPrices.push(targetPrice);
   if (stopPrice)  allPrices.push(stopPrice);
+  if (ma20)       allPrices.push(ma20);
+  if (ma60)       allPrices.push(ma60);
+  if (bollLower)  allPrices.push(bollLower);
   const minP = Math.min(...allPrices) * 0.995;
   const maxP = Math.max(...allPrices) * 1.005;
   const scaleY = v => PAD.top + cH - (v - minP) / (maxP - minP) * cH;
@@ -2779,7 +2783,10 @@ function drawPriceChart(ohlcv, avgPrice, targetPrice, stopPrice, canvasId) {
     ctx.fillText(d, scaleX(i), H - PAD.bottom + 12);
   });
 
-  // 수평선: 손절가→목표가→평단가 순으로 그려서 평단가가 위에 표시
+  // 수평선: 아래부터 위로 (나중에 그릴수록 위에 표시)
+  drawLine(bollLower,   '#AEAEB2', '볼하단', true);
+  drawLine(ma60,        '#5B5BD6', '60일선', true);
+  drawLine(ma20,        '#FF9F0A', '20일선', true);
   drawLine(stopPrice,   '#E24B4A', '손절가', true);
   drawLine(targetPrice, '#27500A', '목표가', true);
   drawLine(avgPrice,    '#FF9F0A', '평단가', false);
@@ -3495,7 +3502,10 @@ function renderWatchlistDetail(d, el, code, name) {
     </div>`;
 
   if ((a.ohlcv||[]).length > 0) {
-    setTimeout(() => drawPriceChart(a.ohlcv, null, null, null, `wl-price-chart-${code}`), 50);
+    const wlTarget = a.acc_target1 || (a.targets && a.targets.target_price) || null;
+    const wlStop   = a.acc_stop_loss || (a.targets && a.targets.stop_price) || null;
+    const wlMa20   = a.ma20 || null;
+    setTimeout(() => drawPriceChart(a.ohlcv, null, wlTarget, wlStop, `wl-price-chart-${code}`, wlMa20, a.ma60, a.bollinger?.lower), 50);
   }
 }
 
