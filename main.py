@@ -1557,13 +1557,6 @@ def get_scanner():
 app.mount("/icons", StaticFiles(directory="frontend/icons"), name="icons")
 app.mount("/js", StaticFiles(directory="frontend/js"), name="js")
 
-@app.get("/api/debug/price/{code}")
-def debug_price(code: str):
-    """가격 조회 경로 디버그용 — 배포 테스트 후 삭제 예정"""
-    from market_data import _naver_current_price
-    naver = _naver_current_price(code)
-    return {"naver": naver, "naver_ok": bool(naver.get("current_price"))}
-
 @app.get("/manifest.json")
 def manifest():
     return FileResponse("frontend/manifest.json")
