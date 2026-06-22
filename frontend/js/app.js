@@ -749,22 +749,6 @@ function renderSentiment(d) {
       <div style="font-size:13.5px;font-weight:700;color:#5C5D6B;margin-bottom:4px;">데이터가 없어요</div>
     </div>`;
 
-  // 순매수 TOP5
-  const nb = d.net_buy || {};
-  function netBuyRows(list) {
-    if (!list || !list.length) return `<div style="display:flex;flex-direction:column;align-items:center;padding:26px 10px 10px;text-align:center;">
-      <div style="font-size:30px;margin-bottom:10px;opacity:0.8;">🌙</div>
-      <div style="font-size:13.5px;font-weight:700;color:#5C5D6B;margin-bottom:4px;">주말엔 거래 데이터가 없어요</div>
-      <div style="font-size:12px;color:#B5B7C3;">다음 거래일 개장 후 업데이트돼요</div>
-    </div>`;
-    return list.map((item, i) =>
-      `<div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #EEEEF3;">
-        <div style="width:24px;height:24px;border-radius:50%;background:#EFEBFC;color:#6C5DD3;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${i+1}</div>
-        <div style="flex:1;font-size:13.5px;font-weight:700;">${item.name}</div>
-        <div style="font-size:12px;color:#8B8D9B;text-align:right;">+${item.value_str}</div>
-      </div>`
-    ).join('');
-  }
 
   // 거래대금 상위
   const topVol = d.top_volume || [];
@@ -851,17 +835,6 @@ function renderSentiment(d) {
       ${secRows}
     `)}
 
-    <!-- 외국인 순매수 TOP5 -->
-    ${card(`
-      ${secHead('🌍', '외국인 순매수 TOP 5')}
-      ${netBuyRows(nb.foreign)}
-    `)}
-
-    <!-- 기관 순매수 TOP5 -->
-    ${card(`
-      ${secHead('🏢', '기관 순매수 TOP 5')}
-      ${netBuyRows(nb.institution)}
-    `)}
 
     <!-- 거래대금 상위 5 -->
     ${card(`
