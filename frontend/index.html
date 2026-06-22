@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>?ъ폆二쇱떇</title>
+<title>포켓주식</title>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="?ъ폆二쇱떇">
+<meta name="apple-mobile-web-app-title" content="포켓주식">
 <meta name="theme-color" content="#5B5BD6">
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/icons/icon-512.png">
@@ -16,11 +16,11 @@
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; min-height: 100vh; }
 
-/* ?? ?붾㈃ ?꾪솚 ?? */
+/* ── 화면 전환 ── */
 .screen { display: none; padding-bottom: 80px; min-height: 100vh; }
 .screen.active { display: block; }
 
-/* ?? 怨듯넻 ?? */
+/* ── 공통 ── */
 .header { background: #fff; padding: 14px 20px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 0.5px solid #E5E5EA; position: sticky; top: 0; z-index: 5; }
 .header-title { font-size: 16px; font-weight: 600; }
 .header-sub { font-size: 11px; color: #8E8E93; margin-top: 2px; }
@@ -48,13 +48,13 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
 .tab.active { background: #5B5BD6; color: #fff; }
 .tab.inactive { background: #fff; color: #6B6B8A; border: 0.5px solid #E5E5EA; }
 
-/* ?? ?섎떒 ?ㅻ퉬 ?? */
+/* ── 하단 네비 ── */
 .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 430px; background: #fff; border-top: 0.5px solid #E5E5EA; display: flex; padding: 10px 0 max(16px, env(safe-area-inset-bottom)); z-index: 10; }
 .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; color: #C7C7CC; font-size: 10px; cursor: pointer; border: none; background: none; }
 .nav-item.active { color: #5B5BD6; }
 .nav-item i { font-size: 22px; }
 
-/* ?? 濡쒓렇???? */
+/* ── 로그인 ── */
 .login-wrap { padding: 60px 24px 40px; }
 .login-logo { text-align: center; margin-bottom: 32px; }
 .login-logo img { width: 80px; height: 80px; border-radius: 20px; }
@@ -72,7 +72,7 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
 .login-toggle a { color: #5B5BD6; cursor: pointer; font-weight: 500; }
 .error-msg { font-size: 12px; color: #E24B4A; text-align: center; margin-top: 4px; min-height: 18px; }
 
-/* ?? ???? */
+/* ── 홈 ── */
 .hero { margin: 12px 16px; background: #5B5BD6; border-radius: 20px; padding: 18px 20px; color: #fff; }
 .hero-badge { display: inline-flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.18); border-radius: 20px; padding: 4px 10px; font-size: 11px; margin-bottom: 10px; }
 .hero-status { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
@@ -104,12 +104,12 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
 .forecast-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .forecast-col-title { font-size: 11px; color: #8E8E93; font-weight: 500; margin-bottom: 6px; display: flex; align-items: center; gap: 4px; }
 .forecast-item { font-size: 11px; color: #3B3B5C; line-height: 1.6; padding-left: 8px; position: relative; margin-bottom: 4px; }
-.forecast-item::before { content: '쨌'; position: absolute; left: 0; color: #5B5BD6; }
+.forecast-item::before { content: '·'; position: absolute; left: 0; color: #5B5BD6; }
 .expand-btn { display: flex; align-items: center; justify-content: space-between; background: #fff; border-radius: 14px; padding: 14px 16px; border: 0.5px solid #E5E5EA; cursor: pointer; margin-bottom: 8px; }
 .expand-left { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; }
 .expand-icon { width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 16px; background: #EEEDFE; color: #5B5BD6; }
 
-/* ?? ?댁뒪 ?? */
+/* ── 뉴스 ── */
 .filter-row { display: flex; padding: 10px 16px; gap: 6px; overflow-x: auto; scrollbar-width: none; background: #fff; border-bottom: 0.5px solid #E5E5EA; }
 .filter-row::-webkit-scrollbar { display: none; }
 .filter-btn { padding: 5px 14px; border-radius: 16px; font-size: 11px; font-weight: 500; white-space: nowrap; border: none; cursor: pointer; }
@@ -129,7 +129,7 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
 .stock-chip { font-size: 10px; background: #EEEDFE; color: #3C3489; padding: 2px 8px; border-radius: 5px; font-weight: 500; }
 .more-btn { display: flex; align-items: center; justify-content: center; gap: 6px; background: #fff; border-radius: 12px; padding: 12px; border: 0.5px solid #E5E5EA; margin: 0 16px 8px; font-size: 12px; color: #5B5BD6; font-weight: 500; cursor: pointer; }
 
-/* ?? 蹂댁쑀/愿?ъ쥌紐?怨듯넻 ?? */
+/* ── 보유/관심종목 공통 ── */
 .total-strip { background: #fff; padding: 14px 20px; border-bottom: 0.5px solid #E5E5EA; display: flex; justify-content: space-between; align-items: center; }
 .total-label { font-size: 11px; color: #8E8E93; margin-bottom: 3px; }
 .total-amount { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
@@ -171,7 +171,7 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
 .target-val { font-size: 11px; font-weight: 600; color: #3C3489; }
 .target-dist { font-size: 10px; color: #3C3489; }
 
-/* ?? 醫낅ぉ 異붽? ???? */
+/* ── 종목 추가 폼 ── */
 .add-form { background: #fff; border-radius: 16px; padding: 16px; border: 0.5px solid #E5E5EA; margin: 0 16px 12px; }
 .add-form h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
 .search-wrap { position: relative; }
@@ -182,7 +182,7 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
 .form-actions { display: flex; gap: 8px; margin-top: 12px; }
 
-/* ?? ?곸꽭 ?붾㈃ ?? */
+/* ── 상세 화면 ── */
 .detail-header { background: #fff; padding: 14px 20px 0; }
 .back-btn { display: flex; align-items: center; gap: 6px; color: #5B5BD6; font-size: 13px; font-weight: 500; cursor: pointer; margin-bottom: 10px; border: none; background: none; }
 .detail-hero { background: #5B5BD6; border-radius: 0 0 20px 20px; padding: 16px 20px 20px; color: #fff; }
@@ -194,14 +194,14 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
 .detail-item-label { font-size: 10px; opacity: 0.75; margin-bottom: 3px; }
 .detail-item-val { font-size: 14px; font-weight: 600; }
 
-/* ?? 濡쒕뵫 ?? */
+/* ── 로딩 ── */
 .loading { display: flex; justify-content: center; align-items: center; padding: 40px; color: #8E8E93; font-size: 13px; gap: 8px; }
 .spinner { width: 18px; height: 18px; border: 2px solid #E5E5EA; border-top: 2px solid #5B5BD6; border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .empty-state { text-align: center; padding: 40px 20px; color: #8E8E93; font-size: 13px; }
 .empty-state i { font-size: 36px; display: block; margin-bottom: 10px; color: #C7C7CC; }
 
-/* ?? 留ㅼ쭛 ?ㅼ틦???? */
+/* ── 매집 스캐너 ── */
 .scanner-sum-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:12px 16px; }
 .scanner-sum-card { background:#fff; border-radius:12px; padding:10px 12px; border:0.5px solid #E5E5EA; text-align:center; }
 .scanner-sum-label { font-size:10px; color:#8E8E9A; margin-bottom:3px; }
@@ -232,7 +232,7 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
 .sc-obv-val { font-size:10px; font-weight:600; color:#3C3489; display:flex; align-items:center; gap:3px; }
 .sc-card-bottom { display:flex; justify-content:space-between; align-items:center; padding-top:8px; border-top:0.5px solid #F0F0F5; margin-top:8px; }
 .sc-detail-btn { font-size:11px; color:#5B5BD6; display:flex; align-items:center; gap:2px; font-weight:500; }
-/* 留ㅼ쭛 ?곸꽭 */
+/* 매집 상세 */
 .scanner-price-section { background:#fff; padding:16px 20px; margin-bottom:8px; border-bottom:0.5px solid #E5E5EA; }
 .scanner-current-price { font-size:28px; font-weight:700; letter-spacing:-0.5px; }
 .scanner-price-meta { display:flex; gap:16px; margin-top:10px; }
@@ -248,7 +248,7 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
 .advice-title { font-size:13px; font-weight:600; color:#3C3489; margin-bottom:6px; display:flex; align-items:center; gap:6px; }
 .advice-text { font-size:12px; color:#534AB7; line-height:1.6; }
 
-/* ?? ?섍툒 ?곸꽭 ?? */
+/* ── 수급 상세 ── */
 .tab-row { display:flex; padding:10px 16px; gap:6px; background:#fff; border-bottom:0.5px solid #E5E5EA; }
 .tab { padding:6px 16px; border-radius:20px; font-size:12px; font-weight:500; border:none; cursor:pointer; }
 .tab.active { background:#5B5BD6; color:#fff; }
@@ -286,7 +286,7 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
 .advice-box { background:#EEEDFE; border-radius:14px; padding:14px 16px; margin:0 16px 8px; }
 .advice-title { font-size:13px; font-weight:600; color:#3C3489; margin-bottom:6px; display:flex; align-items:center; gap:6px; }
 .advice-text { font-size:11px; color:#534AB7; line-height:1.6; }
-/* ?? 吏???곸꽭 ?? */
+/* ── 지수 상세 ── */
 .ma-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:0; }
 .ma-card { background:#F8F8FA; border-radius:10px; padding:10px 12px; }
 .ma-card-label { font-size:10px; color:#8E8E93; margin-bottom:3px; }
@@ -304,13 +304,13 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
 .status-ok { background:#EEEDFE; color:#3C3489; }
 .status-warn { background:#FAEEDA; color:#633806; }
 .status-danger { background:#FCEBEB; color:#791F1F; }
-/* ?? 湲곗닠 吏???? */
+/* ── 기술 지표 ── */
 .ind-row { display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:0.5px solid #F0F0F5; }
 .ind-row:last-child { border-bottom:none; }
 .ind-label { font-size:12px; color:#8E8E9A; }
 .ind-right { display:flex; align-items:center; gap:4px; }
 .ind-val { font-size:13px; font-weight:600; color:#1C1C1E; }
-/* ?? 吏吏???? */
+/* ── 지지선 ── */
 .sup-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:0.5px solid #F0F0F5; }
 .sup-row:last-child { border-bottom:none; }
 .sup-label { font-size:12px; color:#8E8E9A; }
@@ -318,7 +318,7 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
 .sup-price { font-size:13px; font-weight:600; color:#1C1C1E; }
 .sup-dist { font-size:12px; font-weight:600; }
 .sup-note { font-size:10px; color:#8E8E9A; background:#F8F8FA; padding:1px 6px; border-radius:4px; }
-/* ?? ?섍툒 諛??? */
+/* ── 수급 바 ── */
 .supply-row { display:flex; align-items:center; gap:8px; padding:8px 0; }
 .supply-who { font-size:12px; color:#8E8E9A; width:44px; flex-shrink:0; }
 .supply-bar-bg { flex:1; height:6px; background:#F0F0F5; border-radius:3px; overflow:hidden; }
@@ -335,96 +335,104 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
 </head>
 <body>
 
-<!-- ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??     濡쒓렇???붾㈃
-?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧 -->
+<!-- ═══════════════════════════════════════════════════════
+     로그인 화면
+════════════════════════════════════════════════════════ -->
 <div id="screen-login" class="screen active">
   <div class="login-wrap">
     <div class="login-logo">
-      <img src="/icons/icon-512.png" alt="?ъ폆二쇱떇">
-      <div class="login-title">?ъ폆二쇱떇</div>
-      <div class="login-sub">???먯븞??二쇱떇 ??쒕낫??/div>
+      <img src="/icons/icon-512.png" alt="포켓주식">
+      <div class="login-title">포켓주식</div>
+      <div class="login-sub">내 손안의 주식 대시보드</div>
     </div>
     <div class="login-form">
       <div class="input-group">
-        <div class="input-label">?꾩씠??/div>
-        <input id="login-username" class="input-field" type="text" placeholder="?꾩씠???낅젰" autocomplete="username">
+        <div class="input-label">아이디</div>
+        <input id="login-username" class="input-field" type="text" placeholder="아이디 입력" autocomplete="username">
       </div>
       <div class="input-group">
-        <div class="input-label">鍮꾨?踰덊샇</div>
-        <input id="login-password" class="input-field" type="password" placeholder="鍮꾨?踰덊샇 ?낅젰" autocomplete="current-password">
+        <div class="input-label">비밀번호</div>
+        <input id="login-password" class="input-field" type="password" placeholder="비밀번호 입력" autocomplete="current-password">
       </div>
       <div id="login-error" class="error-msg"></div>
-      <button class="btn-primary" onclick="doLogin()">濡쒓렇??/button>
-      <button class="btn-secondary" onclick="showRegister()">?뚯썝媛??/button>
+      <button class="btn-primary" onclick="doLogin()">로그인</button>
+      <button class="btn-secondary" onclick="showRegister()">회원가입</button>
     </div>
   </div>
 </div>
 
-<!-- ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??     ?뚯썝媛???붾㈃
-?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧 -->
+<!-- ═══════════════════════════════════════════════════════
+     회원가입 화면
+════════════════════════════════════════════════════════ -->
 <div id="screen-register" class="screen">
   <div class="login-wrap">
     <div class="login-logo">
-      <img src="/icons/icon-512.png" alt="?ъ폆二쇱떇">
-      <div class="login-title">?뚯썝媛??/div>
-      <div class="login-sub">?ъ폆二쇱떇???ㅼ떊 嫄??섏쁺?댁슂</div>
+      <img src="/icons/icon-512.png" alt="포켓주식">
+      <div class="login-title">회원가입</div>
+      <div class="login-sub">포켓주식에 오신 걸 환영해요</div>
     </div>
     <div class="login-form">
       <div class="input-group">
-        <div class="input-label">?꾩씠??/div>
-        <input id="reg-username" class="input-field" type="text" placeholder="2???댁긽" autocomplete="username">
+        <div class="input-label">아이디</div>
+        <input id="reg-username" class="input-field" type="text" placeholder="2자 이상" autocomplete="username">
       </div>
       <div class="input-group">
-        <div class="input-label">鍮꾨?踰덊샇</div>
-        <input id="reg-password" class="input-field" type="password" placeholder="8???댁긽" autocomplete="new-password">
+        <div class="input-label">비밀번호</div>
+        <input id="reg-password" class="input-field" type="password" placeholder="8자 이상" autocomplete="new-password">
       </div>
       <div id="reg-error" class="error-msg"></div>
-      <button class="btn-primary" onclick="doRegister()">媛?낇븯湲?/button>
-      <button class="btn-secondary" onclick="showScreen('login')">濡쒓렇?몄쑝濡??뚯븘媛湲?/button>
+      <button class="btn-primary" onclick="doRegister()">가입하기</button>
+      <button class="btn-secondary" onclick="showScreen('login')">로그인으로 돌아가기</button>
     </div>
   </div>
 </div>
 
-<!-- ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??     ?????먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧 -->
+<!-- ═══════════════════════════════════════════════════════
+     홈 탭
+════════════════════════════════════════════════════════ -->
 <div id="screen-home" class="screen">
   <div class="header">
     <div>
-      <div class="header-title">?ㅻ뒛???쒖옣</div>
-      <div class="header-sub" id="home-date">遺덈윭?ㅻ뒗 以?..</div>
+      <div class="header-title">오늘의 시장</div>
+      <div class="header-sub" id="home-date">불러오는 중...</div>
     </div>
     <div class="header-icons">
       <i class="ti ti-bell"></i>
       <i class="ti ti-refresh" onclick="loadHome(true)"></i>
-      <i class="ti ti-user-circle" onclick="confirmLogout()" title="濡쒓렇?꾩썐"></i>
+      <i class="ti ti-user-circle" onclick="confirmLogout()" title="로그아웃"></i>
     </div>
   </div>
   <div id="home-content">
-    <div class="loading"><div class="spinner"></div> ?쒖옣 遺꾩꽍 以?..</div>
+    <div class="loading"><div class="spinner"></div> 시장 분석 중...</div>
   </div>
 </div>
 
-<!-- ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??     ?쒗솴 ???먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧 -->
+<!-- ═══════════════════════════════════════════════════════
+     시황 탭
+════════════════════════════════════════════════════════ -->
 <div id="screen-news" class="screen">
   <div class="header">
     <div>
-      <div class="header-title">?쒗솴</div>
-      <div class="header-sub">?ъ옄?щ━ 쨌 二쇱슂?댁뒪 쨌 AI遺꾩꽍</div>
+      <div class="header-title">시황</div>
+      <div class="header-sub">투자심리 · 주요뉴스 · AI분석</div>
     </div>
     <div class="header-icons">
       <i class="ti ti-refresh" onclick="loadNews(true)"></i>
     </div>
   </div>
   <div id="news-content">
-    <div class="loading"><div class="spinner"></div> ?쒗솴 遺덈윭?ㅻ뒗 以?..</div>
+    <div class="loading"><div class="spinner"></div> 시황 불러오는 중...</div>
   </div>
 </div>
 
-<!-- ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??     蹂댁쑀醫낅ぉ ???먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧 -->
+<!-- ═══════════════════════════════════════════════════════
+     보유종목 탭
+════════════════════════════════════════════════════════ -->
 <div id="screen-holdings" class="screen">
   <div class="header">
     <div>
-      <div class="header-title">蹂댁쑀醫낅ぉ 愿由?/div>
-      <div class="header-sub" id="holdings-date">遺덈윭?ㅻ뒗 以?..</div>
+      <div class="header-title">보유종목 관리</div>
+      <div class="header-sub" id="holdings-date">불러오는 중...</div>
     </div>
     <div class="header-icons">
       <i class="ti ti-plus" onclick="toggleAddHolding()"></i>
@@ -433,69 +441,73 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
   </div>
   <div id="holding-add-form" style="display:none;">
     <div class="add-form" style="position:relative;">
-      <h3>醫낅ぉ 異붽?</h3>
-      <!-- 1以? 醫낅ぉ紐?+ 異붽? -->
+      <h3>종목 추가</h3>
+      <!-- 1줄: 종목명 + 추가 -->
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
-        <input id="h-search" class="input-field" type="text" placeholder="醫낅ぉ紐?寃?? oninput="searchStock('h')" autocomplete="off" style="flex:1;margin-bottom:0;box-sizing:border-box;">
+        <input id="h-search" class="input-field" type="text" placeholder="종목명 검색" oninput="searchStock('h')" autocomplete="off" style="flex:1;margin-bottom:0;box-sizing:border-box;">
         <input id="h-code" type="hidden">
-        <button class="btn-primary" style="flex-shrink:0;padding:10px 16px;white-space:nowrap;" onclick="addHolding()">異붽?</button>
+        <button class="btn-primary" style="flex-shrink:0;padding:10px 16px;white-space:nowrap;" onclick="addHolding()">추가</button>
       </div>
       <div id="h-search-results" class="search-results" style="display:none;top:68px;"></div>
-      <!-- 2以? ?됰떒媛 + ?섎웾 + 痍⑥냼 -->
+      <!-- 2줄: 평단가 + 수량 + 취소 -->
       <div style="display:flex;gap:6px;align-items:center;">
-        <input id="h-price" class="input-field" type="number" placeholder="?됰떒媛" style="flex:1.5;min-width:0;margin-bottom:0;box-sizing:border-box;">
-        <input id="h-qty" class="input-field" type="number" placeholder="?섎웾" style="flex:1;min-width:0;margin-bottom:0;box-sizing:border-box;">
-        <button class="btn-secondary" style="flex-shrink:0;padding:10px 12px;white-space:nowrap;" onclick="toggleAddHolding()">痍⑥냼</button>
+        <input id="h-price" class="input-field" type="number" placeholder="평단가" style="flex:1.5;min-width:0;margin-bottom:0;box-sizing:border-box;">
+        <input id="h-qty" class="input-field" type="number" placeholder="수량" style="flex:1;min-width:0;margin-bottom:0;box-sizing:border-box;">
+        <button class="btn-secondary" style="flex-shrink:0;padding:10px 12px;white-space:nowrap;" onclick="toggleAddHolding()">취소</button>
       </div>
     </div>
   </div>
   <div id="holdings-total" class="total-strip" style="display:none;"></div>
   <div class="tabs">
-    <button class="tab active" onclick="filterHoldings('?꾩껜', this)">?꾩껜</button>
-    <button class="tab inactive" onclick="filterHoldings('?섏씡', this)">?섏씡</button>
-    <button class="tab inactive" onclick="filterHoldings('?먯떎', this)">?먯떎</button>
-    <button class="tab inactive" onclick="filterHoldings('留ㅻ룄?좏샇', this)">留ㅻ룄?좏샇</button>
+    <button class="tab active" onclick="filterHoldings('전체', this)">전체</button>
+    <button class="tab inactive" onclick="filterHoldings('수익', this)">수익</button>
+    <button class="tab inactive" onclick="filterHoldings('손실', this)">손실</button>
+    <button class="tab inactive" onclick="filterHoldings('매도신호', this)">매도신호</button>
   </div>
   <div id="holdings-content">
-    <div class="loading"><div class="spinner"></div> 遺덈윭?ㅻ뒗 以?..</div>
+    <div class="loading"><div class="spinner"></div> 불러오는 중...</div>
   </div>
 </div>
 
-<!-- ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??     ?덉륫 ?곸꽭
-?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧 -->
+<!-- ═══════════════════════════════════════════════════════
+     예측 상세
+════════════════════════════════════════════════════════ -->
 <div id="screen-forecast-detail" class="screen">
   <div class="detail-header" style="display:flex;align-items:center;justify-content:space-between;">
     <button class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left"></i></button>
-    <span style="font-size:16px;font-weight:700;color:#1A1A2E;">?댁씪 KOSPI ?덉륫</span>
+    <span style="font-size:16px;font-weight:700;color:#1A1A2E;">내일 KOSPI 예측</span>
     <div style="width:32px;"></div>
   </div>
   <div id="forecast-detail-content" class="scroll-area" style="padding-bottom:32px;"></div>
 </div>
 
-<!-- ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??     吏???곸꽭 (KOSPI / KOSDAQ)
-?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧 -->
+<!-- ═══════════════════════════════════════════════════════
+     지수 상세 (KOSPI / KOSDAQ)
+════════════════════════════════════════════════════════ -->
 <div id="screen-index-detail" class="screen">
   <div class="detail-header">
-    <button class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left"></i> ??/button>
+    <button class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left"></i> 홈</button>
   </div>
   <div id="index-detail-content" class="scroll-area" style="padding-bottom:32px;"></div>
 </div>
 
-<!-- ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??     ?댁뒪 ?곸꽭
-?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧 -->
+<!-- ═══════════════════════════════════════════════════════
+     뉴스 상세
+════════════════════════════════════════════════════════ -->
 <div id="screen-news-detail" class="screen">
   <div class="detail-header">
-    <button class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left"></i> ?댁뒪</button>
+    <button class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left"></i> 뉴스</button>
   </div>
   <div id="news-detail-content" class="scroll-area" style="padding-bottom:32px;"></div>
 </div>
 
-<!-- ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??     ?섍툒 ?곸꽭
-?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧 -->
+<!-- ═══════════════════════════════════════════════════════
+     수급 상세
+════════════════════════════════════════════════════════ -->
 <div id="screen-supply-detail" class="screen">
   <div class="detail-header" style="display:flex;align-items:center;justify-content:space-between;">
     <button class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left"></i></button>
-    <span style="font-size:16px;font-weight:700;color:#1A1A2E;">?멸뎅??쨌 湲곌? ?섍툒 ?먮쫫</span>
+    <span style="font-size:16px;font-weight:700;color:#1A1A2E;">외국인 · 기관 수급 흐름</span>
     <button id="supply-info-btn" style="background:none;border:none;padding:6px;cursor:pointer;color:#8E8E9A;" onclick="">
       <i class="ti ti-info-circle" style="font-size:20px;"></i>
     </button>
@@ -503,34 +515,38 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
   <div id="supply-detail-content" class="scroll-area" style="padding-bottom:32px;"></div>
 </div>
 
-<!-- ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??     ?ㅻ뒛 ?쒖옣 遺꾩꽍 ?곸꽭
-?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧 -->
+<!-- ═══════════════════════════════════════════════════════
+     오늘 시장 분석 상세
+════════════════════════════════════════════════════════ -->
 <div id="screen-analysis-detail" class="screen">
   <div class="detail-header" style="display:flex;align-items:center;justify-content:space-between;">
     <button class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left"></i></button>
-    <span style="font-size:16px;font-weight:700;color:#1A1A2E;">?ㅻ뒛 ?쒖옣 遺꾩꽍</span>
+    <span style="font-size:16px;font-weight:700;color:#1A1A2E;">오늘 시장 분석</span>
     <div style="width:36px;"></div>
   </div>
   <div id="analysis-detail-content" class="scroll-area" style="padding-bottom:32px;"></div>
 </div>
 
-<!-- ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??     蹂댁쑀醫낅ぉ ?곸꽭
-?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧 -->
+<!-- ═══════════════════════════════════════════════════════
+     보유종목 상세
+════════════════════════════════════════════════════════ -->
 <div id="screen-holding-detail" class="screen">
   <div class="detail-header">
-    <button class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left"></i> 蹂댁쑀醫낅ぉ</button>
+    <button class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left"></i> 보유종목</button>
   </div>
   <div id="holding-detail-content">
-    <div class="loading"><div class="spinner"></div> 遺꾩꽍 以?..</div>
+    <div class="loading"><div class="spinner"></div> 분석 중...</div>
   </div>
 </div>
 
-<!-- ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??     愿?ъ쥌紐????먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧 -->
+<!-- ═══════════════════════════════════════════════════════
+     관심종목 탭
+════════════════════════════════════════════════════════ -->
 <div id="screen-watchlist" class="screen">
   <div class="header">
     <div>
-      <div class="header-title">愿?ъ쥌紐?紐⑤땲?곕쭅</div>
-      <div class="header-sub">留ㅼ닔 ??대컢 쨌 異붽꺽湲덉? ?좏샇</div>
+      <div class="header-title">관심종목 모니터링</div>
+      <div class="header-sub">매수 타이밍 · 추격금지 신호</div>
     </div>
     <div class="header-icons">
       <i class="ti ti-plus" onclick="toggleAddWatchlist()"></i>
@@ -539,55 +555,58 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
   </div>
   <div id="watchlist-add-form" style="display:none;">
     <div class="add-form">
-      <h3>愿?ъ쥌紐?異붽?</h3>
-      <!-- 1以? 醫낅ぉ紐?+ 異붽? -->
+      <h3>관심종목 추가</h3>
+      <!-- 1줄: 종목명 + 추가 -->
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
-        <input id="w-search" class="input-field" type="text" placeholder="醫낅ぉ紐?寃?? oninput="searchStock('w')" autocomplete="off" style="flex:1;margin-bottom:0;box-sizing:border-box;">
+        <input id="w-search" class="input-field" type="text" placeholder="종목명 검색" oninput="searchStock('w')" autocomplete="off" style="flex:1;margin-bottom:0;box-sizing:border-box;">
         <input id="w-code" type="hidden">
-        <button class="btn-primary" style="flex-shrink:0;padding:10px 16px;white-space:nowrap;" onclick="addWatchlist()">異붽?</button>
+        <button class="btn-primary" style="flex-shrink:0;padding:10px 16px;white-space:nowrap;" onclick="addWatchlist()">추가</button>
       </div>
       <div id="w-search-results" class="search-results" style="display:none;top:68px;"></div>
-      <!-- 2以? 痍⑥냼 -->
+      <!-- 2줄: 취소 -->
       <div style="display:flex;gap:6px;align-items:center;">
-        <button class="btn-secondary" style="flex-shrink:0;padding:10px 12px;white-space:nowrap;" onclick="toggleAddWatchlist()">痍⑥냼</button>
+        <button class="btn-secondary" style="flex-shrink:0;padding:10px 12px;white-space:nowrap;" onclick="toggleAddWatchlist()">취소</button>
       </div>
     </div>
   </div>
   <div class="tabs" style="padding-top:6px;">
-    <button class="tab active" onclick="filterWatchlist('?꾩껜', this)">?꾩껜</button>
-    <button class="tab inactive" onclick="filterWatchlist('留ㅼ닔寃??, this)">留ㅼ닔寃??/button>
-    <button class="tab inactive" onclick="filterWatchlist('異붽꺽湲덉?', this)">異붽꺽湲덉?</button>
-    <button class="tab inactive" onclick="filterWatchlist('愿留?, this)">愿留?/button>
+    <button class="tab active" onclick="filterWatchlist('전체', this)">전체</button>
+    <button class="tab inactive" onclick="filterWatchlist('매수검토', this)">매수검토</button>
+    <button class="tab inactive" onclick="filterWatchlist('추격금지', this)">추격금지</button>
+    <button class="tab inactive" onclick="filterWatchlist('관망', this)">관망</button>
   </div>
   <div id="watchlist-content">
-    <div class="loading"><div class="spinner"></div> 遺덈윭?ㅻ뒗 以?..</div>
+    <div class="loading"><div class="spinner"></div> 불러오는 중...</div>
   </div>
 </div>
 
-<!-- ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??     愿?ъ쥌紐??곸꽭
-?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧 -->
+<!-- ═══════════════════════════════════════════════════════
+     관심종목 상세
+════════════════════════════════════════════════════════ -->
 <div id="screen-watchlist-detail" class="screen">
   <div class="detail-header">
-    <button class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left"></i> 愿?ъ쥌紐?/button>
+    <button class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left"></i> 관심종목</button>
   </div>
   <div id="watchlist-detail-content">
-    <div class="loading"><div class="spinner"></div> 遺꾩꽍 以?..</div>
+    <div class="loading"><div class="spinner"></div> 분석 중...</div>
   </div>
 </div>
 
-<!-- ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??     留ㅼ쭛 ?ㅼ틦?????먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧 -->
+<!-- ═══════════════════════════════════════════════════════
+     매집 스캐너 탭
+════════════════════════════════════════════════════════ -->
 <div id="screen-scanner" class="screen">
   <div class="header">
     <div>
-      <div class="header-title">留ㅼ쭛?좏샇 ?ㅼ틦??/div>
-      <div class="header-sub">?멸뎅?맞룰린愿 ?숈떆 留ㅼ닔 ?ъ갑</div>
+      <div class="header-title">매집신호 스캐너</div>
+      <div class="header-sub">외국인·기관 동시 매수 포착</div>
     </div>
     <div class="header-icons">
       <i class="ti ti-refresh" onclick="loadScanner(true)" style="cursor:pointer;"></i>
     </div>
   </div>
   <div id="scanner-content">
-    <div class="loading"><div class="spinner"></div> ?ㅼ틪 以?..</div>
+    <div class="loading"><div class="spinner"></div> 스캔 중...</div>
   </div>
 </div>
 
@@ -601,33 +620,33 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
     <span id="scanner-detail-badge" class="badge badge-ok" style="font-size:10px;"></span>
   </div>
   <div id="scanner-detail-content">
-    <div class="loading"><div class="spinner"></div> 遺꾩꽍 以?..</div>
+    <div class="loading"><div class="spinner"></div> 분석 중...</div>
   </div>
 </div>
 
-<!-- ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??     ?섎떒 ?ㅻ퉬寃뚯씠???먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧 -->
+<!-- ═══════════════════════════════════════════════════════
+     하단 네비게이션
+════════════════════════════════════════════════════════ -->
 <nav class="bottom-nav" id="bottom-nav" style="display:none;">
   <button class="nav-item active" id="nav-home" onclick="switchTab('home')">
-    <i class="ti ti-home"></i><span>??/span>
+    <i class="ti ti-home"></i><span>홈</span>
   </button>
   <button class="nav-item" id="nav-holdings" onclick="switchTab('holdings')">
-    <i class="ti ti-briefcase"></i><span>蹂댁쑀</span>
+    <i class="ti ti-briefcase"></i><span>보유</span>
   </button>
   <button class="nav-item" id="nav-watchlist" onclick="switchTab('watchlist')" style="position:relative;">
     <i class="ti ti-star"></i>
 
-    <span>愿??/span>
+    <span>관심</span>
   </button>
   <button class="nav-item" id="nav-scanner" onclick="switchTab('scanner')">
-    <i class="ti ti-chart-bar"></i><span>留ㅼ쭛</span>
+    <i class="ti ti-chart-bar"></i><span>매집</span>
   </button>
   <button class="nav-item" id="nav-news" onclick="switchTab('news')">
-    <i class="ti ti-chart-line"></i><span>?쒗솴</span>
+    <i class="ti ti-chart-line"></i><span>시황</span>
   </button>
 </nav>
 
 <script src="/js/app.js?v=20260622h"></script>
 </body>
 </html>
-
-
