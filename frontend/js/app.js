@@ -1923,7 +1923,7 @@ function renderIndexDetail(d, el) {
     const totI = investor.reduce((s,r) => s + (r.inst||0), 0);
     investorHtml = `
       <div class="section">
-        <div class="sec-title" style="justify-content:space-between;"><span style="display:flex;align-items:center;gap:6px;"><i class="ti ti-users" style="font-size:15px;color:#5B5BD6;"></i>외국인·기관 수급 (5일)</span><span onclick="showInvestorGuide()" style="width:22px;height:22px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">?</span></div>
+        <div class="sec-title" ><i class="ti ti-users" style="font-size:15px;color:#5B5BD6;"></i>외국인·기관 수급 (5일)<span onclick="showInvestorGuide()" style="width:20px;height:20px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;margin-left:6px;flex-shrink:0;">?</span></div>
         <div class="card">
           <div style="display:flex;gap:8px;margin-bottom:12px;">
             <div style="flex:1;background:#F8F8FA;border-radius:10px;padding:10px 12px;text-align:center;">
@@ -2008,7 +2008,7 @@ function renderIndexDetail(d, el) {
 
     <!-- 주요 기술 지표 (항목 클릭 → 설명 모달) -->
     <div class="section">
-      <div class="sec-title" style="justify-content:space-between;"><span style="display:flex;align-items:center;gap:6px;"><i class="ti ti-chart-bar" style="font-size:15px;color:#5B5BD6;"></i>주요 기술 지표</span><span onclick="showIndicatorGuide()" style="width:22px;height:22px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">?</span></div>
+      <div class="sec-title" ><i class="ti ti-chart-bar" style="font-size:15px;color:#5B5BD6;"></i>주요 기술 지표<span onclick="showIndicatorGuide()" style="width:20px;height:20px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;margin-left:6px;flex-shrink:0;">?</span></div>
       <div class="card">
         ${rsi ? `<div class="ind-row clickable" onclick="showTermModal('rsi',${rsiW},'${rsiStr}','${rsiLbl}')" style="cursor:pointer;">
           <span class="ind-label" style="color:#5B5BD6;text-decoration:underline dotted;">RSI (14일) <i class="ti ti-info-circle" style="font-size:11px;"></i></span>
@@ -2507,7 +2507,7 @@ function renderHoldingDetail(d, el) {
 
     <!-- 기술 지표 -->
     <div class="section" style="margin-top:12px;">
-      <div class="sec-title" style="justify-content:space-between;"><span style="display:flex;align-items:center;gap:6px;"><i class="ti ti-activity" style="font-size:15px;color:#5B5BD6;"></i>기술적 지표</span><span onclick="showTechIndicatorGuide()" style="width:22px;height:22px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">?</span></div>
+      <div class="sec-title"><i class="ti ti-activity" style="font-size:15px;color:#5B5BD6;"></i>기술적 지표<span onclick="showTechIndicatorGuide()" style="width:20px;height:20px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;margin-left:6px;flex-shrink:0;">?</span></div>
       <div class="card">
         ${rsiVal !== null ? `<div class="ind-row">
           <span class="ind-label">RSI (14일)</span>
@@ -2554,13 +2554,13 @@ function renderHoldingDetail(d, el) {
 
     <!-- 지지선 -->
     ${supRowsNew ? `<div class="section">
-      <div class="sec-title" style="justify-content:space-between;"><span style="display:flex;align-items:center;gap:6px;"><i class="ti ti-barrier-block" style="font-size:15px;color:#5B5BD6;"></i>바닥 지지선</span><span onclick="showSupportGuide()" style="width:22px;height:22px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">?</span></div>
+      <div class="sec-title" ><i class="ti ti-barrier-block" style="font-size:15px;color:#5B5BD6;"></i>바닥 지지선<span onclick="showSupportGuide()" style="width:20px;height:20px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;margin-left:6px;flex-shrink:0;">?</span></div>
       <div class="card">${supRowsNew}</div>
     </div>` : ''}
 
     <!-- 거래량 + 수급 SVG 차트 -->
     ${invList.length ? `<div class="section">
-      <div class="sec-title" style="justify-content:space-between;"><span style="display:flex;align-items:center;gap:6px;"><i class="ti ti-chart-bar" style="font-size:15px;color:#5B5BD6;"></i>5일 거래량 · 수급 흐름</span><span onclick="showVolumeGuide()" style="width:22px;height:22px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">?</span></div>
+      <div class="sec-title" ><i class="ti ti-chart-bar" style="font-size:15px;color:#5B5BD6;"></i>5일 거래량 · 수급 흐름<span onclick="showVolumeGuide()" style="width:20px;height:20px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;margin-left:6px;flex-shrink:0;">?</span></div>
       <div class="card" style="padding:14px;">
         ${_buildFlowChart(a.vol_list || [], invList, h.code)}
         <div style="display:flex;gap:16px;margin-top:10px;font-size:12px;">
@@ -3401,7 +3401,7 @@ function renderWatchlistDetail(d, el, code, name) {
 
     <!-- 기술 지표 -->
     <div class="section" style="margin-top:12px;">
-      <div class="sec-title" style="justify-content:space-between;"><span style="display:flex;align-items:center;gap:6px;"><i class="ti ti-activity" style="font-size:15px;color:#5B5BD6;"></i>기술적 지표</span><span onclick="showTechIndicatorGuide()" style="width:22px;height:22px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">?</span></div>
+      <div class="sec-title"><i class="ti ti-activity" style="font-size:15px;color:#5B5BD6;"></i>기술적 지표<span onclick="showTechIndicatorGuide()" style="width:20px;height:20px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;margin-left:6px;flex-shrink:0;">?</span></div>
       <div class="card">
         ${rsiVal !== null ? `<div class="ind-row">
           <span class="ind-label">RSI (14일)</span>
@@ -3448,13 +3448,13 @@ function renderWatchlistDetail(d, el, code, name) {
 
     <!-- 지지선 -->
     ${supRowsNew ? `<div class="section">
-      <div class="sec-title" style="justify-content:space-between;"><span style="display:flex;align-items:center;gap:6px;"><i class="ti ti-barrier-block" style="font-size:15px;color:#5B5BD6;"></i>바닥 지지선</span><span onclick="showSupportGuide()" style="width:22px;height:22px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">?</span></div>
+      <div class="sec-title" ><i class="ti ti-barrier-block" style="font-size:15px;color:#5B5BD6;"></i>바닥 지지선<span onclick="showSupportGuide()" style="width:20px;height:20px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;margin-left:6px;flex-shrink:0;">?</span></div>
       <div class="card">${supRowsNew}</div>
     </div>` : ''}
 
     <!-- 거래량 + 수급 SVG 차트 -->
     ${invList.length ? `<div class="section">
-      <div class="sec-title" style="justify-content:space-between;"><span style="display:flex;align-items:center;gap:6px;"><i class="ti ti-chart-bar" style="font-size:15px;color:#5B5BD6;"></i>5일 거래량 · 수급 흐름</span><span onclick="showVolumeGuide()" style="width:22px;height:22px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">?</span></div>
+      <div class="sec-title" ><i class="ti ti-chart-bar" style="font-size:15px;color:#5B5BD6;"></i>5일 거래량 · 수급 흐름<span onclick="showVolumeGuide()" style="width:20px;height:20px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;margin-left:6px;flex-shrink:0;">?</span></div>
       <div class="card" style="padding:14px;">
         ${_buildFlowChart(a.vol_list || [], invList, code)}
         <div style="display:flex;gap:16px;margin-top:10px;font-size:12px;">
@@ -3742,7 +3742,7 @@ function renderScannerDetail(s) {
 
     <!-- 매집 신호 상세 -->
     <div class="section" style="margin-top:8px;">
-      <div class="sec-title" style="justify-content:space-between;"><span style="display:flex;align-items:center;gap:6px;"><i class="ti ti-radar" style="font-size:15px;color:#5B5BD6;"></i>매집신호 분석 <span style="font-size:11px;color:#8E8E9A;font-weight:400;">(10개 중 ${s.score}개 충족)</span></span><span onclick="showAccSignalGuide()" style="width:22px;height:22px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">?</span></div>
+      <div class="sec-title" ><i class="ti ti-radar" style="font-size:15px;color:#5B5BD6;"></i>매집신호 분석 <span style="font-size:11px;color:#8E8E9A;font-weight:400;">(10개 중 ${s.score}개 충족)</span><span onclick="showAccSignalGuide()" style="width:20px;height:20px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;margin-left:6px;flex-shrink:0;">?</span></div>
       <div class="card" style="padding:14px;">
         <!-- 점수 바 -->
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #F0F0F5;">
@@ -3810,7 +3810,7 @@ function renderScannerDetail(s) {
 
     <!-- 기술 지표 -->
     <div class="section">
-      <div class="sec-title" style="justify-content:space-between;"><span style="display:flex;align-items:center;gap:6px;"><i class="ti ti-activity" style="font-size:15px;color:#5B5BD6;"></i>기술적 지표</span><span onclick="showTechIndicatorGuide()" style="width:22px;height:22px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">?</span></div>
+      <div class="sec-title"><i class="ti ti-activity" style="font-size:15px;color:#5B5BD6;"></i>기술적 지표<span onclick="showTechIndicatorGuide()" style="width:20px;height:20px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;margin-left:6px;flex-shrink:0;">?</span></div>
       <div class="card">
         ${rsiVal !== null ? `<div class="ind-row"><span class="ind-label">RSI (14일)</span><div class="ind-right"><div class="rsi-bar-wrap"><div class="rsi-bar-fill" style="width:${rsiVal}%;background:${rsiColor};"></div></div><span class="ind-val">${rsiVal}</span><span class="ind-status ${rsiStatusCls}">${rsiStatus}</span></div></div>` : ''}
         ${gap20 ? `<div class="ind-row"><span class="ind-label">이격도 (20일)</span><div class="ind-right"><span class="ind-val">${gap20}%</span><span class="ind-status ${gapStatusCls}">${gapStatus}</span></div></div>` : ''}
@@ -3821,7 +3821,7 @@ function renderScannerDetail(s) {
 
     <!-- 거래량 + 수급 SVG 차트 -->
     ${(invList.length || s.vol_list?.length) ? `<div class="section">
-      <div class="sec-title" style="justify-content:space-between;"><span style="display:flex;align-items:center;gap:6px;"><i class="ti ti-chart-bar" style="font-size:15px;color:#5B5BD6;"></i>5일 거래량 · 수급 흐름</span><span onclick="showVolumeGuide()" style="width:22px;height:22px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">?</span></div>
+      <div class="sec-title" ><i class="ti ti-chart-bar" style="font-size:15px;color:#5B5BD6;"></i>5일 거래량 · 수급 흐름<span onclick="showVolumeGuide()" style="width:20px;height:20px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;margin-left:6px;flex-shrink:0;">?</span></div>
       <div class="card" style="padding:14px;">
         ${_buildFlowChart(s.vol_list || [], invList, s.code)}
       </div>
@@ -3829,7 +3829,7 @@ function renderScannerDetail(s) {
 
     <!-- 지지선 -->
     ${supRows ? `<div class="section">
-      <div class="sec-title" style="justify-content:space-between;"><span style="display:flex;align-items:center;gap:6px;"><i class="ti ti-barrier-block" style="font-size:15px;color:#5B5BD6;"></i>바닥 지지선</span><span onclick="showSupportGuide()" style="width:22px;height:22px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">?</span></div>
+      <div class="sec-title" ><i class="ti ti-barrier-block" style="font-size:15px;color:#5B5BD6;"></i>바닥 지지선<span onclick="showSupportGuide()" style="width:20px;height:20px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;margin-left:6px;flex-shrink:0;">?</span></div>
       <div class="card">${supRows}</div>
     </div>` : ''}
 
@@ -4140,3 +4140,6 @@ document.addEventListener('DOMContentLoaded', () => {
     showScreen('login');
   }
 });
+
+
+
