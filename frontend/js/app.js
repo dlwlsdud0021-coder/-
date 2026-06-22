@@ -1565,6 +1565,148 @@ function showIndicatorGuide() {
   document.body.appendChild(overlay);
 }
 
+function showAccSignalGuide() {
+  const existing = document.getElementById('term-modal-overlay');
+  if (existing) existing.remove();
+  const guides = [
+    { icon:'🔍', name:'OBV (거래량 누적지수)', desc:'주가가 오른 날은 거래량을 더하고, 내린 날은 빼서 누적한 값이에요. 마치 "매수 장부"처럼, 이게 꾸준히 올라가면 주가는 제자리여도 조용히 사는 세력이 있다는 신호예요.' },
+    { icon:'🌊', name:'A/D Line (매집분산선)', desc:'주가가 당일 고가~저가 범위 중 어디서 마감했는지로 매수/매도 압력을 계산해요. 주가는 횡보인데 A/D Line이 오르면 "겉으론 안 오르지만 속에선 매집 중"이라는 강한 신호예요.' },
+    { icon:'🎯', name:'VCP (변동폭 수축 패턴)', desc:'주가의 하루 등락 폭이 점점 좁아지는 패턴이에요. 스프링을 압축하는 것처럼, 변동폭이 좁아질수록 에너지가 쌓이다가 한 방향으로 강하게 터지는 경우가 많아요. 터지기 전 조용해지는 것이에요.' },
+    { icon:'📅', name:'연속 순매수', desc:'외국인이나 기관이 3일 이상 연속으로 순매수한 것이에요. 하루 사는 건 우연일 수 있지만, 3일 이상 연속이면 의도적인 매집으로 볼 수 있어요.' },
+    { icon:'🏔️', name:'52주 저점 매집', desc:'52주(1년) 중 가장 낮은 가격 근처에 있는데 외국인·기관이 사고 있는 상태예요. "가장 쌀 때 사는 것"이라 바닥 매집 신호로 강력하게 봐요.' },
+    { icon:'📦', name:'횡보 패턴', desc:'주가가 특정 가격대에서 위아래로 크게 움직이지 않고 박스권을 유지하는 것이에요. 기관이 특정 가격을 지키면서 물량을 쌓을 때 이런 패턴이 나타나요.' },
+  ];
+  const overlay = document.createElement('div');
+  overlay.id = 'term-modal-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;display:flex;align-items:flex-end;justify-content:center;';
+  overlay.innerHTML = `<div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:430px;padding:20px 20px 44px;max-height:82vh;overflow-y:auto;">
+    <div style="width:36px;height:4px;background:#E5E5EA;border-radius:2px;margin:0 auto 16px;"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <div style="font-size:16px;font-weight:700;color:#1A1A2E;">매집 신호 용어 설명</div>
+      <button onclick="document.getElementById('term-modal-overlay').remove()" style="border:none;background:#F0F0F5;border-radius:50%;width:28px;height:28px;font-size:16px;cursor:pointer;">✕</button>
+    </div>
+    ${guides.map(g=>`<div style="margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid #F0F0F5;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span style="font-size:20px;">${g.icon}</span><span style="font-size:14px;font-weight:700;color:#1A1A2E;">${g.name}</span></div>
+      <div style="font-size:13px;color:#3C3C43;line-height:1.75;padding:10px 12px;background:#F8F8FA;border-radius:10px;">${g.desc}</div>
+    </div>`).join('')}
+    <button onclick="document.getElementById('term-modal-overlay').remove()" style="width:100%;padding:14px;background:#5B5BD6;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;">닫기</button>
+  </div>`;
+  overlay.addEventListener('click', e => { if (e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+function showInvestorGuide() {
+  const existing = document.getElementById('term-modal-overlay');
+  if (existing) existing.remove();
+  const guides = [
+    { icon:'🌍', name:'외국인', desc:'해외 기관투자자, 외국계 펀드 등이에요. 글로벌 정보력이 뛰어나고 대규모 자금을 움직여요. 외국인이 꾸준히 사면 3~6개월 뒤 주가가 올라있는 경우가 많아서, 많은 투자자들이 외국인 수급을 중요하게 봐요.' },
+    { icon:'🏦', name:'기관', desc:'국내 연기금(국민연금 등), 자산운용사, 보험사 등이에요. 대량의 자금으로 특정 가격대를 지지해주는 역할을 해요. 기관이 들어오면 그 가격대가 지지선이 되는 경우가 많아요.' },
+    { icon:'➕', name:'순매수 / 순매도', desc:'"산 것 - 판 것"이에요. 순매수(+)면 총 매수가 매도보다 많다는 뜻이고, 순매도(-)면 팔고 나가는 중이에요. 외국인·기관이 동시에 순매수면 강한 매수 신호예요.' },
+    { icon:'📆', name:'연속 순매수가 중요한 이유', desc:'하루만 사는 건 우연이나 단기 이벤트일 수 있어요. 3일 이상 연속 순매수면 "이 종목을 의도적으로 모으고 있다"는 신호예요. 특히 주가가 안 오르는데 연속 순매수면 조용한 매집이에요.' },
+  ];
+  const overlay = document.createElement('div');
+  overlay.id = 'term-modal-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;display:flex;align-items:flex-end;justify-content:center;';
+  overlay.innerHTML = `<div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:430px;padding:20px 20px 44px;max-height:82vh;overflow-y:auto;">
+    <div style="width:36px;height:4px;background:#E5E5EA;border-radius:2px;margin:0 auto 16px;"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <div style="font-size:16px;font-weight:700;color:#1A1A2E;">외국인·기관 수급이란?</div>
+      <button onclick="document.getElementById('term-modal-overlay').remove()" style="border:none;background:#F0F0F5;border-radius:50%;width:28px;height:28px;font-size:16px;cursor:pointer;">✕</button>
+    </div>
+    ${guides.map(g=>`<div style="margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid #F0F0F5;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span style="font-size:20px;">${g.icon}</span><span style="font-size:14px;font-weight:700;color:#1A1A2E;">${g.name}</span></div>
+      <div style="font-size:13px;color:#3C3C43;line-height:1.75;padding:10px 12px;background:#F8F8FA;border-radius:10px;">${g.desc}</div>
+    </div>`).join('')}
+    <button onclick="document.getElementById('term-modal-overlay').remove()" style="width:100%;padding:14px;background:#5B5BD6;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;">닫기</button>
+  </div>`;
+  overlay.addEventListener('click', e => { if (e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+function showSupportGuide() {
+  const existing = document.getElementById('term-modal-overlay');
+  if (existing) existing.remove();
+  const guides = [
+    { icon:'🛡️', name:'지지선이란?', desc:'주가가 여러 번 내려오다가 반등한 가격대예요. 많은 투자자들이 "이 가격이면 살 만하다"고 생각하는 곳이라, 주가가 이 근처에 오면 다시 올라가려는 힘이 생겨요.' },
+    { icon:'📈', name:'20일 이동평균선 지지', desc:'단기 지지선이에요. 주가가 내려오다 20일선에서 반등하면 단기 매수 신호로 봐요. 반대로 20일선 아래로 뚫리면 단기 하락 신호예요.' },
+    { icon:'🎸', name:'볼린저 하단 지지', desc:'통계적으로 주가가 거의 내려가지 않는 바닥선이에요. 주가의 약 95%는 이 선 위에서 움직여요. 볼린저 하단에 가까울수록 "통계적 저점"에 있다는 뜻이에요.' },
+    { icon:'📉', name:'60일 이동평균선 지지', desc:'중기 지지선이에요. 단기 조정 후 60일선에서 반등하면 중기 상승 흐름이 살아있다는 신호예요. 60일선이 무너지면 추세 전환 가능성이 높아져요.' },
+  ];
+  const overlay = document.createElement('div');
+  overlay.id = 'term-modal-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;display:flex;align-items:flex-end;justify-content:center;';
+  overlay.innerHTML = `<div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:430px;padding:20px 20px 44px;max-height:82vh;overflow-y:auto;">
+    <div style="width:36px;height:4px;background:#E5E5EA;border-radius:2px;margin:0 auto 16px;"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <div style="font-size:16px;font-weight:700;color:#1A1A2E;">바닥 지지선이란?</div>
+      <button onclick="document.getElementById('term-modal-overlay').remove()" style="border:none;background:#F0F0F5;border-radius:50%;width:28px;height:28px;font-size:16px;cursor:pointer;">✕</button>
+    </div>
+    ${guides.map(g=>`<div style="margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid #F0F0F5;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span style="font-size:20px;">${g.icon}</span><span style="font-size:14px;font-weight:700;color:#1A1A2E;">${g.name}</span></div>
+      <div style="font-size:13px;color:#3C3C43;line-height:1.75;padding:10px 12px;background:#F8F8FA;border-radius:10px;">${g.desc}</div>
+    </div>`).join('')}
+    <button onclick="document.getElementById('term-modal-overlay').remove()" style="width:100%;padding:14px;background:#5B5BD6;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;">닫기</button>
+  </div>`;
+  overlay.addEventListener('click', e => { if (e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+function showVolumeGuide() {
+  const existing = document.getElementById('term-modal-overlay');
+  if (existing) existing.remove();
+  const guides = [
+    { icon:'📦', name:'거래량이 왜 중요한가요?', desc:'거래량은 주가 움직임의 "신뢰도"예요. 주가가 올랐어도 거래량이 적으면 관심 없는 것이고, 거래량이 많으면 많은 사람이 참여한 진짜 움직임이에요. "거래량은 주가보다 먼저 움직인다"는 말도 있어요.' },
+    { icon:'🔊', name:'평균 대비 1.3배 이상', desc:'평소보다 30% 이상 거래가 많다는 뜻이에요. 누군가 관심을 갖기 시작했다는 신호예요. 매집 국면에서는 이 정도 거래량 증가가 조용히 반복되는 특징이 있어요.' },
+    { icon:'📉', name:'거래량 감소 후 증가', desc:'거래량이 조용히 줄어들다가 갑자기 늘어나면, 매집이 끝나고 본격 상승이 시작될 수 있어요. 이 패턴은 VCP(변동폭 수축)와 함께 자주 나타나요.' },
+    { icon:'⚠️', name:'거래량 없이 오르면?', desc:'거래량이 적은데 주가만 오르면 세력이 적은 물량으로 주가를 띄우는 것일 수 있어요. 신뢰하기 어려운 상승이라 추격 매수는 위험할 수 있어요.' },
+  ];
+  const overlay = document.createElement('div');
+  overlay.id = 'term-modal-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;display:flex;align-items:flex-end;justify-content:center;';
+  overlay.innerHTML = `<div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:430px;padding:20px 20px 44px;max-height:82vh;overflow-y:auto;">
+    <div style="width:36px;height:4px;background:#E5E5EA;border-radius:2px;margin:0 auto 16px;"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <div style="font-size:16px;font-weight:700;color:#1A1A2E;">거래량이란?</div>
+      <button onclick="document.getElementById('term-modal-overlay').remove()" style="border:none;background:#F0F0F5;border-radius:50%;width:28px;height:28px;font-size:16px;cursor:pointer;">✕</button>
+    </div>
+    ${guides.map(g=>`<div style="margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid #F0F0F5;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span style="font-size:20px;">${g.icon}</span><span style="font-size:14px;font-weight:700;color:#1A1A2E;">${g.name}</span></div>
+      <div style="font-size:13px;color:#3C3C43;line-height:1.75;padding:10px 12px;background:#F8F8FA;border-radius:10px;">${g.desc}</div>
+    </div>`).join('')}
+    <button onclick="document.getElementById('term-modal-overlay').remove()" style="width:100%;padding:14px;background:#5B5BD6;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;">닫기</button>
+  </div>`;
+  overlay.addEventListener('click', e => { if (e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+function showSystemGuide() {
+  const existing = document.getElementById('term-modal-overlay');
+  if (existing) existing.remove();
+  const guides = [
+    { icon:'⚙️', name:'어떻게 판단하나요?', desc:'RSI, 이격도, 볼린저밴드, 외국인·기관 수급, 매집 신호 10개를 종합해서 규칙 기반으로 자동 판단해요. AI가 아니라 미리 정해진 규칙으로 계산하는 거예요.' },
+    { icon:'🎯', name:'얼마나 믿을 수 있나요?', desc:'참고용이지, 100% 확신은 아니에요. 시장은 항상 예측 불가능한 변수가 있어요. 이 판단이 "매수 신호"여도 틀릴 수 있고, "매도 신호"여도 더 오를 수 있어요.' },
+    { icon:'💡', name:'어떻게 활용하면 좋나요?', desc:'단독으로 쓰기보다 여러 지표를 같이 보는 게 좋아요. 시스템 판단이 긍정적이고, 기술적 지표도 좋고, 수급도 좋으면 신뢰도가 올라가요. 한 지표만 보고 결정하는 건 위험해요.' },
+    { icon:'⚠️', name:'투자 결정은 본인 책임', desc:'이 앱의 분석은 투자 권유가 아니에요. 최종 투자 결정과 그에 따른 손익은 본인 책임이에요. 항상 여러 정보를 종합해서 신중하게 판단하세요.' },
+  ];
+  const overlay = document.createElement('div');
+  overlay.id = 'term-modal-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;display:flex;align-items:flex-end;justify-content:center;';
+  overlay.innerHTML = `<div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:430px;padding:20px 20px 44px;max-height:82vh;overflow-y:auto;">
+    <div style="width:36px;height:4px;background:#E5E5EA;border-radius:2px;margin:0 auto 16px;"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <div style="font-size:16px;font-weight:700;color:#1A1A2E;">시스템 판단이란?</div>
+      <button onclick="document.getElementById('term-modal-overlay').remove()" style="border:none;background:#F0F0F5;border-radius:50%;width:28px;height:28px;font-size:16px;cursor:pointer;">✕</button>
+    </div>
+    ${guides.map(g=>`<div style="margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid #F0F0F5;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span style="font-size:20px;">${g.icon}</span><span style="font-size:14px;font-weight:700;color:#1A1A2E;">${g.name}</span></div>
+      <div style="font-size:13px;color:#3C3C43;line-height:1.75;padding:10px 12px;background:#F8F8FA;border-radius:10px;">${g.desc}</div>
+    </div>`).join('')}
+    <button onclick="document.getElementById('term-modal-overlay').remove()" style="width:100%;padding:14px;background:#5B5BD6;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;">닫기</button>
+  </div>`;
+  overlay.addEventListener('click', e => { if (e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
 function showTechIndicatorGuide() {
   const existing = document.getElementById('term-modal-overlay');
   if (existing) existing.remove();
@@ -1781,7 +1923,7 @@ function renderIndexDetail(d, el) {
     const totI = investor.reduce((s,r) => s + (r.inst||0), 0);
     investorHtml = `
       <div class="section">
-        <div class="sec-title"><i class="ti ti-users" style="font-size:15px;color:#5B5BD6;"></i>외국인·기관 수급 (5일)</div>
+        <div class="sec-title" style="justify-content:space-between;"><span style="display:flex;align-items:center;gap:6px;"><i class="ti ti-users" style="font-size:15px;color:#5B5BD6;"></i>외국인·기관 수급 (5일)</span><span onclick="showInvestorGuide()" style="width:22px;height:22px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">?</span></div>
         <div class="card">
           <div style="display:flex;gap:8px;margin-bottom:12px;">
             <div style="flex:1;background:#F8F8FA;border-radius:10px;padding:10px 12px;text-align:center;">
@@ -2412,13 +2554,13 @@ function renderHoldingDetail(d, el) {
 
     <!-- 지지선 -->
     ${supRowsNew ? `<div class="section">
-      <div class="sec-title"><i class="ti ti-barrier-block" style="font-size:15px;color:#5B5BD6;"></i>바닥 지지선</div>
+      <div class="sec-title" style="justify-content:space-between;"><span style="display:flex;align-items:center;gap:6px;"><i class="ti ti-barrier-block" style="font-size:15px;color:#5B5BD6;"></i>바닥 지지선</span><span onclick="showSupportGuide()" style="width:22px;height:22px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">?</span></div>
       <div class="card">${supRowsNew}</div>
     </div>` : ''}
 
     <!-- 거래량 + 수급 SVG 차트 -->
     ${invList.length ? `<div class="section">
-      <div class="sec-title"><i class="ti ti-chart-bar" style="font-size:15px;color:#5B5BD6;"></i>5일 거래량 · 수급 흐름</div>
+      <div class="sec-title" style="justify-content:space-between;"><span style="display:flex;align-items:center;gap:6px;"><i class="ti ti-chart-bar" style="font-size:15px;color:#5B5BD6;"></i>5일 거래량 · 수급 흐름</span><span onclick="showVolumeGuide()" style="width:22px;height:22px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">?</span></div>
       <div class="card" style="padding:14px;">
         ${_buildFlowChart(a.vol_list || [], invList, h.code)}
         <div style="display:flex;gap:16px;margin-top:10px;font-size:12px;">
@@ -2531,7 +2673,7 @@ function renderHoldingDetail(d, el) {
       return `<div class="section">
         <div class="card" style="background:#FFFBF0;border:1px solid #F5E6B2;">
           <div style="font-size:13px;font-weight:700;color:#8B6914;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
-            <span style="font-size:15px;">☀️</span> 시스템 판단
+            <span style="font-size:15px;">☀️</span> 시스템 판단 <span onclick="showSystemGuide()" style="width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,0.08);color:#8B6914;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;margin-left:4px;">?</span>
           </div>
           <div style="font-size:13px;color:#3C3C43;line-height:1.8;">${lines.join('<br>')}</div>
         </div>
@@ -3306,13 +3448,13 @@ function renderWatchlistDetail(d, el, code, name) {
 
     <!-- 지지선 -->
     ${supRowsNew ? `<div class="section">
-      <div class="sec-title"><i class="ti ti-barrier-block" style="font-size:15px;color:#5B5BD6;"></i>바닥 지지선</div>
+      <div class="sec-title" style="justify-content:space-between;"><span style="display:flex;align-items:center;gap:6px;"><i class="ti ti-barrier-block" style="font-size:15px;color:#5B5BD6;"></i>바닥 지지선</span><span onclick="showSupportGuide()" style="width:22px;height:22px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">?</span></div>
       <div class="card">${supRowsNew}</div>
     </div>` : ''}
 
     <!-- 거래량 + 수급 SVG 차트 -->
     ${invList.length ? `<div class="section">
-      <div class="sec-title"><i class="ti ti-chart-bar" style="font-size:15px;color:#5B5BD6;"></i>5일 거래량 · 수급 흐름</div>
+      <div class="sec-title" style="justify-content:space-between;"><span style="display:flex;align-items:center;gap:6px;"><i class="ti ti-chart-bar" style="font-size:15px;color:#5B5BD6;"></i>5일 거래량 · 수급 흐름</span><span onclick="showVolumeGuide()" style="width:22px;height:22px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">?</span></div>
       <div class="card" style="padding:14px;">
         ${_buildFlowChart(a.vol_list || [], invList, code)}
         <div style="display:flex;gap:16px;margin-top:10px;font-size:12px;">
@@ -3600,7 +3742,7 @@ function renderScannerDetail(s) {
 
     <!-- 매집 신호 상세 -->
     <div class="section" style="margin-top:8px;">
-      <div class="sec-title"><i class="ti ti-radar" style="font-size:15px;color:#5B5BD6;"></i>매집신호 분석 <span style="font-size:11px;color:#8E8E9A;font-weight:400;">(10개 중 ${s.score}개 충족)</span></div>
+      <div class="sec-title" style="justify-content:space-between;"><span style="display:flex;align-items:center;gap:6px;"><i class="ti ti-radar" style="font-size:15px;color:#5B5BD6;"></i>매집신호 분석 <span style="font-size:11px;color:#8E8E9A;font-weight:400;">(10개 중 ${s.score}개 충족)</span></span><span onclick="showAccSignalGuide()" style="width:22px;height:22px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">?</span></div>
       <div class="card" style="padding:14px;">
         <!-- 점수 바 -->
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #F0F0F5;">
@@ -3679,7 +3821,7 @@ function renderScannerDetail(s) {
 
     <!-- 거래량 + 수급 SVG 차트 -->
     ${(invList.length || s.vol_list?.length) ? `<div class="section">
-      <div class="sec-title"><i class="ti ti-chart-bar" style="font-size:15px;color:#5B5BD6;"></i>5일 거래량 · 수급 흐름</div>
+      <div class="sec-title" style="justify-content:space-between;"><span style="display:flex;align-items:center;gap:6px;"><i class="ti ti-chart-bar" style="font-size:15px;color:#5B5BD6;"></i>5일 거래량 · 수급 흐름</span><span onclick="showVolumeGuide()" style="width:22px;height:22px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">?</span></div>
       <div class="card" style="padding:14px;">
         ${_buildFlowChart(s.vol_list || [], invList, s.code)}
       </div>
@@ -3687,13 +3829,13 @@ function renderScannerDetail(s) {
 
     <!-- 지지선 -->
     ${supRows ? `<div class="section">
-      <div class="sec-title"><i class="ti ti-barrier-block" style="font-size:15px;color:#5B5BD6;"></i>바닥 지지선</div>
+      <div class="sec-title" style="justify-content:space-between;"><span style="display:flex;align-items:center;gap:6px;"><i class="ti ti-barrier-block" style="font-size:15px;color:#5B5BD6;"></i>바닥 지지선</span><span onclick="showSupportGuide()" style="width:22px;height:22px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">?</span></div>
       <div class="card">${supRows}</div>
     </div>` : ''}
 
     <!-- 시스템 판단 -->
     ${s.verdict ? `<div class="advice-box">
-      <div class="advice-title"><i class="ti ti-bulb" style="font-size:15px;"></i>시스템 판단</div>
+      <div class="advice-title" style="display:flex;align-items:center;justify-content:space-between;"><span><i class="ti ti-bulb" style="font-size:15px;"></i>시스템 판단</span><span onclick="showSystemGuide()" style="width:20px;height:20px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;">?</span></div>
       <div class="advice-text">${s.verdict}</div>
     </div>` : ''}
 
