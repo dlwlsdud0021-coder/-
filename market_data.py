@@ -833,7 +833,8 @@ def get_top_stocks(n: int = 200) -> list:
 
 
 def _supplement_with_fallback(result: list, n: int) -> list:
-    """result가 n개 미만이면 하드코딩 fallback으로 보충"""
+    """빈 코드 제거 후 n개 미만이면 하드코딩 fallback으로 보충"""
+    result = [s for s in result if s.get("code") and len(str(s["code"])) == 6]
     if len(result) >= n:
         return result[:n]
     existing_codes = {s["code"] for s in result}
