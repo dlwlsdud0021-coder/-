@@ -124,13 +124,27 @@ async function api(method, path, body, timeoutMs = 60000) {
 // ─────────────────────────────────────────────────────────
 // 화면 전환
 // ─────────────────────────────────────────────────────────
+let _handlingPopState = false;
+
 function showScreen(id) {
+  const rootScreens = ['home', 'holdings', 'watchlist', 'scanner', 'news', 'login', 'register'];
+  if (!_handlingPopState && !rootScreens.includes(id)) {
+    const cur = document.querySelector('.screen.active')?.id?.replace('screen-', '') || 'home';
+    history.pushState({ prevScreen: cur }, '');
+  }
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + id).classList.add('active');
   const nav = document.getElementById('bottom-nav');
   const noNav = ['login', 'register', 'holding-detail', 'watchlist-detail', 'news-detail', 'index-detail', 'forecast-detail', 'supply-detail', 'scanner-detail', 'analysis-detail'];
   nav.style.display = noNav.includes(id) ? 'none' : 'flex';
 }
+
+window.addEventListener('popstate', (e) => {
+  _handlingPopState = true;
+  const prev = e.state?.prevScreen;
+  if (prev) showScreen(prev);
+  _handlingPopState = false;
+});
 
 function _startAutoRefresh(tab) {
   clearInterval(_autoRefreshTimer);
