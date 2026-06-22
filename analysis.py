@@ -297,6 +297,18 @@ def analyze_stock(
         })
     result["vol_list"] = vol_list
 
+    # ── 급등/급락 필터 — 매집 구간이 아님 ──
+    daily_chg = float((close.iloc[-1] - close.iloc[-2]) / close.iloc[-2]) if len(close) >= 2 else 0.0
+    chg_20d   = float((close.iloc[-1] - close.iloc[-20]) / close.iloc[-20]) if len(close) >= 20 else 0.0
+    if abs(daily_chg) > 0.05 or chg_20d > 0.20:
+        result["signals"]     = {k: False for k in ["vol_surge","obv_up","foreign_buy","inst_buy","sideways","ad_line_up","buy_sell_vol","consecutive","vcp","near_52w_low"]}
+        result["signal_desc"] = {}
+        result["score"]       = 0
+        result["confidence"]  = "low"
+        result["accumulation_score"] = 0
+        result["accumulation_confidence"] = "low"
+        return result
+
     # ── 10신호 판단 ──
     sig_vol    = vol_ratio >= 1.3              # 거래량 평균 1.3배+ (조용한 매집)
     sig_obv    = obv["trend"] == "up"          # OBV 상승
