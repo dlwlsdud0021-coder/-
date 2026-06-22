@@ -3577,6 +3577,33 @@ function renderScannerDetail(s) {
       </div>
     </div>
 
+    <!-- 손절가 / 목표가 -->
+    ${s.acc_stop_loss ? `<div class="section" style="margin-top:8px;">
+      <div class="sec-title"><i class="ti ti-target" style="font-size:15px;color:#5B5BD6;"></i>손절가 · 목표가</div>
+      <div class="card" style="padding:14px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <div style="background:#FCEBEB;border-radius:12px;padding:12px;text-align:center;">
+            <div style="font-size:10px;color:#791F1F;font-weight:600;margin-bottom:4px;">✂️ 손절가</div>
+            <div style="font-size:15px;font-weight:800;color:#791F1F;">${fmtNum(s.acc_stop_loss)}원</div>
+            <div style="font-size:11px;color:#E24B4A;margin-top:3px;">${s.acc_risk_pct > 0 ? '-' : ''}${Math.abs(s.acc_risk_pct||0).toFixed(1)}%</div>
+          </div>
+          <div style="background:#EEEDFE;border-radius:12px;padding:12px;text-align:center;">
+            <div style="font-size:10px;color:#3C3489;font-weight:600;margin-bottom:4px;">🎯 목표1</div>
+            <div style="font-size:15px;font-weight:800;color:#3C3489;">${fmtNum(s.acc_target1)}원</div>
+            <div style="font-size:11px;color:#5B5BD6;margin-top:3px;">+${(s.acc_reward1_pct||0).toFixed(1)}%</div>
+          </div>
+          <div style="background:#EAF3DE;border-radius:12px;padding:12px;text-align:center;">
+            <div style="font-size:10px;color:#27500A;font-weight:600;margin-bottom:4px;">🚀 목표2</div>
+            <div style="font-size:15px;font-weight:800;color:#27500A;">${fmtNum(s.acc_target2)}원</div>
+            <div style="font-size:11px;color:#30D158;margin-top:3px;">+${(s.acc_reward2_pct||0).toFixed(1)}%</div>
+          </div>
+        </div>
+        <div style="margin-top:10px;padding:8px 10px;background:#F8F8FA;border-radius:8px;font-size:11px;color:#6B6B8A;line-height:1.6;">
+          손절가: 20일 저점 −3% / 목표1: 20일선 돌파 +3% / 목표2: 볼린저 상단 or 52주 고점
+        </div>
+      </div>
+    </div>` : ''}
+
     <!-- 기술 지표 -->
     <div class="section">
       <div class="sec-title"><i class="ti ti-activity" style="font-size:15px;color:#5B5BD6;"></i>기술적 지표</div>

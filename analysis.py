@@ -366,6 +366,30 @@ def analyze_stock(
     result["vcp"] = bool(vcp)
     result["near_52w_low"] = bool(near_low)
 
+    # ── 매집 종목 손절가 / 목표가 ──
+    try:
+        recent_low  = float(low_col.tail(20).min())   # 20일 최저점
+        recent_high = float(close.tail(252).max())    # 52주 고점
+        bb_upper    = boll.get("upper", cur * 1.10) if isinstance(boll, dict) else cur * 1.10
+
+        stop_loss   = round(recent_low * 0.97)        # 20일 저점 -3%
+        target1     = round(ma20 * 1.03) if ma20 else round(cur * 1.08)   # 20일선 +3%
+        target2     = round(min(bb_upper, recent_high * 0.95))            # 볼린저 상단 or 52주 고점 -5%
+        risk        = round((cur - stop_loss) / cur * 100, 1) if cur > 0 else 0
+        reward1     = round((target1 - cur) / cur * 100, 1) if cur > 0 else 0
+        reward2     = round((target2 - cur) / cur * 100, 1) if cur > 0 else 0
+
+        result["acc_stop_loss"]  = int(stop_loss)
+        result["acc_target1"]    = int(target1)
+        result["acc_target2"]    = int(target2)
+        result["acc_risk_pct"]   = risk
+        result["acc_reward1_pct"]= reward1
+        result["acc_reward2_pct"]= reward2
+    except Exception:
+        result["acc_stop_loss"]  = None
+        result["acc_target1"]    = None
+        result["acc_target2"]    = None
+
     # ── 배지 (badges) ──
     badges = _make_badges(rsi, boll, gap20, gap60, ma20, ma60, ma200,
                           vol_ratio, obv, foreign_net, inst_net, sideways, cur)
