@@ -1565,6 +1565,68 @@ function showIndicatorGuide() {
   document.body.appendChild(overlay);
 }
 
+function showTechIndicatorGuide() {
+  const existing = document.getElementById('term-modal-overlay');
+  if (existing) existing.remove();
+  const guides = [
+    {
+      icon: '📊',
+      name: 'RSI (상대강도지수)',
+      analogy: '주가의 "체력계"예요',
+      desc: '주가가 최근에 얼마나 빨리 올랐는지 측정해요. 0~100 사이 숫자로 나타내요.\n\n🔴 70 이상 → 너무 많이 올라 숨 고르기 가능 (과매수)\n🟢 30 이하 → 너무 많이 내려 반등 가능 (과매도)\n⚪ 40~60 → 건강한 상태'
+    },
+    {
+      icon: '📏',
+      name: '이격도 (20일선 대비)',
+      analogy: '평균에서 얼마나 멀어졌는지 보는 자 같아요',
+      desc: '현재 주가가 20일 평균값에서 얼마나 벗어났는지 퍼센트로 보여줘요. 고무줄처럼 너무 당기면 다시 돌아오려는 힘이 생겨요.\n\n🔴 115% 이상 → 평균보다 15% 위, 조정 가능\n🟢 95% 이하 → 평균보다 5% 아래, 반등 가능\n⚪ 100% 근처 → 평균과 비슷한 수준'
+    },
+    {
+      icon: '🎸',
+      name: '볼린저밴드',
+      analogy: '주가가 다니는 "도로 차선" 같아요',
+      desc: '최근 20일 기준으로 주가가 움직이는 정상 범위를 상단·하단 선으로 표시해요. 차선을 벗어나면 위험 신호예요.\n\n🔴 상단 근처 → 과열, 추격 매수 주의\n🟢 하단 근처 → 저점 가능, 반등 검토\n⚪ 중간 → 정상 범위 안에서 움직이는 중'
+    },
+    {
+      icon: '📈',
+      name: '20일 이동평균선',
+      analogy: '최근 한 달 주가의 "평균 체온"이에요',
+      desc: '최근 20거래일(약 한 달)의 종가 평균이에요. 주가가 이 선 위에 있으면 단기적으로 상승 흐름, 아래면 하락 흐름으로 봐요.\n\n🟢 현재가 > 20일선 → 단기 상승 흐름\n🔴 현재가 < 20일선 → 단기 하락 흐름\n💡 주가가 20일선에서 지지받으면 매수 신호로 봐요'
+    },
+    {
+      icon: '📉',
+      name: '60일 이동평균선',
+      analogy: '최근 석 달 주가의 "체형"이에요',
+      desc: '최근 60거래일(약 3개월)의 종가 평균이에요. 20일선보다 더 천천히 움직여서 중기 추세를 판단할 때 써요.\n\n🟢 현재가 > 60일선 → 중기 상승 흐름\n🔴 현재가 < 60일선 → 중기 하락 흐름\n💡 20일선이 60일선을 위로 뚫으면 "골든크로스" — 매수 신호예요'
+    },
+  ];
+  const overlay = document.createElement('div');
+  overlay.id = 'term-modal-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;display:flex;align-items:flex-end;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:430px;padding:20px 20px 44px;max-height:82vh;overflow-y:auto;">
+      <div style="width:36px;height:4px;background:#E5E5EA;border-radius:2px;margin:0 auto 16px;"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+        <div style="font-size:16px;font-weight:700;color:#1A1A2E;">기술적 지표 설명</div>
+        <button onclick="document.getElementById('term-modal-overlay').remove()" style="border:none;background:#F0F0F5;border-radius:50%;width:28px;height:28px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>
+      ${guides.map(g => `
+        <div style="margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid #F0F0F5;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <span style="font-size:20px;">${g.icon}</span>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:#1A1A2E;">${g.name}</div>
+              <div style="font-size:11px;color:#8E8E9A;">${g.analogy}</div>
+            </div>
+          </div>
+          <div style="font-size:13px;color:#3C3C43;line-height:1.75;white-space:pre-line;margin-top:8px;padding:10px 12px;background:#F8F8FA;border-radius:10px;">${g.desc}</div>
+        </div>`).join('')}
+      <button onclick="document.getElementById('term-modal-overlay').remove()" style="width:100%;padding:14px;background:#5B5BD6;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;">닫기</button>
+    </div>`;
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
 function showTermModal(type, val, valStr, statusLabel) {
   const existing = document.getElementById('term-modal-overlay');
   if (existing) existing.remove();
@@ -2303,7 +2365,7 @@ function renderHoldingDetail(d, el) {
 
     <!-- 기술 지표 -->
     <div class="section" style="margin-top:12px;">
-      <div class="sec-title"><i class="ti ti-activity" style="font-size:15px;color:#5B5BD6;"></i>기술적 지표</div>
+      <div class="sec-title" style="justify-content:space-between;"><span style="display:flex;align-items:center;gap:6px;"><i class="ti ti-activity" style="font-size:15px;color:#5B5BD6;"></i>기술적 지표</span><span onclick="showTechIndicatorGuide()" style="width:22px;height:22px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">?</span></div>
       <div class="card">
         ${rsiVal !== null ? `<div class="ind-row">
           <span class="ind-label">RSI (14일)</span>
@@ -3197,7 +3259,7 @@ function renderWatchlistDetail(d, el, code, name) {
 
     <!-- 기술 지표 -->
     <div class="section" style="margin-top:12px;">
-      <div class="sec-title"><i class="ti ti-activity" style="font-size:15px;color:#5B5BD6;"></i>기술적 지표</div>
+      <div class="sec-title" style="justify-content:space-between;"><span style="display:flex;align-items:center;gap:6px;"><i class="ti ti-activity" style="font-size:15px;color:#5B5BD6;"></i>기술적 지표</span><span onclick="showTechIndicatorGuide()" style="width:22px;height:22px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">?</span></div>
       <div class="card">
         ${rsiVal !== null ? `<div class="ind-row">
           <span class="ind-label">RSI (14일)</span>
@@ -3606,7 +3668,7 @@ function renderScannerDetail(s) {
 
     <!-- 기술 지표 -->
     <div class="section">
-      <div class="sec-title"><i class="ti ti-activity" style="font-size:15px;color:#5B5BD6;"></i>기술적 지표</div>
+      <div class="sec-title" style="justify-content:space-between;"><span style="display:flex;align-items:center;gap:6px;"><i class="ti ti-activity" style="font-size:15px;color:#5B5BD6;"></i>기술적 지표</span><span onclick="showTechIndicatorGuide()" style="width:22px;height:22px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">?</span></div>
       <div class="card">
         ${rsiVal !== null ? `<div class="ind-row"><span class="ind-label">RSI (14일)</span><div class="ind-right"><div class="rsi-bar-wrap"><div class="rsi-bar-fill" style="width:${rsiVal}%;background:${rsiColor};"></div></div><span class="ind-val">${rsiVal}</span><span class="ind-status ${rsiStatusCls}">${rsiStatus}</span></div></div>` : ''}
         ${gap20 ? `<div class="ind-row"><span class="ind-label">이격도 (20일)</span><div class="ind-right"><span class="ind-val">${gap20}%</span><span class="ind-status ${gapStatusCls}">${gapStatus}</span></div></div>` : ''}
