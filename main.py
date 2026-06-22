@@ -1497,7 +1497,7 @@ def _run_scanner():
                 inv = get_investor_trading(s["code"], days=5)
                 a = analyze_stock(ohlcv, inv)
                 no_investor = (a.get("foreign_net_3d", 0) == 0 and a.get("institution_net_3d", 0) == 0)
-                min_score = 1 if no_investor else 3
+                min_score = 3 if no_investor else 4
                 if a["score"] >= min_score:
                     pd2 = get_current_price(s["code"])
                     price = pd2.get("current_price", 0) or 0

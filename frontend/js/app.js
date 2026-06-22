@@ -3379,8 +3379,8 @@ function renderScannerList(el) {
     const obvTrend = s.obv?.trend === 'up';
     const chgPct = s.change_pct || 0;
     const confCls = s.confidence === 'high' ? 'high' : 'mid';
-    const badgeLbl = s.confidence === 'high' ? `신뢰도 높음 ${s.score}/5` : `신뢰도 보통 ${s.score}/5`;
-    const badgeCls = s.confidence === 'high' ? 'badge-ok' : 'badge-warn';
+    const badgeLbl = s.confidence === 'high' ? `🔥 강한매집 ${s.score}/10` : s.confidence === 'mid' ? `📈 매집가능 ${s.score}/10` : `👀 관찰중 ${s.score}/10`;
+    const badgeCls = s.confidence === 'high' ? 'badge-ok' : s.confidence === 'mid' ? 'badge-warn' : 'badge-neutral';
     const market = s.code && s.code[0] === '0' ? '코스닥' : '코스피';
 
     return `<div class="scanner-card ${confCls}" onclick="openScannerDetail(${rank})">
@@ -3436,14 +3436,14 @@ function renderScannerList(el) {
     <div class="scanner-filter-row">${filterBtns}</div>
     ${highItems.length ? `<div class="section">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <span style="font-size:12px;font-weight:600;color:#6B6B8A;display:flex;align-items:center;gap:5px;"><span style="width:6px;height:6px;border-radius:50%;background:#5B5BD6;display:inline-block;"></span>신뢰도 높음 (4~5/5)</span>
+        <span style="font-size:12px;font-weight:600;color:#6B6B8A;display:flex;align-items:center;gap:5px;"><span style="width:6px;height:6px;border-radius:50%;background:#5B5BD6;display:inline-block;"></span>강한 매집 (6~10/10)</span>
         <span style="font-size:11px;color:#5B5BD6;">점수순</span>
       </div>
       ${highItems.map((s,i) => buildCard(s,i)).join('')}
     </div>` : ''}
     ${midItems.length ? `<div class="section">
       <div style="margin-bottom:8px;">
-        <span style="font-size:12px;font-weight:600;color:#6B6B8A;display:flex;align-items:center;gap:5px;"><span style="width:6px;height:6px;border-radius:50%;background:#BA7517;display:inline-block;"></span>신뢰도 보통 (3/5)</span>
+        <span style="font-size:12px;font-weight:600;color:#6B6B8A;display:flex;align-items:center;gap:5px;"><span style="width:6px;height:6px;border-radius:50%;background:#BA7517;display:inline-block;"></span>매집 가능 (4~5/10)</span>
       </div>
       ${midItems.map((s,i) => buildCard(s, highItems.length+i)).join('')}
     </div>` : ''}
@@ -3457,8 +3457,9 @@ function openScannerDetail(idx) {
   document.getElementById('scanner-detail-name').textContent = s.name;
   document.getElementById('scanner-detail-code').textContent = `${s.code && s.code[0]==='0'?'코스닥':'코스피'} · ${s.code}`;
   const badgeEl = document.getElementById('scanner-detail-badge');
-  badgeEl.textContent = `신뢰도 ${s.confidence==='high'?'높음':'보통'} ${s.score}/5`;
-  badgeEl.className = `badge ${s.confidence==='high'?'badge-ok':'badge-warn'}`;
+  const confLabel = s.confidence==='high'?'강한매집':s.confidence==='mid'?'매집가능':'관찰중';
+  badgeEl.textContent = `${confLabel} ${s.score}/10`;
+  badgeEl.className = `badge ${s.confidence==='high'?'badge-ok':s.confidence==='mid'?'badge-warn':'badge-neutral'}`;
   showScreen('scanner-detail');
   renderScannerDetail(s);
 }
@@ -3535,38 +3536,44 @@ function renderScannerDetail(s) {
       </div>
     </div>` : ''}
 
-    <!-- 매집 신호 점수 투명화 -->
+    <!-- 매집 신호 상세 -->
     <div class="section" style="margin-top:8px;">
-      <div class="sec-title"><i class="ti ti-radar" style="font-size:15px;color:#5B5BD6;"></i>매집신호 상세 <span style="font-size:11px;color:#8E8E9A;font-weight:400;">(5개 조건 충족 시 신뢰도 높음)</span></div>
+      <div class="sec-title"><i class="ti ti-radar" style="font-size:15px;color:#5B5BD6;"></i>매집신호 분석 <span style="font-size:11px;color:#8E8E9A;font-weight:400;">(10개 중 ${s.score}개 충족)</span></div>
       <div class="card" style="padding:14px;">
-        ${[
-          { key:'vol_surge',   label:'거래량 급증',  desc: volRatio ? `평균 대비 +${volRatio}% 거래량 폭발 (기준: 평균의 2배↑)` : '평균 거래량 2배 이상 조건', icon:'ti-chart-bar' },
-          { key:'obv_up',      label:'OBV 상승',     desc: `매수세 누적 지표 상승 중 (거래량·가격 방향 동일)`, icon:'ti-trending-up' },
-          { key:'foreign_buy', label:'외국인 순매수', desc: foreignNet ? `최근 3일 +${Math.abs(foreignNet).toLocaleString()}주 순매수` : '최근 3일 외국인 순매수 조건', icon:'ti-world' },
-          { key:'inst_buy',    label:'기관 순매수',   desc: instNet ? `최근 3일 +${Math.abs(instNet).toLocaleString()}주 순매수` : '최근 3일 기관 순매수 조건', icon:'ti-building-bank' },
-          { key:'sideways',    label:'가격 횡보',     desc: '박스권 눌림 — 매집 후 급등 전 전형적 패턴', icon:'ti-arrows-horizontal' },
-        ].map(item => {
-          const ok = sig[item.key];
-          return `<div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #F0F0F5;">
-            <div style="width:28px;height:28px;border-radius:50%;background:${ok?'#3B6D11':'#8E8E9A'};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
-              <i class="ti ${item.icon}" style="font-size:14px;color:#fff;"></i>
-            </div>
-            <div style="flex:1;">
-              <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
-                <span style="font-size:13px;font-weight:600;color:${ok?'#1A1A2E':'#8E8E9A'};">${item.label}</span>
-                <span style="font-size:10px;padding:2px 7px;border-radius:5px;background:${ok?'#EAF3DE':'#F0F0F5'};color:${ok?'#27500A':'#8E8E9A'};">${ok?'✅ 충족':'❌ 미충족'}</span>
-              </div>
-              <div style="font-size:11px;color:#8E8E9A;line-height:1.5;">${item.desc}</div>
-            </div>
-          </div>`;
-        }).join('')}
-        <div style="display:flex;align-items:center;justify-content:space-between;padding-top:10px;">
-          <span style="font-size:13px;color:#3C3C43;">종합 점수</span>
-          <div style="display:flex;gap:4px;">
-            ${[1,2,3,4,5].map(i => `<div style="width:18px;height:18px;border-radius:50%;background:${i<=s.score?'#5B5BD6':'#F0F0F5'};"></div>`).join('')}
-            <span style="font-size:13px;font-weight:700;color:#5B5BD6;margin-left:6px;">${s.score}/5</span>
+        <!-- 점수 바 -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #F0F0F5;">
+          <div style="flex:1;height:8px;background:#F0F0F5;border-radius:4px;overflow:hidden;">
+            <div style="height:8px;width:${s.score*10}%;background:${s.score>=6?'#30D158':s.score>=4?'#5B5BD6':'#AEAEB2'};border-radius:4px;transition:width 0.4s;"></div>
           </div>
+          <span style="font-size:15px;font-weight:800;color:${s.score>=6?'#27500A':s.score>=4?'#5B5BD6':'#8E8E9A'};white-space:nowrap;">${s.score}/10</span>
+          <span style="font-size:11px;padding:3px 9px;border-radius:6px;font-weight:600;background:${s.score>=6?'#EAF3DE':s.score>=4?'#EEEDFE':'#F0F0F5'};color:${s.score>=6?'#27500A':s.score>=4?'#3C3489':'#8E8E9A'};">${s.score>=6?'🔥 강한 매집':s.score>=4?'📈 매집 가능':'👀 관찰 중'}</span>
         </div>
+        <!-- 충족 신호 먼저 -->
+        ${(() => {
+          const sd = s.signal_desc || {};
+          const allKeys = ['sideways','ad_line_up','consecutive','foreign_buy','inst_buy','obv_up','buy_sell_vol','vol_surge','vcp','near_52w_low'];
+          const icons   = {sideways:'ti-arrows-horizontal',ad_line_up:'ti-trending-up',consecutive:'ti-repeat',foreign_buy:'ti-world',inst_buy:'ti-building-bank',obv_up:'ti-chart-line',buy_sell_vol:'ti-scale',vol_surge:'ti-chart-bar',vcp:'ti-arrow-narrow-down',near_52w_low:'ti-arrow-big-down-lines'};
+          const sorted  = [...allKeys].sort((a,b) => (sig[b]?1:0)-(sig[a]?1:0));
+          return sorted.map(key => {
+            const ok   = !!sig[key];
+            const info = sd[key] || {};
+            const label = info.label || key;
+            const desc  = info.desc  || '';
+            const icon  = icons[key] || 'ti-point';
+            return `<div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #F8F8FA;">
+              <div style="width:30px;height:30px;border-radius:50%;background:${ok?'#EAF3DE':'#F0F0F5'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="ti ${icon}" style="font-size:14px;color:${ok?'#27500A':'#AEAEB2'};"></i>
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+                  <span style="font-size:13px;font-weight:600;color:${ok?'#1A1A2E':'#AEAEB2'};">${label}</span>
+                  <span style="font-size:10px;padding:2px 6px;border-radius:5px;background:${ok?'#EAF3DE':'#F5F5F7'};color:${ok?'#27500A':'#AEAEB2'};flex-shrink:0;">${ok?'충족':'미충족'}</span>
+                </div>
+                ${ok && desc ? `<div style="font-size:11px;color:#6B6B8A;line-height:1.55;">${desc}</div>` : ''}
+              </div>
+            </div>`;
+          }).join('');
+        })()}
       </div>
     </div>
 

@@ -113,6 +113,82 @@ def is_sideways(close: pd.Series, period: int = 20, threshold: float = 0.08) -> 
     return (high - low) / low < threshold
 
 
+def calc_ad_line(close: pd.Series, high: pd.Series, low: pd.Series, volume: pd.Series) -> dict:
+    """Accumulation/Distribution Line — 당일 종가 위치까지 반영한 매집/분산선"""
+    if len(close) < 5:
+        return {"trend": "neutral", "change_pct": 0}
+    clv = ((close - low) - (high - close)) / (high - low).replace(0, np.nan).fillna(0)
+    ad = (clv * volume).cumsum()
+    recent = ad.tail(10)
+    if len(recent) < 2:
+        return {"trend": "neutral", "change_pct": 0}
+    slope = recent.iloc[-1] - recent.iloc[0]
+    base = abs(recent.iloc[0]) + 1
+    change_pct = slope / base * 100
+    trend = "up" if change_pct > 1 else ("down" if change_pct < -1 else "neutral")
+    return {"trend": trend, "change_pct": round(float(change_pct), 1)}
+
+
+def calc_buy_sell_vol_ratio(close: pd.Series, volume: pd.Series, period: int = 10) -> float:
+    """상승일 거래량 합 / 하락일 거래량 합. 1.3 이상이면 매수 우위"""
+    if len(close) < period + 1:
+        return 1.0
+    c = close.tail(period + 1)
+    v = volume.tail(period + 1)
+    up_vol = sum(v.iloc[i] for i in range(1, len(c)) if c.iloc[i] > c.iloc[i-1])
+    dn_vol = sum(v.iloc[i] for i in range(1, len(c)) if c.iloc[i] < c.iloc[i-1])
+    if dn_vol == 0:
+        return 2.0
+    return round(up_vol / dn_vol, 2)
+
+
+def calc_consecutive_net_buy(investor_df, actor: str = "both") -> int:
+    """외국인 or 기관의 연속 순매수 일수 반환"""
+    if investor_df is None or investor_df.empty:
+        return 0
+    has_f = "외국인" in investor_df.columns
+    has_i = "기관" in investor_df.columns
+    consecutive = 0
+    for _, row in investor_df.iloc[::-1].iterrows():
+        f_buy = (has_f and row.get("외국인", 0) > 0)
+        i_buy = (has_i and row.get("기관", 0) > 0)
+        if actor == "both":
+            bought = f_buy or i_buy
+        elif actor == "foreign":
+            bought = f_buy
+        else:
+            bought = i_buy
+        if bought:
+            consecutive += 1
+        else:
+            break
+    return consecutive
+
+
+def calc_vcp(close: pd.Series, period: int = 20) -> bool:
+    """Volatility Contraction Pattern — 변동폭이 점점 좁아지는지 확인"""
+    if len(close) < period:
+        return False
+    segments = [close.iloc[i:i+5] for i in range(0, period-4, 5)]
+    if len(segments) < 3:
+        return False
+    ranges = [(s.max() - s.min()) / s.min() if s.min() > 0 else 0 for s in segments]
+    # 각 구간 변동폭이 이전보다 줄어드는 추세
+    contracting = sum(1 for i in range(1, len(ranges)) if ranges[i] < ranges[i-1])
+    return contracting >= len(ranges) - 1
+
+
+def calc_near_52w_low(close: pd.Series, threshold: float = 0.15) -> bool:
+    """현재가가 52주 저점 대비 threshold 이내에 위치하는지"""
+    if len(close) < 20:
+        return False
+    low_52w = close.min()
+    cur = float(close.iloc[-1])
+    if low_52w == 0:
+        return False
+    return (cur - low_52w) / low_52w < threshold
+
+
 # ─────────────────────────────────────────────────────────
 # 종목 종합 분석
 # ─────────────────────────────────────────────────────────
@@ -163,6 +239,14 @@ def analyze_stock(
     vol_ratio = calc_volume_surge(volume)
     sideways = is_sideways(close)
 
+    # ── 신규 매집 지표 ──
+    high_col  = ohlcv["high"]  if "high"  in ohlcv.columns else close
+    low_col   = ohlcv["low"]   if "low"   in ohlcv.columns else close
+    ad        = calc_ad_line(close, high_col, low_col, volume)
+    bsv_ratio = calc_buy_sell_vol_ratio(close, volume)
+    vcp       = calc_vcp(close)
+    near_low  = calc_near_52w_low(close)
+
     result.update({
         "current_price": cur,
         "rsi": rsi,
@@ -181,6 +265,7 @@ def analyze_stock(
     foreign_net = 0
     inst_net = 0
     inv_list = []
+    consecutive_buy = 0
     if investor_df is not None and not investor_df.empty:
         recent_inv = investor_df.tail(3)
         if "외국인" in recent_inv.columns:
@@ -195,10 +280,12 @@ def analyze_stock(
                 "foreign": int(row.get("외국인", 0)),
                 "inst": int(row.get("기관", 0)),
             })
+        consecutive_buy = calc_consecutive_net_buy(investor_df)
 
     result["foreign_net_3d"] = foreign_net
     result["institution_net_3d"] = inst_net
     result["inv_list"] = inv_list
+    result["consecutive_buy_days"] = consecutive_buy
 
     # ── 5일 거래량 리스트 ──
     vol_list = []
@@ -210,32 +297,62 @@ def analyze_stock(
         })
     result["vol_list"] = vol_list
 
-    # ── 5신호 판단 ──
-    sig_vol    = vol_ratio >= 2.0             # 거래량 평균 2배 이상
-    sig_obv    = obv["trend"] == "up"         # OBV 상승
-    sig_fore   = foreign_net > 0              # 외국인 순매수
-    sig_inst   = inst_net > 0                 # 기관 순매수
-    sig_side   = sideways                     # 횡보 (매집 패턴)
+    # ── 10신호 판단 ──
+    sig_vol    = vol_ratio >= 1.3              # 거래량 평균 1.3배+ (조용한 매집)
+    sig_obv    = obv["trend"] == "up"          # OBV 상승
+    sig_fore   = foreign_net > 0               # 외국인 순매수 (3일 합산)
+    sig_inst   = inst_net > 0                  # 기관 순매수 (3일 합산)
+    sig_side   = bool(sideways)                # 횡보 패턴
+    sig_ad     = ad["trend"] == "up"           # A/D Line 상승 (매집선)
+    sig_bsv    = bsv_ratio >= 1.3              # 상승일 거래량 > 하락일 1.3배
+    sig_consec = consecutive_buy >= 3          # 외국인 or 기관 3일 이상 연속 순매수
+    sig_vcp    = bool(vcp)                     # 변동폭 수축 패턴
+    sig_low    = bool(near_low) and (foreign_net > 0 or inst_net > 0)  # 52주 저점 + 매수세
 
     signals = {
-        "vol_surge":   sig_vol,
-        "obv_up":      sig_obv,
-        "foreign_buy": sig_fore,
-        "inst_buy":    sig_inst,
-        "sideways":    sig_side,
+        "vol_surge":     sig_vol,
+        "obv_up":        sig_obv,
+        "foreign_buy":   sig_fore,
+        "inst_buy":      sig_inst,
+        "sideways":      sig_side,
+        "ad_line_up":    sig_ad,
+        "buy_sell_vol":  sig_bsv,
+        "consecutive":   sig_consec,
+        "vcp":           sig_vcp,
+        "near_52w_low":  sig_low,
     }
     score = sum(signals.values())
 
-    if score >= 4:
+    # 10개 기준 신뢰도
+    if score >= 6:
         confidence = "high"
-    elif score == 3:
+    elif score >= 4:
         confidence = "mid"
     else:
         confidence = "low"
 
+    # 신호별 설명 (UI 표시용)
+    signal_desc = {
+        "vol_surge":    {"label": "거래량 증가",      "desc": f"평균 대비 {vol_ratio:.1f}배 거래량. 조용한 매집 흔적"},
+        "obv_up":       {"label": "OBV 상승",         "desc": "거래량 누적 추세 우상향. 매수세가 꾸준히 유입 중"},
+        "foreign_buy":  {"label": "외국인 순매수",    "desc": f"최근 3일 외국인 {foreign_net:+,}주 순매수"},
+        "inst_buy":     {"label": "기관 순매수",      "desc": f"최근 3일 기관 {inst_net:+,}주 순매수"},
+        "sideways":     {"label": "횡보 패턴",        "desc": "20일간 박스권 유지. 기관이 특정 가격대 방어 중"},
+        "ad_line_up":   {"label": "A/D Line 상승",    "desc": "주가 횡보인데 매집선은 오르는 중. 강한 매집 신호"},
+        "buy_sell_vol": {"label": "매수일 거래량 우위", "desc": f"상승일 거래량이 하락일의 {bsv_ratio:.1f}배. 매수 압력 우세"},
+        "consecutive":  {"label": f"연속 순매수 {consecutive_buy}일", "desc": "외국인·기관이 며칠째 꾸준히 매수 중"},
+        "vcp":          {"label": "변동폭 수축(VCP)", "desc": "가격 변동폭이 점점 좁아지는 중. 돌파 전 압축 패턴"},
+        "near_52w_low": {"label": "52주 저점 매집",  "desc": "저점 부근인데 기관·외국인 매수 유입. 바닥 매집 신호"},
+    }
+
     result["signals"] = signals
+    result["signal_desc"] = signal_desc
     result["score"] = score
     result["confidence"] = confidence
+    result["ad_line"] = ad
+    result["buy_sell_vol_ratio"] = bsv_ratio
+    result["vcp"] = bool(vcp)
+    result["near_52w_low"] = bool(near_low)
 
     # ── 배지 (badges) ──
     badges = _make_badges(rsi, boll, gap20, gap60, ma20, ma60, ma200,
