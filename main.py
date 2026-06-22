@@ -1568,8 +1568,14 @@ def service_worker():
 @app.get("/")
 @app.head("/")
 def root():
-    return FileResponse("frontend/index.html")
+    return FileResponse("frontend/index.html", headers={
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache", "Expires": "0"
+    })
 
 @app.get("/{full_path:path}")
 def serve_frontend(full_path: str):
-    return FileResponse("frontend/index.html")
+    return FileResponse("frontend/index.html", headers={
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache", "Expires": "0"
+    })
