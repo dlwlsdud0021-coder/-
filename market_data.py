@@ -751,7 +751,7 @@ def get_top_stocks(n: int = 200) -> list:
         if result:
             result.sort(key=lambda x: x["market_cap"], reverse=True)
             _logger.info(f"[종목목록] KIS API 성공: {len(result)}개")
-            return result[:n]
+            return _supplement_with_fallback(result, n)
     except Exception as e:
         _logger.warning(f"[종목목록] KIS API 실패: {e}")
 
@@ -774,11 +774,11 @@ def get_top_stocks(n: int = 200) -> list:
                     })
             if result:
                 result.sort(key=lambda x: x["market_cap"], reverse=True)
-                return result[:n]
+                return _supplement_with_fallback(result, n)
         except:
             pass
 
-    # 2순위: FDR (Streamlit Cloud에서도 동작)
+    # 3순위: FDR (Streamlit Cloud에서도 동작)
     if FDR_OK:
         try:
             listing = fdr.StockListing("KRX")
@@ -793,11 +793,11 @@ def get_top_stocks(n: int = 200) -> list:
                     market = str(row.get("Market", "KOSPI"))
                     result.append({"code": code, "name": name, "market": market, "market_cap": 0})
                 if result:
-                    return result
+                    return _supplement_with_fallback(result, n)
         except Exception as e:
             _logger.warning(f"[종목목록] FDR 실패: {e}")
 
-    # 3순위: 시총 상위 종목 하드코딩 (Streamlit Cloud 해외 IP 차단 대비)
+    # 최종: 시총 상위 종목 하드코딩 (해외 IP 차단 대비 — 항상 보충)
     _TOP_STOCKS_FALLBACK = [
         ("005930","삼성전자","KOSPI"),("000660","SK하이닉스","KOSPI"),
         ("373220","LG에너지솔루션","KOSPI"),("207940","삼성바이오로직스","KOSPI"),
@@ -827,8 +827,43 @@ def get_top_stocks(n: int = 200) -> list:
         ("112040","위메이드","KOSDAQ"),("214150","클래시스","KOSDAQ"),
         ("028300","HLB","KOSDAQ"),("145020","휴젤","KOSDAQ"),
     ]
-    return [{"code": c, "name": n, "market": m, "market_cap": 0}
-            for c, n, m in _TOP_STOCKS_FALLBACK][:n]
+    fallback = [{"code": c, "name": nm, "market": m, "market_cap": 0}
+                for c, nm, m in _TOP_STOCKS_FALLBACK]
+    return fallback[:n]
+
+
+def _supplement_with_fallback(result: list, n: int) -> list:
+    """result가 n개 미만이면 하드코딩 fallback으로 보충"""
+    if len(result) >= n:
+        return result[:n]
+    existing_codes = {s["code"] for s in result}
+    _FALLBACK = [
+        ("005930","삼성전자","KOSPI"),("000660","SK하이닉스","KOSPI"),
+        ("373220","LG에너지솔루션","KOSPI"),("207940","삼성바이오로직스","KOSPI"),
+        ("005380","현대차","KOSPI"),("000270","기아","KOSPI"),
+        ("068270","셀트리온","KOSPI"),("105560","KB금융","KOSPI"),
+        ("055550","신한지주","KOSPI"),("012330","현대모비스","KOSPI"),
+        ("035420","NAVER","KOSPI"),("051910","LG화학","KOSPI"),
+        ("006400","삼성SDI","KOSPI"),("003550","LG","KOSPI"),
+        ("096770","SK이노베이션","KOSPI"),("034730","SK","KOSPI"),
+        ("028260","삼성물산","KOSPI"),("017670","SK텔레콤","KOSPI"),
+        ("030200","KT","KOSPI"),("032830","삼성생명","KOSPI"),
+        ("012450","한화에어로스페이스","KOSPI"),("047810","한국항공우주","KOSPI"),
+        ("042660","한화오션","KOSPI"),("009830","한화솔루션","KOSPI"),
+        ("066570","LG전자","KOSPI"),("003490","대한항공","KOSPI"),
+        ("086790","하나금융지주","KOSPI"),("138040","메리츠금융지주","KOSPI"),
+        ("035720","카카오","KOSPI"),("259960","크래프톤","KOSPI"),
+        ("247540","에코프로비엠","KOSDAQ"),("086520","에코프로","KOSDAQ"),
+        ("196170","알테오젠","KOSDAQ"),("263750","펄어비스","KOSDAQ"),
+        ("028300","HLB","KOSDAQ"),("145020","휴젤","KOSDAQ"),
+        ("214150","클래시스","KOSDAQ"),("091990","셀트리온헬스케어","KOSDAQ"),
+        ("352820","하이브","KOSPI"),("041510","에스엠","KOSPI"),
+    ]
+    for c, nm, m in _FALLBACK:
+        if c not in existing_codes and len(result) < n:
+            result.append({"code": c, "name": nm, "market": m, "market_cap": 0})
+            existing_codes.add(c)
+    return result[:n]
 
 
 # ─────────────────────────────────────────────────────────

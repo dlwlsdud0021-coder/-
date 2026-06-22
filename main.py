@@ -1557,26 +1557,6 @@ def get_scanner():
 app.mount("/icons", StaticFiles(directory="frontend/icons"), name="icons")
 app.mount("/js", StaticFiles(directory="frontend/js"), name="js")
 
-@app.get("/api/debug/ohlcv/{code}")
-def debug_ohlcv(code: str):
-    import time
-    from market_data import get_ohlcv, get_investor_trading, get_top_stocks
-    t0 = time.time()
-    ohlcv = get_ohlcv(code, days=60)
-    t1 = time.time()
-    inv = get_investor_trading(code, days=5)
-    t2 = time.time()
-    tops = get_top_stocks(10)
-    t3 = time.time()
-    return {
-        "ohlcv_rows": len(ohlcv) if ohlcv is not None and not ohlcv.empty else 0,
-        "ohlcv_secs": round(t1-t0, 1),
-        "inv_rows": len(inv) if inv is not None and not inv.empty else 0,
-        "inv_secs": round(t2-t1, 1),
-        "top_stocks": len(tops),
-        "top_secs": round(t3-t2, 1),
-    }
-
 @app.get("/manifest.json")
 def manifest():
     return FileResponse("frontend/manifest.json")
