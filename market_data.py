@@ -748,10 +748,12 @@ def get_top_stocks(n: int = 200) -> list:
         kospi  = get_top_stocks_by_cap("J", n // 2)
         kosdaq = get_top_stocks_by_cap("Q", n // 2)
         result = kospi + kosdaq
-        if result:
-            result.sort(key=lambda x: x["market_cap"], reverse=True)
-            _logger.info(f"[종목목록] KIS API 성공: {len(result)}개")
-            return _supplement_with_fallback(result, n)
+        valid  = [s for s in result if s.get("code") and len(str(s["code"])) == 6]
+        if valid:
+            valid.sort(key=lambda x: x["market_cap"], reverse=True)
+            _logger.info(f"[종목목록] KIS API 성공: {len(valid)}개")
+            return _supplement_with_fallback(valid, n)
+        _logger.warning("[종목목록] KIS API 빈 코드 반환 — fallback으로 전환")
     except Exception as e:
         _logger.warning(f"[종목목록] KIS API 실패: {e}")
 
