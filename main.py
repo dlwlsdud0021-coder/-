@@ -1557,29 +1557,6 @@ def get_scanner():
 app.mount("/icons", StaticFiles(directory="frontend/icons"), name="icons")
 app.mount("/js", StaticFiles(directory="frontend/js"), name="js")
 
-@app.get("/api/debug/scan5")
-def debug_scan5():
-    """상위 5종목만 빠르게 스캔해서 score 확인"""
-    from market_data import get_top_stocks, get_ohlcv, get_investor_trading
-    from analysis import analyze_stock
-    stocks = get_top_stocks(100)
-    out = {"total_stocks": len(stocks), "scanned": []}
-    for s in stocks[:5]:
-        try:
-            ohlcv = get_ohlcv(s["code"], days=60)
-            inv   = get_investor_trading(s["code"], days=5)
-            a     = analyze_stock(ohlcv, inv)
-            out["scanned"].append({
-                "name": s["name"], "code": s["code"],
-                "score": a["score"],
-                "signals": {k: bool(v) for k,v in a["signals"].items()},
-                "ohlcv_rows": len(ohlcv) if ohlcv is not None and not ohlcv.empty else 0,
-                "inv_rows": len(inv) if inv is not None and not inv.empty else 0,
-            })
-        except Exception as e:
-            out["scanned"].append({"name": s["name"], "error": str(e)})
-    return out
-
 @app.get("/manifest.json")
 def manifest():
     return FileResponse("frontend/manifest.json")
