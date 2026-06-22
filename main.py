@@ -1557,6 +1557,13 @@ def get_scanner():
 app.mount("/icons", StaticFiles(directory="frontend/icons"), name="icons")
 app.mount("/js", StaticFiles(directory="frontend/js"), name="js")
 
+@app.get("/api/debug/html-hex")
+def debug_html_hex():
+    with open("frontend/index.html", "rb") as f:
+        data = f.read()
+    idx = data.find(b'login-title">')
+    return {"bom": data[:3].hex(), "login_title_hex": data[idx:idx+20].hex(), "size": len(data)}
+
 @app.get("/manifest.json")
 def manifest():
     return FileResponse("frontend/manifest.json")
