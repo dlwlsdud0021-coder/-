@@ -2306,6 +2306,14 @@ async function loadHoldingDetail(code, name) {
 function renderHoldingDetail(d, el) {
   const h = d.holding || {};
   const a = d.analysis || {};
+  // 수정 모달용 상태 세팅
+  _editHoldingCode = h.code || '';
+  _editHoldingName = h.name || '';
+  document.getElementById('edit-holding-modal-name').textContent = h.name || '종목 수정';
+  document.getElementById('edit-h-price').value = h.avg_price || '';
+  document.getElementById('edit-h-qty').value = h.qty || '';
+  const editIcon = document.getElementById('holding-edit-icon');
+  if (editIcon) editIcon.style.display = '';
   const curPrice = a.cur_price || a.current_price || h.avg_price;
   const chgPct = a.cur_change_pct || 0;
   const chg = a.cur_change || 0;
@@ -2903,6 +2911,30 @@ async function addHolding() {
     toggleAddHolding();
     _holdingsLoaded = false;
     loadHoldings(true);
+  } catch(e) { alert(e.message); }
+}
+
+let _editHoldingCode = '';
+let _editHoldingName = '';
+
+function openEditHoldingModal() {
+  const modal = document.getElementById('edit-holding-modal');
+  modal.style.display = 'flex';
+}
+
+function closeEditHoldingModal() {
+  document.getElementById('edit-holding-modal').style.display = 'none';
+}
+
+async function confirmEditHolding() {
+  const avg_price = parseFloat(document.getElementById('edit-h-price').value);
+  const qty = parseInt(document.getElementById('edit-h-qty').value);
+  if (!avg_price || !qty) { alert('평단가와 수량을 입력하세요'); return; }
+  try {
+    await api('PUT', `/api/holdings/${_editHoldingCode}`, { code: _editHoldingCode, name: _editHoldingName, avg_price, qty });
+    closeEditHoldingModal();
+    _holdingsLoaded = false;
+    loadHoldingDetail(_editHoldingCode, _editHoldingName);
   } catch(e) { alert(e.message); }
 }
 

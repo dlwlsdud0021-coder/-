@@ -1123,6 +1123,11 @@ def add_holding(body: HoldingBody, user=Depends(get_current_user)):
         raise HTTPException(status_code=400, detail=msg)
     return {"message": msg}
 
+@app.put("/api/holdings/{code}")
+def update_holding(code: str, body: HoldingBody, user=Depends(get_current_user)):
+    db.update_holding(user["user_id"], code, body.avg_price, body.qty)
+    return {"message": "수정 완료"}
+
 @app.delete("/api/holdings/{code}")
 def delete_holding(code: str, user=Depends(get_current_user)):
     db.delete_holding(user["user_id"], code)
