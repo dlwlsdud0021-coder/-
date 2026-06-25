@@ -2872,6 +2872,17 @@ async function addHolding() {
   } catch(e) { alert(e.message); }
 }
 
+async function addWatchlistFromScanner(code, name) {
+  try {
+    await api('POST', '/api/watchlist', { code, name, group_name: '기본' });
+    _watchlistLoaded = false;
+    alert(`${name}을(를) 관심종목에 추가했어요.`);
+  } catch(e) {
+    if (e.message && e.message.includes('already')) alert('이미 관심종목에 있는 종목이에요.');
+    else alert(e.message || '추가 실패');
+  }
+}
+
 async function addWatchlist() {
   const code = document.getElementById('w-code').value;
   const name = document.getElementById('w-search').value.trim();
@@ -3836,6 +3847,11 @@ function renderScannerDetail(s) {
       <div class="advice-text">${s.verdict}</div>
     </div>` : ''}
 
+    <div style="padding:0 16px 8px;">
+      <button onclick="addWatchlistFromScanner('${s.code}','${s.name}')" style="width:100%;padding:14px;background:#5B5BD6;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+        <i class="ti ti-bookmark-plus" style="font-size:18px;"></i>관심종목에 추가
+      </button>
+    </div>
     <div style="padding:0 16px 20px;">
       <div class="warn-box"><i class="ti ti-alert-circle" style="font-size:14px;flex-shrink:0;"></i>투자 결정은 본인 책임입니다. 이 정보는 참고용이며 투자 권유가 아닙니다.</div>
     </div>`;
