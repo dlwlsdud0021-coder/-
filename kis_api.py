@@ -160,6 +160,97 @@ def get_ohlcv(code: str, period: str = "D", count: int = 60) -> list[dict]:
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 외국인·기관 수급
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# KOSPI 시장 전체 수급 추정에 사용할 대형주 (시총 상위 10개)
+# 삼성전자 단독 proxy 대신 시총 가중 평균으로 더 대표성 있는 KOSPI 수급 추정
+_KOSPI_TOP10 = [
+    "005930",  # 삼성전자
+    "000660",  # SK하이닉스
+    "207940",  # 삼성바이오로직스
+    "005380",  # 현대차
+    "000270",  # 기아
+    "068270",  # 셀트리온
+    "105560",  # KB금융
+    "055550",  # 신한지주
+    "035420",  # NAVER
+    "051910",  # LG화학
+]
+
+
+def get_kospi_market_investor(days: int = 25) -> list[dict]:
+    """
+    KOSPI 시장 전체 외국인·기관 순매수 거래대금 (단위: 백만원).
+
+    1순위: KIS '시장별 투자자 매매동향' 직접 조회 (TR: FHKUP03500100)
+    2순위: 시총 상위 10개 종목 합산 (삼성전자 단독 proxy보다 대표성 높음)
+
+    Returns: list of {date, foreign_net, institution_net}  (최신순)
+    """
+    end_date = datetime.today().strftime("%Y%m%d")
+    start_date = (datetime.today() - timedelta(days=days + 15)).strftime("%Y%m%d")
+
+    # 1순위: KIS 시장별 투자자 매매동향 (KOSPI 전체)
+    try:
+        url = f"{BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-market-investor-trend-by-date"
+        params = {
+            "fid_cond_mrkt_div_code": "J",   # J=KOSPI
+            "fid_input_date_1": start_date,
+            "fid_input_date_2": end_date,
+        }
+        resp = requests.get(url, headers=_headers("FHKUP03500100"), params=params, timeout=8)
+        resp.raise_for_status()
+        rows = resp.json().get("output", [])
+        if rows and any(abs(int(r.get("frgn_ntby_tr_pbmn", 0))) > 0 for r in rows):
+            result = []
+            for r in rows[:days]:
+                result.append({
+                    "date": r["stck_bsop_date"],
+                    "foreign_net":     int(r.get("frgn_ntby_tr_pbmn", 0)),
+                    "institution_net": int(r.get("orgn_ntby_tr_pbmn", 0)),
+                    "_source": "market_direct",
+                })
+            return result
+    except Exception as e:
+        print(f"[KIS] KOSPI 시장 직접 수급 실패: {e}")
+
+    # 2순위: 시총 상위 10종목 합산
+    from collections import defaultdict
+    daily_totals: dict = defaultdict(lambda: {"foreign_net": 0, "institution_net": 0})
+    success_count = 0
+    for code in _KOSPI_TOP10:
+        try:
+            url = f"{BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor"
+            params = {
+                "fid_cond_mrkt_div_code": "J",
+                "fid_input_iscd": code,
+                "fid_input_date_1": start_date,
+                "fid_input_date_2": end_date,
+            }
+            resp = requests.get(url, headers=_headers("FHKST01010900"), params=params, timeout=6)
+            resp.raise_for_status()
+            rows = resp.json().get("output", [])
+            for r in rows[:days]:
+                d = r["stck_bsop_date"]
+                daily_totals[d]["foreign_net"]     += int(r.get("frgn_ntby_tr_pbmn", 0))
+                daily_totals[d]["institution_net"] += int(r.get("orgn_ntby_tr_pbmn", 0))
+            success_count += 1
+        except Exception:
+            continue  # 개별 종목 실패는 건너뜀
+
+    if success_count >= 3 and daily_totals:
+        result = []
+        for date in sorted(daily_totals.keys(), reverse=True)[:days]:
+            result.append({
+                "date": date,
+                "foreign_net":     daily_totals[date]["foreign_net"],
+                "institution_net": daily_totals[date]["institution_net"],
+                "_source": f"top{success_count}_aggregate",
+            })
+        return result
+
+    return []
+
+
 def get_investor_trading_value(code: str, days: int = 25) -> list[dict]:
     """외국인·기관 일별 순매수 거래대금 (단위: 백만원)"""
     end_date = datetime.today().strftime("%Y%m%d")

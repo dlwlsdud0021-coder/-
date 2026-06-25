@@ -644,26 +644,43 @@ def get_kospi_investor_value(days: int = 25) -> pd.DataFrame:
 
 def get_kospi_investor(days: int = 25) -> pd.DataFrame:
     """KOSPI 전체 외국인/기관/개인 순매수 (홈 수급 탭용)
-    1순위: KIS API, 2순위: pykrx
+    1순위: KIS 시장 직접 조회 or 시총 상위 10종목 합산 (get_kospi_market_investor)
+    2순위: KIS 삼성전자 단독 proxy (거래대금)
+    3순위: KIS 삼성전자 단독 proxy (수량)
+    4순위: pykrx
     """
-    # 1순위: KIS API — 거래대금(백만원) 기준으로 KOSPI 수급 추정
+    # 1순위: KIS 시장 전체 수급 (직접 조회 또는 시총 상위 10종목 합산)
     try:
-        from kis_api import get_investor_trading_value as kis_inv_val
-        rows = kis_inv_val("005930", days)  # 삼성전자 거래대금 기준
-        # 값이 모두 0이면 필드 미지원 → pykrx로 폴백
+        from kis_api import get_kospi_market_investor
+        rows = get_kospi_market_investor(days)
         if rows and any(abs(r.get("foreign_net", 0)) > 0 for r in rows):
             records = [{"날짜": pd.to_datetime(r["date"], format="%Y%m%d"),
-                        "외국인": r.get("foreign_net", 0),   # 백만원 단위
+                        "외국인": r.get("foreign_net", 0),
                         "기관":   r.get("institution_net", 0)} for r in rows]
             df = pd.DataFrame(records).set_index("날짜").sort_index()
-            _logger.info(f"[수급-KOSPI] KIS 금액 성공: {len(df)}행, 최신날짜={df.index[-1].date()}")
+            source = rows[0].get("_source", "?")
+            _logger.info(f"[수급-KOSPI] 시장 수급 성공({source}): {len(df)}행, 최신날짜={df.index[-1].date()}")
+            return df.tail(days)
+    except Exception as e:
+        _logger.warning(f"[수급-KOSPI] 시장 수급 실패: {e}")
+
+    # 2순위: KIS 삼성전자 거래대금 proxy (기존 방식 — fallback)
+    try:
+        from kis_api import get_investor_trading_value as kis_inv_val
+        rows = kis_inv_val("005930", days)
+        if rows and any(abs(r.get("foreign_net", 0)) > 0 for r in rows):
+            records = [{"날짜": pd.to_datetime(r["date"], format="%Y%m%d"),
+                        "외국인": r.get("foreign_net", 0),
+                        "기관":   r.get("institution_net", 0)} for r in rows]
+            df = pd.DataFrame(records).set_index("날짜").sort_index()
+            _logger.warning(f"[수급-KOSPI] 삼성전자 proxy 사용 중 (시장 API 실패): {len(df)}행")
             return df.tail(days)
         else:
-            raise ValueError("KIS 수급 금액 필드 0 또는 미지원 → pykrx 폴백")
+            raise ValueError("KIS 수급 금액 필드 0 또는 미지원")
     except Exception as e:
-        _logger.warning(f"[수급-KOSPI] KIS API 실패: {e}")
+        _logger.warning(f"[수급-KOSPI] 삼성전자 proxy 실패: {e}")
 
-    # 2순위: KIS 수량(주) 기반 — 거래대금 필드 미지원 시 수량으로 폴백
+    # 3순위: KIS 수량(주) 기반
     try:
         from kis_api import get_investor_trading as kis_inv_qty
         rows = kis_inv_qty("005930", days)
