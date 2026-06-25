@@ -289,6 +289,9 @@ def me(user=Depends(get_current_user)):
 # ─────────────────────────────────────────────────────────
 # 홈 API
 # ─────────────────────────────────────────────────────────
+_investor_cache: dict = {"data": None, "meta": None, "ts": 0}
+_INVESTOR_CACHE_TTL = 1800  # 30분
+
 @app.get("/api/home")
 def home_data():
     try:
@@ -316,30 +319,40 @@ def home_data():
             kp_hist = None
             ma = {}
 
-        # 외국인/기관 수급 최근 5일
-        investor = []
-        investor_meta = {"source": "unknown", "base_date": None}
-        try:
-            inv_df = get_kospi_investor(days=30)
-            if inv_df is not None and not inv_df.empty:
-                unit = inv_df["_unit"].iloc[0] if "_unit" in inv_df.columns else "qty"
-                src_label = {"百만": "KIS API (시장 전체)", "百万": "KIS API (시장 전체)", "won": "pykrx", "qty": "KIS API (수량)"}
-                investor_meta = {
-                    "source": src_label.get(unit, "KIS API"),
-                    "base_date": str(inv_df.index[-1])[:10],
-                }
-                for dt, row in inv_df.tail(5).iterrows():
-                    f_raw = float(row.get("외국인", 0))
-                    i_raw = float(row.get("기관", 0))
-                    if unit == "won":
-                        f_val = round(f_raw / 1e8, 0); i_val = round(i_raw / 1e8, 0); disp_unit = "억"
-                    elif unit == "百만" or (abs(f_raw) > 0 and abs(f_raw) < 1e6):
-                        f_val = round(f_raw / 100, 0); i_val = round(i_raw / 100, 0); disp_unit = "억"
-                    else:
-                        f_val = round(f_raw / 10000, 1); i_val = round(i_raw / 10000, 1); disp_unit = "만주"
-                    investor.append({"date": str(dt)[:10], "foreign": f_val, "inst": i_val, "unit": disp_unit})
-        except Exception:
-            pass
+        # 외국인/기관 수급 최근 5일 (30분 캐시 — fallback 불안정으로 인한 수치 변동 방지)
+        import time as _t
+        _now_ts = _t.time()
+        if _investor_cache["data"] and (_now_ts - _investor_cache["ts"]) < _INVESTOR_CACHE_TTL:
+            investor = _investor_cache["data"]
+            investor_meta = _investor_cache["meta"]
+        else:
+            investor = []
+            investor_meta = {"source": "unknown", "base_date": None}
+            try:
+                inv_df = get_kospi_investor(days=30)
+                if inv_df is not None and not inv_df.empty:
+                    unit = inv_df["_unit"].iloc[0] if "_unit" in inv_df.columns else "qty"
+                    src_label = {"百만": "KIS API (시장 전체)", "百万": "KIS API (시장 전체)", "won": "pykrx", "qty": "KIS API (수량)"}
+                    investor_meta = {
+                        "source": src_label.get(unit, "KIS API"),
+                        "base_date": str(inv_df.index[-1])[:10],
+                    }
+                    for dt, row in inv_df.tail(5).iterrows():
+                        f_raw = float(row.get("외국인", 0))
+                        i_raw = float(row.get("기관", 0))
+                        if unit == "won":
+                            f_val = round(f_raw / 1e8, 0); i_val = round(i_raw / 1e8, 0); disp_unit = "억"
+                        elif unit == "百만" or (abs(f_raw) > 0 and abs(f_raw) < 1e6):
+                            f_val = round(f_raw / 100, 0); i_val = round(i_raw / 100, 0); disp_unit = "억"
+                        else:
+                            f_val = round(f_raw / 10000, 1); i_val = round(i_raw / 10000, 1); disp_unit = "만주"
+                        investor.append({"date": str(dt)[:10], "foreign": f_val, "inst": i_val, "unit": disp_unit})
+                if investor:
+                    _investor_cache["data"] = investor
+                    _investor_cache["meta"] = investor_meta
+                    _investor_cache["ts"] = _now_ts
+            except Exception:
+                pass
 
         # MA 포함해서 analyze_us_impact 호출 → Gemini 상세 분석 가능
         analysis_raw = analyze_us_impact(us_raw, idx, ma, kp_hist)
