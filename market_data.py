@@ -75,11 +75,8 @@ def _ndays_ago(n: int) -> str:
     return (datetime.today() - timedelta(days=n)).strftime("%Y%m%d")
 
 def _last_trading_date() -> str:
-    """최근 영업일 (주말 제외)"""
-    d = datetime.today()
-    # 장 마감 전(오전)이면 전날 데이터 사용
-    if d.hour < 16:
-        d -= timedelta(days=1)
+    """최근 확정 거래일 (항상 전 거래일 기준 — 당일 잠정값 제외)"""
+    d = datetime.today() - timedelta(days=1)
     while d.weekday() >= 5:  # 토/일
         d -= timedelta(days=1)
     return d.strftime("%Y%m%d")
