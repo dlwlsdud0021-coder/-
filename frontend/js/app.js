@@ -2475,6 +2475,9 @@ function renderHoldingDetail(d, el) {
 
   const pnlBarW = Math.min(Math.abs(pnlPct) * 2, 100);
   const pnlBarColor = pnlPct >= 0 ? '#E24B4A' : '#185FA5';
+  const pnlAfterFee = a.pnl_after_fee;
+  const pnlPctAfterFee = a.pnl_pct_after_fee;
+  const feeTotal = a.fee_total;
 
   el.innerHTML = `
     <!-- 히어로 카드 (흰색) -->
@@ -2505,6 +2508,14 @@ function renderHoldingDetail(d, el) {
         <div style="height:4px;background:#F0F0F5;border-radius:2px;margin-top:10px;overflow:hidden;">
           <div style="height:4px;width:${pnlBarW}%;background:${pnlBarColor};border-radius:2px;"></div>
         </div>
+        ${pnlAfterFee !== null && pnlAfterFee !== undefined ? `
+        <div style="margin-top:12px;padding:10px 12px;background:#F8F8FA;border-radius:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:11px;color:#8E8E9A;">수수료·세금 반영 실손익</span>
+            <span style="font-size:13px;font-weight:700;" class="${pnlAfterFee>=0?'up':'down'}">${pnlAfterFee>=0?'+':''}${Math.round(pnlAfterFee/10000)}만원 (${pnlPctAfterFee>=0?'+':''}${pnlPctAfterFee}%)</span>
+          </div>
+          <div style="font-size:10px;color:#C7C7CC;margin-top:4px;">매수 0.015% · 매도 0.015% · 거래세 0.20% 적용</div>
+        </div>` : ''}
       </div>
     </div>
 

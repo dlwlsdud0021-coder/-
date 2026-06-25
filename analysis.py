@@ -404,13 +404,27 @@ def analyze_stock(
         pnl_pct = (cur - avg_price) / avg_price * 100
         eval_amount = cur * qty
         pnl_amount = (cur - avg_price) * qty
+        # 수수료·세금 반영 실손익
+        BUY_FEE  = 0.00015   # 매수 수수료 0.015%
+        SELL_FEE = 0.00015   # 매도 수수료 0.015%
+        TX_TAX   = 0.0020    # 증권거래세+농특세 0.20% (보수적)
+        buy_cost  = avg_price * qty * (1 + BUY_FEE)
+        sell_recv = cur * qty * (1 - SELL_FEE - TX_TAX)
+        pnl_after_fee = sell_recv - buy_cost
+        pnl_pct_after_fee = pnl_after_fee / buy_cost * 100
         result["pnl_pct"] = round(pnl_pct, 2)
         result["eval_amount"] = eval_amount
         result["pnl_amount"] = pnl_amount
+        result["pnl_after_fee"] = round(pnl_after_fee)
+        result["pnl_pct_after_fee"] = round(pnl_pct_after_fee, 2)
+        result["fee_total"] = round(pnl_amount - pnl_after_fee)
     else:
         result["pnl_pct"] = None
         result["eval_amount"] = None
         result["pnl_amount"] = None
+        result["pnl_after_fee"] = None
+        result["pnl_pct_after_fee"] = None
+        result["fee_total"] = None
 
     return result
 
