@@ -1544,17 +1544,24 @@ def get_scanner():
     import time
     now = time.time()
     cache_age = now - _scanner_cache["ts"]
+    import datetime as _dt
+    def _with_ts(data):
+        ts = _scanner_cache["ts"]
+        scanned_at = _dt.datetime.fromtimestamp(ts).strftime("%m.%d %H:%M") if ts else None
+        age_min = int(cache_age // 60) if ts else None
+        return {**data, "scanned_at": scanned_at, "cache_age_min": age_min}
+
     # 캐시 유효(1시간)하면 즉시 반환
     if _scanner_cache["data"] and cache_age < 3600:
-        return _scanner_cache["data"]
+        return _with_ts(_scanner_cache["data"])
     # 캐시 없거나 만료 → 백그라운드 계산 시작
     if not _scanner_cache["running"]:
         t = _threading.Thread(target=_run_scanner, daemon=True)
         t.start()
     # 계산 중이면 stale 캐시 또는 로딩 상태 반환
     if _scanner_cache["data"]:
-        return _scanner_cache["data"]
-    return {"results": [], "loading": True}
+        return _with_ts(_scanner_cache["data"])
+    return {"results": [], "loading": True, "scanned_at": None, "cache_age_min": None}
 
 # ─────────────────────────────────────────────────────────
 # 정적 파일 서빙 (프론트엔드)

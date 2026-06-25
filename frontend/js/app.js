@@ -3633,8 +3633,13 @@ async function loadScanner(force) {
 let _scannerFilter = '전체';
 let _scannerItems = [];
 
+let _scannerScannedAt = null;
+let _scannerCacheAgeMin = null;
+
 function renderScanner(d, el) {
   _scannerItems = d.results || d.stocks || [];
+  _scannerScannedAt = d.scanned_at || null;
+  _scannerCacheAgeMin = d.cache_age_min ?? null;
   if (!_scannerItems.length) {
     el.innerHTML = '<div class="empty-state"><i class="ti ti-chart-bar"></i>매집 신호 종목 없음</div>';
     return;
@@ -3714,7 +3719,12 @@ function renderScannerList(el) {
     `<button class="scanner-filter-btn ${f===filt?'active':'inactive'}" onclick="_scannerFilter='${f}';renderScannerList();">${f}</button>`
   ).join('');
 
+  const tsHtml = _scannerScannedAt
+    ? `<div style="text-align:right;padding:4px 16px 0;font-size:11px;color:#AEAEB2;"><i class="ti ti-clock" style="font-size:11px;"></i> ${_scannerScannedAt} 스캔 · ${_scannerCacheAgeMin !== null ? _scannerCacheAgeMin + '분 전' : ''}</div>`
+    : '';
+
   el.innerHTML = `
+    ${tsHtml}
     <div class="scanner-sum-row">
       <div class="scanner-sum-card"><div class="scanner-sum-label">신뢰도 높음</div><div class="scanner-sum-val" style="color:#3C3489;">${highCnt}</div></div>
       <div class="scanner-sum-card"><div class="scanner-sum-label">신뢰도 보통</div><div class="scanner-sum-val" style="color:#854F0B;">${midCnt}</div></div>
