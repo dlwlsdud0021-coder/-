@@ -650,7 +650,7 @@ def watchlist_timing(analysis: dict, target_price: float = None, stop_loss: floa
         if boll_pos <= 0.25:
             reasons.append("볼린저 하단 반등")
         if score >= 3:
-            reasons.append(f"매집신호 {score}/5")
+            reasons.append(f"매집신호 {score}/10")
         return {
             "status": "buy_ok",
             "label": "매수 검토",
