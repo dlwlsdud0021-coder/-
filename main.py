@@ -323,7 +323,7 @@ def home_data():
             inv_df = get_kospi_investor(days=30)
             if inv_df is not None and not inv_df.empty:
                 unit = inv_df["_unit"].iloc[0] if "_unit" in inv_df.columns else "qty"
-                src_label = {"百만": "KIS API (시장 전체)", "won": "pykrx", "qty": "KIS API (수량)"}
+                src_label = {"百만": "KIS API (시장 전체)", "百万": "KIS API (시장 전체)", "won": "pykrx", "qty": "KIS API (수량)"}
                 investor_meta = {
                     "source": src_label.get(unit, "KIS API"),
                     "base_date": str(inv_df.index[-1])[:10],
