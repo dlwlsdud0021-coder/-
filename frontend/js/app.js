@@ -3447,16 +3447,16 @@ function renderWatchlistDetail(d, el, code, name) {
     </div>` : ''}
 
     <!-- 거래량 + 수급 SVG 차트 -->
-    ${invList.length ? `<div class="section">
+    <div class="section">
       <div class="sec-title" ><i class="ti ti-chart-bar" style="font-size:15px;color:#5B5BD6;"></i>5일 거래량 · 수급 흐름<span onclick="showVolumeGuide()" style="width:20px;height:20px;border-radius:50%;background:#F0F0F5;color:#6B6B8A;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;margin-left:6px;flex-shrink:0;">?</span></div>
       <div class="card" style="padding:14px;">
         ${_buildFlowChart(a.vol_list || [], invList, code)}
-        <div style="display:flex;gap:16px;margin-top:10px;font-size:12px;">
+        ${invList.length ? `<div style="display:flex;gap:16px;margin-top:10px;font-size:12px;">
           <span style="color:${foreignNet>=0?'#E24B4A':'#185FA5'};font-weight:600;">외국인 3일 ${foreignNet>=0?'+':''}${foreignNet.toLocaleString()}주</span>
           <span style="color:${instNet>=0?'#27500A':'#A32D2D'};font-weight:600;">기관 3일 ${instNet>=0?'+':''}${instNet.toLocaleString()}주</span>
-        </div>
+        </div>` : ''}
       </div>
-    </div>` : ''}
+    </div>
 
     <!-- 배지 -->
     ${badgesHtml ? `<div class="section">
@@ -4075,21 +4075,24 @@ function _buildFlowChart(volList, invList, code) {
 </div>`;
   }
 
-  let supplyCard = '';
+  // supply 카드는 invList 유무와 관계없이 항상 렌더링 (5/10/20일 버튼 포함)
+  // invList가 비어있으면 로딩 후 API로 채움
+  const codeAttr = code ? `data-code="${code}"` : '';
+  let innerHtml = '';
+  let signalText = '';
   if (invList.length) {
     const fNet3 = invList.slice(-3).reduce((s, d) => s + d.foreign, 0);
     const iNet3 = invList.slice(-3).reduce((s, d) => s + d.inst, 0);
-    let signalText = '';
     if (fNet3 < 0 && iNet3 < 0) signalText = '외국인과 기관 모두 최근 3일 연속 순매도 중입니다.';
     else if (fNet3 > 0 && iNet3 > 0) signalText = '외국인과 기관 모두 최근 3일 순매수 중입니다.';
     else if (fNet3 > 0) signalText = '외국인 순매수, 기관은 관망 중입니다.';
     else signalText = '기관 순매수, 외국인은 관망 중입니다.';
-
     const fCard = buildSupplyCard('외국인', invList, 'foreign', '#4ADE80', '#F87171', '#22C55E');
     const iCard = buildSupplyCard('기관', invList, 'inst', '#4ADE80', '#F87171', '#EF4444');
+    innerHtml = `<div style="display:flex;gap:8px;">${fCard}${iCard}</div>`;
+  }
 
-    const codeAttr = code ? `data-code="${code}"` : '';
-    supplyCard = `<div class="card" id="supply-days-card" ${codeAttr}>
+  const supplyCard = `<div class="card" id="supply-days-card" ${codeAttr}>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
     <span style="font-size:13px;font-weight:600;color:#1A1A2E;">외국인 · 기관 수급</span>
     <div style="display:flex;gap:4px;">
@@ -4097,16 +4100,17 @@ function _buildFlowChart(volList, invList, code) {
     </div>
   </div>
   <div id="supply-days-inner">
-  <div style="display:flex;gap:8px;">
-    ${fCard}
-    ${iCard}
-  </div>
+  ${innerHtml || `<div style="text-align:center;padding:16px 0;font-size:12px;color:#AEAEB2;">수급 데이터 불러오는 중...</div>`}
   </div>
   ${signalText ? `<div style="margin-top:10px;background:#FFFBF0;border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;">
     <i class="ti ti-bulb" style="font-size:15px;color:#F5A623;flex-shrink:0;"></i>
     <span style="font-size:12px;color:#3C3C43;"><span style="font-weight:600;color:#1A1A2E;">수급 신호</span>&nbsp;${signalText}</span>
   </div>` : ''}
 </div>`;
+
+  // invList가 비어있으면 API 자동 호출로 채움
+  if (!invList.length && code) {
+    setTimeout(() => switchSupplyDays(code, 5), 150);
   }
 
   return volCard + supplyCard;
