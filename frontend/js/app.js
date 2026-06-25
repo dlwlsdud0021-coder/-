@@ -1410,39 +1410,31 @@ function renderForecastDetail(d, el) {
     return `${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
   }
 
-  const histRows = `
-    <div style="display:grid;grid-template-columns:auto 1fr 1fr auto;gap:0;font-size:11px;color:#8E8E9A;padding:8px 0 6px;border-bottom:1px solid #E5E5EA;font-weight:600;">
-      <span>예측일→결과일</span>
-      <span style="text-align:center;">예측</span>
-      <span style="text-align:center;">실제</span>
-      <span style="text-align:right;">결과</span>
-    </div>
-    ${history.slice(0, 7).map(p => {
-      const pd  = p.predicted_direction || '';
-      const ad  = p.actual_direction;
-      const pct = p.predicted_change || 0;
-      const correct = p.is_correct;
-      const predDate = fmtMD(p.date);
-      const actDate  = nextTradingDay(p.date);
-      const resultBadge = (ad === null || ad === undefined)
-        ? `<span style="font-size:10px;color:#AEAEB2;">대기중</span>`
-        : correct
-          ? `<span style="background:#EAF3DE;color:#27500A;font-size:10px;padding:2px 6px;border-radius:6px;font-weight:600;">✓ 적중</span>`
-          : `<span style="background:#FDECEA;color:#A32D2D;font-size:10px;padding:2px 6px;border-radius:6px;font-weight:600;">✗ 빗나감</span>`;
-      const ac = p.actual_change || 0;
-      const actText = (ad !== null && ad !== undefined)
-        ? `<span style="font-size:12px;font-weight:700;color:${dirClr2[ad]||'#8E8E9A'};">${dirIcon2[ad]||'?'} ${ac>0?'+':''}${ac.toFixed(1)}%</span>`
-        : `<span style="font-size:11px;color:#AEAEB2;">-</span>`;
-      return `<div style="display:grid;grid-template-columns:auto 1fr 1fr auto;gap:0;align-items:center;padding:10px 0;border-bottom:0.5px solid #F0F0F5;">
-        <div style="font-size:11px;color:#8E8E9A;padding-right:10px;white-space:nowrap;">
-          <div>${predDate} <span style="color:#C7C7CC;">예측</span></div>
-          <div style="margin-top:2px;">${actDate} <span style="color:#C7C7CC;">결과</span></div>
-        </div>
-        <div style="text-align:center;"><span style="font-size:12px;font-weight:700;color:${dirClr2[pd]||'#8E8E9A'};">${dirIcon2[pd]||'?'} ${pct>0?'+':''}${pct.toFixed(1)}%</span></div>
-        <div style="text-align:center;">${actText}</div>
-        <div style="text-align:right;">${resultBadge}</div>
-      </div>`;
-    }).join('')}`;
+  const histRows = history.slice(0, 7).map(p => {
+    const pd  = p.predicted_direction || '';
+    const ad  = p.actual_direction;
+    const pct = p.predicted_change || 0;
+    const correct = p.is_correct;
+    const actDate = nextTradingDay(p.date);
+    const resultBadge = (ad === null || ad === undefined)
+      ? `<span style="font-size:10px;color:#AEAEB2;">대기중</span>`
+      : correct
+        ? `<span style="background:#EAF3DE;color:#27500A;font-size:10px;padding:2px 6px;border-radius:6px;font-weight:600;">✓ 적중</span>`
+        : `<span style="background:#FDECEA;color:#A32D2D;font-size:10px;padding:2px 6px;border-radius:6px;font-weight:600;">✗ 빗나감</span>`;
+    const ac = p.actual_change || 0;
+    const actText = (ad !== null && ad !== undefined)
+      ? `<span style="font-weight:700;color:${dirClr2[ad]||'#8E8E9A'};">${dirIcon2[ad]||'?'} ${ac>0?'+':''}${ac.toFixed(1)}%</span>`
+      : `<span style="color:#AEAEB2;">대기중</span>`;
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:0.5px solid #F0F0F5;gap:8px;">
+      <span style="font-size:12px;font-weight:600;color:#1A1A2E;flex-shrink:0;">${actDate}</span>
+      <div style="display:flex;align-items:center;gap:6px;flex:1;font-size:12px;">
+        <span style="color:${dirClr2[pd]||'#8E8E9A'};">${dirIcon2[pd]||'?'} 예측 ${pct>0?'+':''}${pct.toFixed(1)}%</span>
+        <span style="color:#C7C7CC;">→</span>
+        <span>${actText}</span>
+      </div>
+      <div style="flex-shrink:0;">${resultBadge}</div>
+    </div>`;
+  }).join('');
 
   const historyHtml = history.length ? `
     <div class="section">
