@@ -199,6 +199,9 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
 .spinner { width: 18px; height: 18px; border: 2px solid #E5E5EA; border-top: 2px solid #5B5BD6; border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .empty-state { text-align: center; padding: 40px 20px; color: #8E8E93; font-size: 13px; }
+/* ── 토스트 ── */
+#toast { position:fixed; bottom:90px; left:50%; transform:translateX(-50%); background:rgba(30,30,40,0.88); color:#fff; font-size:13px; font-weight:500; padding:10px 20px; border-radius:20px; z-index:9999; opacity:0; pointer-events:none; transition:opacity 0.2s; white-space:nowrap; }
+#toast.show { opacity:1; }
 /* ── 스켈레톤 ── */
 @keyframes shimmer { 0%{background-position:-300px 0} 100%{background-position:300px 0} }
 .skel { background: linear-gradient(90deg,#f0f0f5 25%,#e4e4ec 50%,#f0f0f5 75%); background-size: 600px 100%; animation: shimmer 1.4s infinite; border-radius: 8px; }
@@ -674,6 +677,7 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
   </div>
 </div>
 
-<script src="/js/app.js?v=20260625m"></script>
+<div id="toast"></div>
+<script src="/js/app.js?v=20260625n"></script>
 </body>
 </html>

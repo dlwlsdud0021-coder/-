@@ -99,6 +99,19 @@ let _allWatchlist = [];
 let _scannerPollTimer = null;
 
 // ─────────────────────────────────────────────────────────
+// 토스트
+// ─────────────────────────────────────────────────────────
+let _toastTimer = null;
+function showToast(msg, ms = 2000) {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), ms);
+}
+
+// ─────────────────────────────────────────────────────────
 // 스켈레톤 UI
 // ─────────────────────────────────────────────────────────
 function _skelCards(n) {
@@ -141,6 +154,7 @@ async function api(method, path, body, timeoutMs = 60000) {
 // 화면 전환
 // ─────────────────────────────────────────────────────────
 let _handlingPopState = false;
+let _backPressedAt = 0;
 
 function showScreen(id) {
   const rootScreens = ['home', 'holdings', 'watchlist', 'scanner', 'news', 'login', 'register'];
@@ -158,7 +172,31 @@ function showScreen(id) {
 window.addEventListener('popstate', (e) => {
   _handlingPopState = true;
   const prev = e.state?.prevScreen;
-  if (prev) showScreen(prev);
+  if (prev) {
+    // 탭 이동이면 switchTab, 상세화면이면 showScreen
+    const tabs = ['home','holdings','watchlist','scanner','news'];
+    if (tabs.includes(prev)) {
+      _currentTab = prev;
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      const navEl = document.getElementById('nav-' + prev);
+      if (navEl) navEl.classList.add('active');
+      showScreen(prev);
+    } else {
+      showScreen(prev);
+    }
+  } else {
+    // state 없음 = 홈에서 뒤로가기 → 2초 내 한 번 더 누르면 종료
+    const now = Date.now();
+    if (now - _backPressedAt < 2000) {
+      // 두 번째 뒤로가기 → 자연 종료 허용
+      history.back();
+    } else {
+      _backPressedAt = now;
+      showToast('한 번 더 누르면 종료됩니다');
+      // state 다시 쌓아서 앱 유지
+      history.pushState(null, '');
+    }
+  }
   _handlingPopState = false;
 });
 
@@ -182,6 +220,10 @@ function switchTab(tab) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const navEl = document.getElementById('nav-' + tab);
   if (navEl) navEl.classList.add('active');
+  // 홈이 아닌 탭으로 이동할 때 history state 쌓아서 뒤로가기 시 홈으로 복귀
+  if (!_handlingPopState && tab !== 'home') {
+    history.pushState({ prevScreen: 'home' }, '');
+  }
   showScreen(tab);
   if (tab === 'home') loadHome();
   else if (tab === 'news') loadNews();
