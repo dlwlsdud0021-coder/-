@@ -1488,6 +1488,30 @@ def stock_detail(code: str):
 # ─────────────────────────────────────────────────────────
 import threading as _threading
 _scanner_cache = {"data": None, "ts": 0, "running": False}
+# code -> {"last_date": "YYYY-MM-DD", "days": int}  서버 재시작 전까지 유지
+_scanner_streak = {}
+
+def _scanner_update_streak(code: str) -> int:
+    """해당 종목의 연속 등장일수 업데이트 후 반환. 4일 이내 재등장은 연속으로 인정(주말 포함)."""
+    import datetime as _dt2
+    today = _dt2.date.today().isoformat()
+    prev  = _scanner_streak.get(code)
+    if prev:
+        try:
+            last = _dt2.date.fromisoformat(prev["last_date"])
+            gap  = (_dt2.date.today() - last).days
+            if gap == 0:
+                return prev["days"]           # 오늘 이미 카운트됨
+            elif gap <= 4:                     # 1~4일 이내 = 연속 (주말/공휴일 감안)
+                new_days = prev["days"] + 1
+            else:
+                new_days = 1
+        except Exception:
+            new_days = 1
+    else:
+        new_days = 1
+    _scanner_streak[code] = {"last_date": today, "days": new_days}
+    return new_days
 
 def _run_scanner():
     """백그라운드 스레드에서 스캐너 계산 실행"""
@@ -1525,10 +1549,12 @@ def _run_scanner():
                                 "close":  int(row.get("close",  row.get("종가",  0))),
                                 "volume": int(row.get("volume", row.get("거래량",0))),
                             })
+                    streak = _scanner_update_streak(s["code"])
                     results.append(_to_python({
                         "code": s["code"], "name": s["name"],
                         "price": price, "change_pct": change_pct, **a,
                         "ohlcv": ohlcv_data,
+                        "streak": streak,
                     }))
             except Exception as _e:
                 _slog.warning(f"[스캐너] {s.get('code')} 오류: {_e}")

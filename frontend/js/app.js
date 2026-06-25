@@ -3785,7 +3785,10 @@ function renderScannerList(el) {
         <span class="sc-obv-val"><i class="ti ti-trending-up" style="font-size:12px;"></i>+${volRatio}%</span>
       </div>` : ''}
       <div class="sc-card-bottom">
-        <span class="badge ${badgeCls}">${badgeLbl}</span>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span class="badge ${badgeCls}">${badgeLbl}</span>
+          ${(s.streak >= 2) ? `<span style="font-size:10px;font-weight:700;color:#E24B4A;background:#FCEBEB;padding:2px 7px;border-radius:6px;">🔥 ${s.streak}일 연속</span>` : ''}
+        </div>
         <span class="sc-detail-btn">상세보기 <i class="ti ti-chevron-right" style="font-size:13px;"></i></span>
       </div>
     </div>`;
