@@ -2710,7 +2710,7 @@ function renderHoldingDetail(d, el) {
     </div>`;
 }
 
-function drawPriceChart(ohlcv, avgPrice, targetPrice, stopPrice, canvasId, ma20, ma60, bollLower) {
+function drawPriceChart(ohlcv, avgPrice, targetPrice, stopPrice, canvasId, ma20ref, ma60ref, bollLowerRef) {
   const canvas = document.getElementById(canvasId || 'price-chart');
   if (!canvas || !ohlcv || ohlcv.length === 0) return;
   const dpr = window.devicePixelRatio || 1;
@@ -2726,19 +2726,39 @@ function drawPriceChart(ohlcv, avgPrice, targetPrice, stopPrice, canvasId, ma20,
   const PAD = { top: 16, right: 12, bottom: 28, left: 52 };
   const cW = W - PAD.left - PAD.right;
   const cH = H - PAD.top  - PAD.bottom;
+  const closes = ohlcv.map(c => c.close);
+  const n = ohlcv.length;
 
-  // 가격 범위
+  // MA 계산 (종가 기반 단순이동평균)
+  const calcMA = (period) => closes.map((_, i) => {
+    if (i < period - 1) return null;
+    const slice = closes.slice(i - period + 1, i + 1);
+    return slice.reduce((a, b) => a + b, 0) / period;
+  });
+  // 볼린저밴드 계산 (MA20 ± 2σ)
+  const calcBoll = () => closes.map((_, i) => {
+    if (i < 19) return null;
+    const slice = closes.slice(i - 19, i + 1);
+    const mean = slice.reduce((a, b) => a + b, 0) / 20;
+    const std  = Math.sqrt(slice.reduce((a, b) => a + (b - mean) ** 2, 0) / 20);
+    return { upper: mean + 2 * std, lower: mean - 2 * std, mid: mean };
+  });
+
+  const ma20arr = calcMA(20);
+  const ma60arr = calcMA(60);
+  const bollArr = calcBoll();
+
+  // 가격 범위 (MA/볼린저 포함)
   const allPrices = ohlcv.flatMap(c => [c.high, c.low]);
   if (avgPrice)   allPrices.push(avgPrice);
   if (targetPrice)allPrices.push(targetPrice);
   if (stopPrice)  allPrices.push(stopPrice);
-  if (ma20)       allPrices.push(ma20);
-  if (ma60)       allPrices.push(ma60);
-  if (bollLower)  allPrices.push(bollLower);
+  ma20arr.forEach(v => v && allPrices.push(v));
+  ma60arr.forEach(v => v && allPrices.push(v));
+  bollArr.forEach(v => v && allPrices.push(v.upper, v.lower));
   const minP = Math.min(...allPrices) * 0.995;
   const maxP = Math.max(...allPrices) * 1.005;
   const scaleY = v => PAD.top + cH - (v - minP) / (maxP - minP) * cH;
-  const n = ohlcv.length;
   const barW = Math.max(2, Math.floor(cW / n) - 1);
   const scaleX = i => PAD.left + (i + 0.5) * (cW / n);
 
@@ -2746,27 +2766,77 @@ function drawPriceChart(ohlcv, avgPrice, targetPrice, stopPrice, canvasId, ma20,
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, W, H);
 
-  // Y축 레이블
+  // Y축 그리드 + 레이블
   ctx.fillStyle = '#C7C7CC';
   ctx.font = '9px -apple-system,sans-serif';
   ctx.textAlign = 'right';
-  const steps = 4;
-  for (let i = 0; i <= steps; i++) {
-    const v = minP + (maxP - minP) * (i / steps);
+  for (let i = 0; i <= 4; i++) {
+    const v = minP + (maxP - minP) * (i / 4);
     const y = scaleY(v);
     ctx.fillText((v/10000).toFixed(0) + '만', PAD.left - 4, y + 3);
-    ctx.strokeStyle = '#F0F0F5';
-    ctx.lineWidth = 0.5;
+    ctx.strokeStyle = '#F0F0F5'; ctx.lineWidth = 0.5;
     ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(W - PAD.right, y); ctx.stroke();
   }
 
-  // 수평선 그리기 함수
-  const drawLine = (price, color, label, dash) => {
+  // 볼린저밴드 채우기 (반투명)
+  ctx.save();
+  ctx.beginPath();
+  bollArr.forEach((b, i) => { if (!b) return; i === 19 ? ctx.moveTo(scaleX(i), scaleY(b.upper)) : ctx.lineTo(scaleX(i), scaleY(b.upper)); });
+  for (let i = n - 1; i >= 0; i--) { const b = bollArr[i]; if (!b) continue; ctx.lineTo(scaleX(i), scaleY(b.lower)); }
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(91,91,214,0.06)';
+  ctx.fill();
+  ctx.restore();
+
+  // 볼린저밴드 선 (상단/하단)
+  const drawCurve = (arr, color, width, dash) => {
+    ctx.save();
+    ctx.strokeStyle = color; ctx.lineWidth = width;
+    if (dash) ctx.setLineDash(dash);
+    ctx.beginPath();
+    let started = false;
+    arr.forEach((v, i) => {
+      if (v === null) return;
+      started ? ctx.lineTo(scaleX(i), scaleY(v)) : ctx.moveTo(scaleX(i), scaleY(v));
+      started = true;
+    });
+    ctx.stroke();
+    ctx.setLineDash([]); ctx.restore();
+  };
+  drawCurve(bollArr.map(b => b?.upper ?? null), 'rgba(91,91,214,0.35)', 1, [3, 2]);
+  drawCurve(bollArr.map(b => b?.lower ?? null), 'rgba(91,91,214,0.35)', 1, [3, 2]);
+
+  // 캔들스틱
+  ohlcv.forEach((c, i) => {
+    const x = scaleX(i);
+    const isUp = c.close >= c.open;
+    const color = isUp ? '#E24B4A' : '#185FA5';
+    ctx.strokeStyle = color; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, scaleY(c.high)); ctx.lineTo(x, scaleY(c.low)); ctx.stroke();
+    ctx.fillStyle = color;
+    const top  = Math.min(scaleY(c.open), scaleY(c.close));
+    const body = Math.max(Math.abs(scaleY(c.open) - scaleY(c.close)), 1);
+    ctx.fillRect(x - barW/2, top, barW, body);
+  });
+
+  // MA 선 (캔들 위에)
+  drawCurve(ma60arr, '#5B5BD6', 1.2, null);
+  drawCurve(ma20arr, '#FF9F0A', 1.5, null);
+
+  // X축 날짜
+  ctx.fillStyle = '#C7C7CC';
+  ctx.font = '9px -apple-system,sans-serif';
+  ctx.textAlign = 'center';
+  [0, Math.floor(n/2), n-1].forEach(i => {
+    ctx.fillText(ohlcv[i]?.date?.slice(5) || '', scaleX(i), H - PAD.bottom + 12);
+  });
+
+  // 수평선 (평단가, 목표가, 손절가)
+  const drawHLine = (price, color, label, dash) => {
     if (!price) return;
     const y = scaleY(price);
     ctx.save();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = color; ctx.lineWidth = 1.2;
     if (dash) ctx.setLineDash([4, 3]);
     ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(W - PAD.right, y); ctx.stroke();
     ctx.setLineDash([]);
@@ -2776,41 +2846,18 @@ function drawPriceChart(ohlcv, avgPrice, targetPrice, stopPrice, canvasId, ma20,
     ctx.fillText(label, W - PAD.right - 2, y - 2);
     ctx.restore();
   };
+  drawHLine(stopPrice,   '#E24B4A', '손절가', true);
+  drawHLine(targetPrice, '#27500A', '목표가', true);
+  drawHLine(avgPrice,    '#FF9F0A', '평단가', false);
 
-  // 캔들스틱
-  ohlcv.forEach((c, i) => {
-    const x = scaleX(i);
-    const yH = scaleY(c.high);
-    const yL = scaleY(c.low);
-    const yO = scaleY(c.open);
-    const yC = scaleY(c.close);
-    const isUp = c.close >= c.open;
-    const color = isUp ? '#E24B4A' : '#185FA5';
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(x, yH); ctx.lineTo(x, yL); ctx.stroke();
-    ctx.fillStyle = color;
-    const top  = Math.min(yO, yC);
-    const body = Math.max(Math.abs(yO - yC), 1);
-    ctx.fillRect(x - barW/2, top, barW, body);
+  // 범례
+  ctx.font = '9px -apple-system,sans-serif'; ctx.textAlign = 'left';
+  [['#FF9F0A','MA20'], ['#5B5BD6','MA60'], ['rgba(91,91,214,0.5)','볼린저']].forEach(([c, lbl], i) => {
+    ctx.fillStyle = c;
+    ctx.fillRect(PAD.left + i * 46, PAD.top - 12, 10, 6);
+    ctx.fillStyle = '#8E8E9A';
+    ctx.fillText(lbl, PAD.left + i * 46 + 12, PAD.top - 7);
   });
-
-  // X축 날짜 (첫·중간·마지막)
-  ctx.fillStyle = '#C7C7CC';
-  ctx.font = '9px -apple-system,sans-serif';
-  ctx.textAlign = 'center';
-  [0, Math.floor(n/2), n-1].forEach(i => {
-    const d = ohlcv[i]?.date?.slice(5) || '';
-    ctx.fillText(d, scaleX(i), H - PAD.bottom + 12);
-  });
-
-  // 수평선: 아래부터 위로 (나중에 그릴수록 위에 표시)
-  drawLine(bollLower,   '#AEAEB2', '볼하단', true);
-  drawLine(ma60,        '#5B5BD6', '60일선', true);
-  drawLine(ma20,        '#FF9F0A', '20일선', true);
-  drawLine(stopPrice,   '#E24B4A', '손절가', true);
-  drawLine(targetPrice, '#27500A', '목표가', true);
-  drawLine(avgPrice,    '#FF9F0A', '평단가', false);
 }
 
 function confirmDeleteHolding(code, name) {
