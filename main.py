@@ -318,34 +318,26 @@ def home_data():
 
         # 외국인/기관 수급 최근 5일
         investor = []
+        investor_meta = {"source": "unknown", "base_date": None}
         try:
             inv_df = get_kospi_investor(days=30)
             if inv_df is not None and not inv_df.empty:
                 unit = inv_df["_unit"].iloc[0] if "_unit" in inv_df.columns else "qty"
+                src_label = {"百만": "KIS API (시장 전체)", "won": "pykrx", "qty": "KIS API (수량)"}
+                investor_meta = {
+                    "source": src_label.get(unit, "KIS API"),
+                    "base_date": str(inv_df.index[-1])[:10],
+                }
                 for dt, row in inv_df.tail(5).iterrows():
                     f_raw = float(row.get("외국인", 0))
                     i_raw = float(row.get("기관", 0))
                     if unit == "won":
-                        # 원 단위 → 억원
-                        f_val = round(f_raw / 1e8, 0)
-                        i_val = round(i_raw / 1e8, 0)
-                        disp_unit = "억"
+                        f_val = round(f_raw / 1e8, 0); i_val = round(i_raw / 1e8, 0); disp_unit = "억"
                     elif unit == "百만" or (abs(f_raw) > 0 and abs(f_raw) < 1e6):
-                        # 백만원 → 억원
-                        f_val = round(f_raw / 100, 0)
-                        i_val = round(i_raw / 100, 0)
-                        disp_unit = "억"
+                        f_val = round(f_raw / 100, 0); i_val = round(i_raw / 100, 0); disp_unit = "억"
                     else:
-                        # 주(qty) → 만주
-                        f_val = round(f_raw / 10000, 1)
-                        i_val = round(i_raw / 10000, 1)
-                        disp_unit = "만주"
-                    investor.append({
-                        "date": str(dt)[:10],
-                        "foreign": f_val,
-                        "inst":    i_val,
-                        "unit":    disp_unit,
-                    })
+                        f_val = round(f_raw / 10000, 1); i_val = round(i_raw / 10000, 1); disp_unit = "만주"
+                    investor.append({"date": str(dt)[:10], "foreign": f_val, "inst": i_val, "unit": disp_unit})
         except Exception:
             pass
 
@@ -363,6 +355,7 @@ def home_data():
             "analysis": analysis,
             "forecast": forecast,
             "investor": investor,
+            "investor_meta": investor_meta,
             "market_phase": market_phase(),
             "is_open": is_market_open(),
         }

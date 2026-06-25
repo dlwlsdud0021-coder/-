@@ -313,6 +313,7 @@ function renderHome(d, el) {
   const analysis = Array.isArray(d.analysis) ? d.analysis : [];
   const forecast = d.forecast || {};
   const investor = Array.isArray(d.investor) ? d.investor : [];
+  const investorMeta = d.investor_meta || {};
 
   const heroTitle = kpPct >= 1.5 ? '강한 상승장' : kpPct >= 0.3 ? '상승장' : kpPct <= -1.5 ? '하락장' : kpPct <= -0.3 ? '약세장' : '보합장';
   const heroIcon = kpPct >= 0 ? 'ti-trending-up' : 'ti-trending-down';
@@ -453,7 +454,7 @@ function renderHome(d, el) {
 </div>`;
 
   // ── 외국인·기관 수급 (5일): 듀얼 바 ──────────────────────
-  const investorHtml = buildInvestorSection(investor);
+  const investorHtml = buildInvestorSection(investor, investorMeta);
 
   el.innerHTML = `
     <div class="hero">
@@ -506,8 +507,9 @@ function fmtInv(v, unit) {
 // 하위호환
 function fmtEok(v) { return fmtInv(v, '억'); }
 
-function buildInvestorSection(investor) {
+function buildInvestorSection(investor, meta) {
   if (!investor || !investor.length) return '';
+  meta = meta || {};
   const unit = investor[0]?.unit || '억';
   const maxAbs = Math.max(...investor.map(r => Math.max(Math.abs(r.foreign||0), Math.abs(r.inst||0))), 1);
   const HALF = 100; // 중앙 기준 한쪽 최대 px
@@ -562,7 +564,11 @@ function buildInvestorSection(investor) {
   </div>
   <div class="card clickable" onclick="openSupplyDetail()" style="cursor:pointer;">
     ${rows}
-    <div style="text-align:center;margin-top:12px;">
+    ${meta.source ? `<div style="margin-top:10px;padding-top:8px;border-top:0.5px solid #F0F0F5;font-size:10px;color:#C7C7CC;display:flex;justify-content:space-between;">
+      <span><i class="ti ti-database" style="font-size:10px;"></i> 출처: ${meta.source}</span>
+      ${meta.base_date ? `<span>기준일: ${meta.base_date}</span>` : ''}
+    </div>` : ''}
+    <div style="text-align:center;margin-top:8px;">
       <button onclick="event.stopPropagation();openSupplyDetail()" style="background:#F5F5F7;border:none;border-radius:20px;padding:7px 20px;font-size:12px;color:#5B5BD6;font-weight:600;cursor:pointer;">
         25일 전체 보기 <i class="ti ti-chevron-down" style="font-size:11px;"></i>
       </button>
