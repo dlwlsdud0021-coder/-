@@ -2808,24 +2808,58 @@ async function deleteHolding(code, name) {
 // ─────────────────────────────────────────────────────────
 // 종목 추가 폼
 // ─────────────────────────────────────────────────────────
+let _addStockMode = ''; // 'holding' | 'watchlist'
+
 function toggleAddHolding() {
-  const el = document.getElementById('holding-add-form');
-  el.style.display = el.style.display === 'none' ? 'block' : 'none';
-  if (el.style.display === 'block') {
-    document.getElementById('h-search').value = '';
-    document.getElementById('h-code').value = '';
-    document.getElementById('h-price').value = '';
-    document.getElementById('h-qty').value = '';
-  }
+  _addStockMode = 'holding';
+  document.getElementById('add-stock-modal-title').textContent = '보유종목 추가';
+  document.getElementById('add-stock-holding-fields').style.display = 'block';
+  document.getElementById('m-search').value = '';
+  document.getElementById('m-code').value = '';
+  document.getElementById('m-price').value = '';
+  document.getElementById('m-qty').value = '';
+  document.getElementById('m-search-results').style.display = 'none';
+  const modal = document.getElementById('add-stock-modal');
+  modal.style.display = 'flex';
+  setTimeout(() => modal.style.opacity = '1', 10);
 }
 
 function toggleAddWatchlist() {
-  const el = document.getElementById('watchlist-add-form');
-  el.style.display = el.style.display === 'none' ? 'block' : 'none';
-  if (el.style.display === 'block') {
-    document.getElementById('w-search').value = '';
-    document.getElementById('w-code').value = '';
-  }
+  _addStockMode = 'watchlist';
+  document.getElementById('add-stock-modal-title').textContent = '관심종목 추가';
+  document.getElementById('add-stock-holding-fields').style.display = 'none';
+  document.getElementById('m-search').value = '';
+  document.getElementById('m-code').value = '';
+  document.getElementById('m-search-results').style.display = 'none';
+  const modal = document.getElementById('add-stock-modal');
+  modal.style.display = 'flex';
+  setTimeout(() => modal.style.opacity = '1', 10);
+}
+
+function closeAddStockModal() {
+  document.getElementById('add-stock-modal').style.display = 'none';
+}
+
+async function confirmAddStock() {
+  const code = document.getElementById('m-code').value;
+  const name = document.getElementById('m-search').value.trim();
+  if (!code || !name) { alert('종목을 검색해서 선택하세요'); return; }
+  try {
+    if (_addStockMode === 'holding') {
+      const avg_price = parseFloat(document.getElementById('m-price').value);
+      const qty = parseInt(document.getElementById('m-qty').value);
+      if (!avg_price || !qty) { alert('평단가와 수량을 입력하세요'); return; }
+      await api('POST', '/api/holdings', { code, name, avg_price, qty });
+      closeAddStockModal();
+      _holdingsLoaded = false;
+      loadHoldings(true);
+    } else {
+      await api('POST', '/api/watchlist', { code, name, group_name: '기본' });
+      closeAddStockModal();
+      _watchlistLoaded = false;
+      loadWatchlist(true);
+    }
+  } catch(e) { alert(e.message); }
 }
 
 let _searchTimeout = null;

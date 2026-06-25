@@ -439,24 +439,6 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
       <i class="ti ti-refresh" onclick="loadHoldings(true)"></i>
     </div>
   </div>
-  <div id="holding-add-form" style="display:none;">
-    <div class="add-form" style="position:relative;">
-      <h3>종목 추가</h3>
-      <!-- 1줄: 종목명 + 추가 -->
-      <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
-        <input id="h-search" class="input-field" type="text" placeholder="종목명 검색" oninput="searchStock('h')" autocomplete="off" style="flex:1;margin-bottom:0;box-sizing:border-box;">
-        <input id="h-code" type="hidden">
-        <button class="btn-primary" style="flex-shrink:0;padding:10px 16px;white-space:nowrap;" onclick="addHolding()">추가</button>
-      </div>
-      <div id="h-search-results" class="search-results" style="display:none;top:68px;"></div>
-      <!-- 2줄: 평단가 + 수량 + 취소 -->
-      <div style="display:flex;gap:6px;align-items:center;">
-        <input id="h-price" class="input-field" type="number" placeholder="평단가" style="flex:1.5;min-width:0;margin-bottom:0;box-sizing:border-box;">
-        <input id="h-qty" class="input-field" type="number" placeholder="수량" style="flex:1;min-width:0;margin-bottom:0;box-sizing:border-box;">
-        <button class="btn-secondary" style="flex-shrink:0;padding:10px 12px;white-space:nowrap;" onclick="toggleAddHolding()">취소</button>
-      </div>
-    </div>
-  </div>
   <div id="holdings-total" class="total-strip" style="display:none;"></div>
   <div class="tabs">
     <button class="tab active" onclick="filterHoldings('전체', this)">전체</button>
@@ -553,22 +535,6 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
       <i class="ti ti-refresh" onclick="loadWatchlist(true)"></i>
     </div>
   </div>
-  <div id="watchlist-add-form" style="display:none;">
-    <div class="add-form">
-      <h3>관심종목 추가</h3>
-      <!-- 1줄: 종목명 + 추가 -->
-      <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
-        <input id="w-search" class="input-field" type="text" placeholder="종목명 검색" oninput="searchStock('w')" autocomplete="off" style="flex:1;margin-bottom:0;box-sizing:border-box;">
-        <input id="w-code" type="hidden">
-        <button class="btn-primary" style="flex-shrink:0;padding:10px 16px;white-space:nowrap;" onclick="addWatchlist()">추가</button>
-      </div>
-      <div id="w-search-results" class="search-results" style="display:none;top:68px;"></div>
-      <!-- 2줄: 취소 -->
-      <div style="display:flex;gap:6px;align-items:center;">
-        <button class="btn-secondary" style="flex-shrink:0;padding:10px 12px;white-space:nowrap;" onclick="toggleAddWatchlist()">취소</button>
-      </div>
-    </div>
-  </div>
   <div class="tabs" style="padding-top:6px;">
     <button class="tab active" onclick="filterWatchlist('전체', this)">전체</button>
     <button class="tab inactive" onclick="filterWatchlist('매수검토', this)">매수검토</button>
@@ -647,6 +613,37 @@ body { background: #F5F5F7; max-width: 430px; margin: 0 auto; color: #1A1A2E; mi
   </button>
 </nav>
 
-<script src="/js/app.js?v=20260625b"></script>
+<!-- ═══ 종목 추가 모달 (보유종목 / 관심종목 공용) ═══ -->
+<div id="add-stock-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:flex-end;justify-content:center;" onclick="if(event.target===this)closeAddStockModal()">
+  <div style="background:#fff;width:100%;max-width:430px;border-radius:20px 20px 0 0;padding:24px 20px 32px;box-sizing:border-box;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <span id="add-stock-modal-title" style="font-size:17px;font-weight:700;color:#1A1A2E;">종목 추가</span>
+      <button onclick="closeAddStockModal()" style="background:none;border:none;font-size:22px;color:#8E8E9A;cursor:pointer;line-height:1;">✕</button>
+    </div>
+    <!-- 종목 검색 -->
+    <label class="input-label">종목명</label>
+    <div style="position:relative;margin-bottom:4px;">
+      <input id="m-search" class="input-field" type="text" placeholder="종목명 검색 (예: 삼성전자)" oninput="searchStock('m')" autocomplete="off" style="width:100%;box-sizing:border-box;">
+      <input id="m-code" type="hidden">
+      <div id="m-search-results" class="search-results" style="display:none;top:44px;"></div>
+    </div>
+    <!-- 평단가 / 수량 (보유종목 전용) -->
+    <div id="add-stock-holding-fields" style="display:none;">
+      <div style="display:flex;gap:10px;margin-top:12px;">
+        <div style="flex:1.5;">
+          <label class="input-label">평단가 (원)</label>
+          <input id="m-price" class="input-field" type="number" placeholder="예: 75000" style="width:100%;box-sizing:border-box;">
+        </div>
+        <div style="flex:1;">
+          <label class="input-label">수량 (주)</label>
+          <input id="m-qty" class="input-field" type="number" placeholder="예: 10" style="width:100%;box-sizing:border-box;">
+        </div>
+      </div>
+    </div>
+    <button id="add-stock-confirm-btn" onclick="confirmAddStock()" style="width:100%;margin-top:20px;padding:15px;background:#5B5BD6;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;">추가하기</button>
+  </div>
+</div>
+
+<script src="/js/app.js?v=20260625c"></script>
 </body>
 </html>
