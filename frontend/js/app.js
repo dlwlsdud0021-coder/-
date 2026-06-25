@@ -1397,35 +1397,52 @@ function renderForecastDetail(d, el) {
        <span style="font-size:12px;color:#8E8E9A;margin-left:4px;">(${evaluated}회 검증)</span>`
     : `<span style="font-size:12px;color:#8E8E9A;">아직 검증 데이터 없음</span>`;
 
-  const histRows = history.slice(0, 7).map(p => {
-    const pd  = p.predicted_direction || '';
-    const ad  = p.actual_direction;
-    const pct = p.predicted_change || 0;
-    const correct = p.is_correct;
-    let resultBadge = `<span style="font-size:11px;color:#8E8E9A;">결과 대기</span>`;
-    let actHtml = '';
-    if (ad !== null && ad !== undefined) {
-      resultBadge = correct
-        ? `<span style="background:#EAF3DE;color:#27500A;font-size:10px;padding:2px 8px;border-radius:6px;font-weight:600;">✓ 적중</span>`
-        : `<span style="background:#FDECEA;color:#A32D2D;font-size:10px;padding:2px 8px;border-radius:6px;font-weight:600;">✗ 빗나감</span>`;
+  // 날짜 문자열(YYYY-MM-DD)에서 다음 거래일 계산 (주말 건너뜀)
+  function nextTradingDay(dateStr) {
+    const d = new Date(dateStr);
+    d.setDate(d.getDate() + 1);
+    while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+    return `${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+  }
+  function fmtMD(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return `${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+  }
+
+  const histRows = `
+    <div style="display:grid;grid-template-columns:auto 1fr 1fr auto;gap:0;font-size:11px;color:#8E8E9A;padding:8px 0 6px;border-bottom:1px solid #E5E5EA;font-weight:600;">
+      <span>예측일→결과일</span>
+      <span style="text-align:center;">예측</span>
+      <span style="text-align:center;">실제</span>
+      <span style="text-align:right;">결과</span>
+    </div>
+    ${history.slice(0, 7).map(p => {
+      const pd  = p.predicted_direction || '';
+      const ad  = p.actual_direction;
+      const pct = p.predicted_change || 0;
+      const correct = p.is_correct;
+      const predDate = fmtMD(p.date);
+      const actDate  = nextTradingDay(p.date);
+      const resultBadge = (ad === null || ad === undefined)
+        ? `<span style="font-size:10px;color:#AEAEB2;">대기중</span>`
+        : correct
+          ? `<span style="background:#EAF3DE;color:#27500A;font-size:10px;padding:2px 6px;border-radius:6px;font-weight:600;">✓ 적중</span>`
+          : `<span style="background:#FDECEA;color:#A32D2D;font-size:10px;padding:2px 6px;border-radius:6px;font-weight:600;">✗ 빗나감</span>`;
       const ac = p.actual_change || 0;
-      actHtml = `<div style="font-size:11px;color:${dirClr2[ad]||'#8E8E9A'};margin-top:4px;">
-        실제 ${dirIcon2[ad]||'?'} ${ac > 0 ? '+' : ''}${ac.toFixed(1)}%
+      const actText = (ad !== null && ad !== undefined)
+        ? `<span style="font-size:12px;font-weight:700;color:${dirClr2[ad]||'#8E8E9A'};">${dirIcon2[ad]||'?'} ${ac>0?'+':''}${ac.toFixed(1)}%</span>`
+        : `<span style="font-size:11px;color:#AEAEB2;">-</span>`;
+      return `<div style="display:grid;grid-template-columns:auto 1fr 1fr auto;gap:0;align-items:center;padding:10px 0;border-bottom:0.5px solid #F0F0F5;">
+        <div style="font-size:11px;color:#8E8E9A;padding-right:10px;white-space:nowrap;">
+          <div>${predDate} <span style="color:#C7C7CC;">예측</span></div>
+          <div style="margin-top:2px;">${actDate} <span style="color:#C7C7CC;">결과</span></div>
+        </div>
+        <div style="text-align:center;"><span style="font-size:12px;font-weight:700;color:${dirClr2[pd]||'#8E8E9A'};">${dirIcon2[pd]||'?'} ${pct>0?'+':''}${pct.toFixed(1)}%</span></div>
+        <div style="text-align:center;">${actText}</div>
+        <div style="text-align:right;">${resultBadge}</div>
       </div>`;
-    }
-    return `<div style="padding:12px 0;border-bottom:0.5px solid #F0F0F5;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <span style="font-size:11px;color:#8E8E9A;">${p.date || ''}</span>
-        ${resultBadge}
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:flex-end;">
-        <span style="font-size:15px;font-weight:700;color:${dirClr2[pd] || '#8E8E9A'};">
-          ${dirIcon2[pd] || '?'} ${dirKor2[pd] || '?'} (${pct > 0 ? '+' : ''}${pct.toFixed(1)}%)
-        </span>
-        <div style="text-align:right;">${actHtml}</div>
-      </div>
-    </div>`;
-  }).join('');
+    }).join('')}`;
 
   const historyHtml = history.length ? `
     <div class="section">
