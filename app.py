@@ -1109,6 +1109,17 @@ def render_supply_detail(inv_df: "pd.DataFrame"):
       <div class="advice-text">{advice}</div>
     </div>""", unsafe_allow_html=True)
 
+    st.markdown(f"""<div style="margin:0 0 12px;padding:12px 14px;background:#F8F8FA;border-radius:12px;border:0.5px solid #E5E5EA;">
+      <div style="font-size:11px;font-weight:600;color:#8E8E9A;margin-bottom:6px;">
+        <i class="ti ti-info-circle" style="font-size:12px;"></i> 데이터 출처 안내
+      </div>
+      <div style="font-size:11px;color:#8E8E9A;line-height:1.7;">
+        • 수급 데이터는 <b style="color:#5B5BD6;">최근 25 거래일</b> 기준으로, 매일 가장 오래된 하루가 빠지고 새 하루가 추가돼요. 날짜가 바뀌면 누적 합산이 달라지는 건 정상이에요.<br>
+        • KIS API를 통해 <b style="color:#1A1A2E;">KOSPI 시장 전체</b> 투자자 매매 데이터를 직접 조회해요. 직접 조회가 안 될 경우 삼성전자·SK하이닉스 등 시총 상위 10종목 거래대금을 합산해 추정해요.<br>
+        • 장 마감 전 수치는 잠정값이며, 마감 후 확정값으로 소폭 달라질 수 있어요.
+      </div>
+    </div>""", unsafe_allow_html=True)
+
     st.caption("⚠️ 투자 결정은 본인 책임입니다")
     st.markdown('<div style="height:16px;"></div>', unsafe_allow_html=True)
 
