@@ -2828,10 +2828,17 @@ function drawPriceChart(ohlcv, avgPrice, targetPrice, stopPrice, canvasId, ma20r
   ctx.fillStyle = '#C7C7CC';
   ctx.font = '9px -apple-system,sans-serif';
   ctx.textAlign = 'right';
+  // 가격대에 맞는 Y축 레이블 포맷
+  const fmtY = v => {
+    if (v >= 100000) return (v / 10000).toFixed(0) + '만';
+    if (v >= 10000)  return (v / 10000).toFixed(1) + '만';
+    if (v >= 1000)   return (v / 1000).toFixed(1) + 'K';
+    return v.toFixed(0);
+  };
   for (let i = 0; i <= 4; i++) {
     const v = minP + (maxP - minP) * (i / 4);
     const y = scaleY(v);
-    ctx.fillText((v/10000).toFixed(0) + '만', PAD.left - 4, y + 3);
+    ctx.fillText(fmtY(v), PAD.left - 4, y + 3);
     ctx.strokeStyle = '#F0F0F5'; ctx.lineWidth = 0.5;
     ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(W - PAD.right, y); ctx.stroke();
   }
