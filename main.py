@@ -1065,58 +1065,55 @@ def stock_news(code: str):
 # ─────────────────────────────────────────────────────────
 @app.get("/api/holdings")
 def get_holdings_list(user=Depends(get_current_user)):
+    import concurrent.futures
     holdings = db.get_holdings(user["user_id"])
     if not holdings:
         return {"holdings": [], "total_value": 0, "total_pnl": 0, "total_pnl_pct": 0}
-    result = []
-    total_value = 0
-    total_cost = 0
-    for h in holdings:
+
+    def _analyze_holding(h):
         code = h["code"]
         try:
             pd2 = get_current_price(code)
             cur_price = pd2.get("current_price", h["avg_price"]) or h["avg_price"]
             change_pct = pd2.get("change_pct", 0)
         except Exception:
-            cur_price = h["avg_price"]
-            change_pct = 0
+            cur_price = h["avg_price"]; change_pct = 0
         value = cur_price * h["qty"]
-        cost = h["avg_price"] * h["qty"]
-        pnl = value - cost
+        cost  = h["avg_price"] * h["qty"]
+        pnl   = value - cost
         pnl_pct = (pnl / cost * 100) if cost > 0 else 0
-        total_value += value
-        total_cost += cost
-        # 미니 분석 (카드에 RSI/이격도/지지선 표시용)
         try:
             ohlcv = get_ohlcv(code, days=60)
             inv   = get_investor_trading(code, days=5)
             a     = analyze_stock(ohlcv, inv, h["avg_price"], h["qty"])
-            rsi       = round(a.get("rsi", 50), 1)
-            gap20     = round(a.get("gap20", 100), 1)
-            ma20      = a.get("ma20")
-            ma60      = a.get("ma60")
-            boll      = a.get("bollinger", {})
-            badges    = a.get("badges", [])
+            rsi   = round(a.get("rsi", 50), 1)
+            gap20 = round(a.get("gap20", 100), 1)
+            ma20  = a.get("ma20"); ma60 = a.get("ma60")
+            boll  = a.get("bollinger", {}); badges = a.get("badges", [])
         except Exception:
             rsi = 50; gap20 = 100; ma20 = None; ma60 = None; boll = {}; badges = []
-        result.append({
-            **h,
-            "cur_price": cur_price,
-            "change_pct": round(change_pct, 2),
-            "value": value,
-            "pnl": pnl,
-            "pnl_pct": round(pnl_pct, 2),
-            "rsi": rsi,
-            "gap20": gap20,
-            "ma20": ma20,
-            "ma60": ma60,
-            "boll_lower": boll.get("lower"),
-            "badges": badges,
-        })
+        return {**h,
+            "cur_price": cur_price, "change_pct": round(change_pct, 2),
+            "value": value, "cost": cost,
+            "pnl": pnl, "pnl_pct": round(pnl_pct, 2),
+            "rsi": rsi, "gap20": gap20,
+            "ma20": ma20, "ma60": ma60,
+            "boll_lower": boll.get("lower"), "badges": badges,
+        }
+
+    workers = min(len(holdings), 6)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        results = list(pool.map(_analyze_holding, holdings))
+
+    total_value = sum(r["value"] for r in results)
+    total_cost  = sum(r["cost"]  for r in results)
+    # cost 필드는 응답에서 제거
+    for r in results:
+        r.pop("cost", None)
     total_pnl = total_value - total_cost
     total_pnl_pct = (total_pnl / total_cost * 100) if total_cost > 0 else 0
     return {
-        "holdings": result,
+        "holdings": results,
         "total_value": total_value,
         "total_pnl": total_pnl,
         "total_pnl_pct": round(total_pnl_pct, 2),
@@ -1323,40 +1320,42 @@ def holding_detail(code: str, user=Depends(get_current_user)):
 # ─────────────────────────────────────────────────────────
 @app.get("/api/watchlist")
 def get_watchlist(user=Depends(get_current_user)):
+    import concurrent.futures
     items = db.get_watchlist(user["user_id"])
-    # 각 종목에 미니 분석 추가 (현재가, RSI, 타이밍)
-    enriched = []
-    for item in items:
+
+    def _analyze_watchlist_item(item):
         entry = dict(item)
         try:
-            ohlcv = get_ohlcv(item["code"], days=60)
-            inv   = get_investor_trading(item["code"], days=5)
-            a     = analyze_stock(ohlcv, inv)
-            pd2   = get_current_price(item["code"])
-            cur   = pd2.get("current_price", 0) or 0
-            # 장 마감/주말이면 OHLCV 마지막 종가로 폴백
+            ohlcv   = get_ohlcv(item["code"], days=60)
+            inv     = get_investor_trading(item["code"], days=5)
+            a       = analyze_stock(ohlcv, inv)
+            pd2     = get_current_price(item["code"])
+            cur     = pd2.get("current_price", 0) or 0
             if (not cur) and ohlcv is not None and not ohlcv.empty:
                 cur = float(ohlcv["close"].iloc[-1])
             chg_pct = pd2.get("change_pct", 0) or 0
             timing  = watchlist_timing(a, item.get("target_price"), item.get("stop_loss"))
-            entry["cur_price"]    = float(cur)
-            entry["change_pct"]   = float(round(chg_pct, 2))
-            entry["rsi"]          = float(round(a.get("rsi", 50), 1))
-            entry["gap20"]        = float(round(a.get("gap20", 100), 1))
-            entry["badges"]       = _to_python(a.get("badges", []))
-            entry["timing"]       = _to_python(timing)
-            entry["targets"]      = _to_python(_calc_ai_targets(cur, a, ohlcv))
+            entry["cur_price"]  = float(cur)
+            entry["change_pct"] = float(round(chg_pct, 2))
+            entry["rsi"]        = float(round(a.get("rsi", 50), 1))
+            entry["gap20"]      = float(round(a.get("gap20", 100), 1))
+            entry["badges"]     = _to_python(a.get("badges", []))
+            entry["timing"]     = _to_python(timing)
+            entry["targets"]    = _to_python(_calc_ai_targets(cur, a, ohlcv))
         except Exception as e:
             entry["_err"] = str(e)
-        # 필수 필드 기본값 보장
         entry.setdefault("cur_price", 0)
         entry.setdefault("change_pct", 0)
         entry.setdefault("rsi", None)
         entry.setdefault("timing", {})
         entry.setdefault("badges", [])
         entry.setdefault("targets", {})
-        enriched.append(entry)
-    # 알림 배지: 매수검토 종목 카운트
+        return entry
+
+    workers = min(len(items), 6) if items else 1
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        enriched = list(pool.map(_analyze_watchlist_item, items))
+
     alert_count = sum(1 for e in enriched if (e.get("timing") or {}).get("status") == "buy_ok")
     groups = db.get_watchlist_groups(user["user_id"])
     return _to_python({"watchlist": enriched, "alert_count": alert_count, "groups": groups})

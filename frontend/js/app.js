@@ -99,6 +99,22 @@ let _allWatchlist = [];
 let _scannerPollTimer = null;
 
 // ─────────────────────────────────────────────────────────
+// 스켈레톤 UI
+// ─────────────────────────────────────────────────────────
+function _skelCards(n) {
+  return Array.from({length: n}, () =>
+    `<div class="skel-card">
+      <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+        <div class="skel skel-line lg"></div>
+        <div class="skel skel-line sm" style="width:22%;"></div>
+      </div>
+      <div class="skel skel-line full"></div>
+      <div class="skel skel-line" style="width:70%;"></div>
+    </div>`
+  ).join('');
+}
+
+// ─────────────────────────────────────────────────────────
 // API 유틸
 // ─────────────────────────────────────────────────────────
 async function api(method, path, body, timeoutMs = 60000) {
@@ -2176,7 +2192,7 @@ async function loadHoldings(force) {
   if (_holdingsLoaded && !force) return;
   _holdingsLoaded = true;
   const el = document.getElementById('holdings-content');
-  el.innerHTML = '<div class="loading"><div class="spinner"></div> 불러오는 중...</div>';
+  el.innerHTML = _skelCards(3);
   document.getElementById('holdings-date').textContent = nowStr();
   try {
     const d = await api('GET', '/api/holdings');
@@ -3088,7 +3104,7 @@ async function loadWatchlist(force) {
   if (_watchlistLoaded && !force) return;
   _watchlistLoaded = true;
   const el = document.getElementById('watchlist-content');
-  el.innerHTML = '<div class="loading"><div class="spinner"></div> 불러오는 중...</div>';
+  el.innerHTML = _skelCards(3);
   try {
     const d = await api('GET', '/api/watchlist');
     _allWatchlist = d.watchlist || [];
