@@ -653,7 +653,8 @@ def get_kospi_investor(days: int = 25) -> pd.DataFrame:
         if rows and any(abs(r.get("foreign_net", 0)) > 0 for r in rows):
             records = [{"날짜": pd.to_datetime(r["date"], format="%Y%m%d"),
                         "외국인": r.get("foreign_net", 0),
-                        "기관":   r.get("institution_net", 0)} for r in rows]
+                        "기관":   r.get("institution_net", 0),
+                        "_unit": "百만"} for r in rows]  # KIS: 백만원 단위
             df = pd.DataFrame(records).set_index("날짜").sort_index()
             source = rows[0].get("_source", "?")
             _logger.info(f"[수급-KOSPI] 시장 수급 성공({source}): {len(df)}행, 최신날짜={df.index[-1].date()}")
@@ -668,7 +669,8 @@ def get_kospi_investor(days: int = 25) -> pd.DataFrame:
         if rows and any(abs(r.get("foreign_net", 0)) > 0 for r in rows):
             records = [{"날짜": pd.to_datetime(r["date"], format="%Y%m%d"),
                         "외국인": r.get("foreign_net", 0),
-                        "기관":   r.get("institution_net", 0)} for r in rows]
+                        "기관":   r.get("institution_net", 0),
+                        "_unit": "百만"} for r in rows]  # KIS: 백만원 단위
             df = pd.DataFrame(records).set_index("날짜").sort_index()
             _logger.warning(f"[수급-KOSPI] 삼성전자 proxy 사용 중 (시장 API 실패): {len(df)}행")
             return df.tail(days)
