@@ -501,7 +501,7 @@ function fmtInv(v, unit) {
     return v.toFixed(0) + '억';
   }
   // 만주
-  return (v >= 0 ? '+' : '') + v.toFixed(1) + '만주';
+  return v.toFixed(1) + '만주';
 }
 // 하위호환
 function fmtEok(v) { return fmtInv(v, '억'); }
