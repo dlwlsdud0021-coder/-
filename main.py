@@ -1615,6 +1615,11 @@ def manifest():
 def service_worker():
     return FileResponse("frontend/service-worker.js", media_type="application/javascript")
 
+@app.get("/ping")
+@app.head("/ping")
+def ping():
+    return {"status": "ok"}
+
 @app.get("/")
 @app.head("/")
 def root():
