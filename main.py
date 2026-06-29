@@ -1146,17 +1146,18 @@ def _calc_ai_targets(cur: float, analysis: dict, ohlcv) -> dict:
         boll_upper = boll.get("upper")
         boll_lower = boll.get("lower")
         ohlcv_ok = ohlcv is not None and not ohlcv.empty
+        import math as _math
         tp, tb = None, ""
         if boll_upper and boll_upper > cur:
-            tp = round(boll_upper / 100) * 100; tb = "볼린저 상단"
+            tp = _math.ceil(boll_upper / 100) * 100; tb = "볼린저 상단"
         elif ohlcv_ok:
             hcol = "high" if "high" in ohlcv.columns else "고가"
             if hcol in ohlcv.columns:
                 high60 = float(ohlcv[hcol].tail(60).max())
                 if high60 > cur * 1.03:
-                    tp = round(high60 / 100) * 100; tb = "60일 고점"
-        if not tp:
-            tp = round(cur * 1.08 / 100) * 100; tb = "현재가 +8%"
+                    tp = _math.ceil(high60 / 100) * 100; tb = "60일 고점"
+        if not tp or tp <= cur:
+            tp = _math.ceil(cur * 1.08 / 100) * 100; tb = "현재가 +8%"
         sp, sb = None, ""
         if boll_lower and boll_lower < cur:
             sp = round(boll_lower / 100) * 100; sb = "볼린저 하단"
@@ -1230,18 +1231,19 @@ def holding_detail(code: str, user=Depends(get_current_user)):
         ma20  = analysis.get("ma20")
         boll_upper = boll.get("upper")
         boll_lower = boll.get("lower")
+        import math as _math
         tp, tb = None, ""
         if boll_upper and boll_upper > cur:
-            tp = round(boll_upper / 100) * 100; tb = "볼린저 상단"
+            tp = _math.ceil(boll_upper / 100) * 100; tb = "볼린저 상단"
         elif ohlcv is not None and not ohlcv.empty:
             hcol = "high" if "high" in ohlcv.columns else "고가"
             if hcol in ohlcv.columns:
                 high60 = float(ohlcv[hcol].tail(60).max())
                 if high60 > cur * 1.03:
-                    tp = round(high60 / 100) * 100; tb = "60일 고점"
-        avg_tp = round(avg_p * 1.10 / 100) * 100
+                    tp = _math.ceil(high60 / 100) * 100; tb = "60일 고점"
+        avg_tp = _math.ceil(avg_p * 1.10 / 100) * 100
         if not tp or avg_tp > tp: tp = avg_tp; tb = "평단가 +10%"
-        if not tp: tp = round(cur * 1.08 / 100) * 100; tb = "현재가 +8%"
+        if not tp or tp <= cur: tp = _math.ceil(cur * 1.08 / 100) * 100; tb = "현재가 +8%"
         sp, sb = None, ""
         if boll_lower and boll_lower < cur:
             sp = round(boll_lower / 100) * 100; sb = "볼린저 하단"
